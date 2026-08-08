@@ -5,6 +5,18 @@
 
 ---
 
+### 2026-08-09 · launcharr gets a menubar icon (accessory policy stays)
+
+- **Decision.** A single NSStatusItem with a template pirate-flag icon (⌘ cut-out) and a
+  minimal menu: summon, open config, open scripts folder, reindex, quit. Requested by Mitch
+  as the gateway for settings and future surface area. The original "menu-bar-less" PRD line
+  is revised; accessory policy (no Dock icon) is unchanged.
+- **Why.** Discoverability and a mouse-reachable escape hatch (if the hotkey ever breaks,
+  the app is otherwise invisible). Guardrail: the tray must never grow features the prompt
+  can't reach — the panel stays the product.
+- **Mechanics.** Icon generated from `design/menubar-icon-source.png` by
+  `cargo run --example make_tray_icon` (threshold → crop → 44×44 template PNG).
+
 ### 2026-08-08 · v1.1: scripts-first Sol parity; invariants hold; three features deferred
 
 - **Decision.** Sol feature-matching lands as v1.1 by pulling the v2 script protocol forward:

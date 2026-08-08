@@ -23,6 +23,7 @@ mod scripts;
 mod settings_panes;
 mod shortcut;
 mod terminal;
+mod tray;
 
 /// `--extract-icons <dir>` child-process entry (see icons.rs for why this exists).
 pub fn extract_icons_cli(icon_dir: &std::path::Path) {
@@ -110,6 +111,7 @@ pub fn run() {
             });
 
             panel::init(app.handle())?;
+            tray::init(app.handle())?;
             shortcut::sync(app.handle(), &cfg);
             indexer::start(app.handle().clone());
             scripts::start(app.handle().clone());

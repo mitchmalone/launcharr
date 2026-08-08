@@ -21,6 +21,10 @@
   - PRD rewritten to v1.1; grammar is now the full dispatch table (`!` + trigger words).
   - All machine-verifiable paths tested live; 41 TS + 24 Rust tests green.
 - **Installed**: `/Applications/launcharr.app` running with all of the above.
+- **Menubar icon** (2026-08-09): template pirate-flag NSStatusItem with summon/config/
+  scripts/reindex/quit menu — the future settings gateway. Icon regenerates via
+  `cargo run --example make_tray_icon` from `design/menubar-icon-source.png`. Accessory
+  policy unchanged (no Dock icon). Eyeball check: icon crispness + dark/light menubar.
 
 ## In progress
 

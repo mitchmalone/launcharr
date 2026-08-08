@@ -99,7 +99,7 @@ The panel is a terminal prompt cosplay, not an Alfred knock-off:
 
 ### 4.5 First run
 
-On first launch: register the default hotkey, build the app index, show the panel once with a one-line hint ("⌥space to summon · `!` to run in terminal"). No onboarding wizard, no account, no network calls. launcharr runs as a menu-bar-less accessory app; quitting/relaunching and the few settings that exist are reachable through the prompt itself (type `launcharr` — it self-indexes).
+On first launch: register the default hotkey, build the app index, show the panel once with a one-line hint ("⌥space to summon · `!` to run in terminal"). No onboarding wizard, no account, no network calls. launcharr runs as an accessory app (no Dock icon) with a small menubar presence — a template pirate-flag icon whose menu covers summon/config/scripts/reindex/quit and is the gateway for future settings UI (added v1.1, 9 Aug 2026). Everything in the menu stays reachable through the prompt itself (type `launcharr` — it self-indexes); the panel is always the primary surface.
 
 ## 5. Core behaviors (functional requirements)
 
@@ -156,7 +156,7 @@ Guiding split: **Rust owns the OS, TypeScript owns the experience.** Anything to
 ### 6.2 Notable implementation details
 
 - **Focus discipline** is the hardest native problem: non-activating panel that still receives keystrokes, and reliable focus restore on dismiss. Prove this in week one (see §9) before building anything else on top.
-- **`LSUIElement` / accessory activation policy**: no Dock icon, no menu bar presence.
+- **`LSUIElement` / accessory activation policy**: no Dock icon. A single `NSStatusItem` (template icon) is the only menubar presence.
 - **IPC**: a handful of typed Tauri commands (`get_index`, `record_launch`, `launch(item)`, `run_in_terminal(cmd)`, `read_config`). Keep the surface tiny; every command is a future plugin-API liability.
 - **Zero network**: v1 makes no network requests. This is a feature; say so in the README someday.
 
