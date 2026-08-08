@@ -6,6 +6,21 @@
 
 ---
 
+### 2026-08-08 · AppKit leaks ~20–30MB per rasterized app icon; subprocess is the fix
+
+First launch hit **10GB RSS**. Bulk `NSWorkspace.iconForFile` + `TIFFRepresentation` retains
+the rasterized data inside AppKit: per-icon `autoreleasepool` and `NSImage.recache()` both
+measurably do nothing (isolated test: 152 icons → 3.3GB, kept as an `--ignored` diagnostic in
+`icons.rs`). Fix: the binary re-invokes itself (`launcharr --extract-icons <dir>`) and the
+caches die with the child. Steady-state RSS: **90MB** (budget: <120). Also: TIFF rasters are
+1024² — downscale to 128px via the `image` crate before caching (62MB → 7.5MB), and write
+zero-byte markers for apps whose icons can't be extracted so they aren't retried forever.
+
+### 2026-08-08 · `open` re-activates a running instance — smoke tests must pkill first
+
+Chased a "still leaking" ghost for two rebuild cycles because `open launcharr.app` had been
+re-activating the old process instead of launching the new binary. Kill before relaunch.
+
 ### 2026-08-08 · brew rustup keeps cargo off the default PATH
 
 Homebrew's `rustup` puts the proxies in `/opt/homebrew/opt/rustup/bin` (NOT `~/.cargo/bin`),
