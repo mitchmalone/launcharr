@@ -41,3 +41,4 @@ image = { version = "0.25.10", default-features = false, features = ["png", "ico
 tauri-plugin-autostart = "2.5.1"
 ureq = "2"
 url = "2.5.8"
+plist = "1.10.0"

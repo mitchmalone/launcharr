@@ -29,6 +29,7 @@ export type Config = {
   shortcuts: Record<string, string>;
   /** Alfred-style dead-end fallback, {query} placeholder. */
   searchFallback: string;
+  indexBookmarks: boolean;
 };
 
 export type FrecencyMap = Record<string, number>;

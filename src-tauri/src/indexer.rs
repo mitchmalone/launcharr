@@ -47,7 +47,7 @@ const APP_DIRS: &[&str] = &[
     "/System/Applications/Utilities",
 ];
 
-pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
+pub fn scan(links: &[crate::config::Link], include_bookmarks: bool) -> Vec<IndexItem> {
     let mut items: Vec<IndexItem> = Vec::with_capacity(300);
 
     let mut dirs: Vec<PathBuf> = APP_DIRS.iter().map(PathBuf::from).collect();
@@ -101,6 +101,25 @@ pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
             aliases: Vec::new(),
             browser: link.browser.clone(),
         });
+    }
+
+    // Browser bookmarks, strictly opt-in (default off — see DECISIONS 2026-08-09).
+    if include_bookmarks {
+        for bookmark in crate::bookmarks::collect() {
+            items.push(IndexItem {
+                id: format!("bookmark:{}", bookmark.url),
+                name: bookmark.name,
+                kind: ItemKind::Link,
+                path: bookmark.url,
+                hint: "bookmark".into(),
+                icon: None,
+                aliases: Vec::new(),
+                browser: None,
+            });
+        }
+        // Bookmarks may repeat across browsers/profiles; ids collide → dedupe again.
+        items.sort_by(|a, b| a.id.cmp(&b.id));
+        items.dedup_by(|a, b| a.id == b.id);
     }
 
     // launcharr self-indexes (PRD §4.5): the prompt is the preferences UI.
@@ -162,8 +181,11 @@ fn scan_dir(dir: &Path, depth: u8, items: &mut Vec<IndexItem>) {
 /// Rescan, publish to state, notify the frontend, then top up missing icons.
 pub fn refresh(app: &AppHandle) {
     let state = app.state::<crate::AppState>();
-    let links = state.config.read().unwrap().links.clone();
-    let mut items = scan(&links);
+    let (links, include_bookmarks) = {
+        let cfg = state.config.read().unwrap();
+        (cfg.links.clone(), cfg.index_bookmarks)
+    };
+    let mut items = scan(&links, include_bookmarks);
     crate::icons::annotate_cached(&mut items, &state.icon_dir);
     *state.index.write().unwrap() = items;
     let _ = app.emit("index-updated", ());
@@ -211,7 +233,7 @@ mod tests {
 
     #[test]
     fn scan_finds_apps_and_settings_and_self() {
-        let items = scan(&[]);
+        let items = scan(&[], false);
         // Any Mac has Safari and Finder-adjacent system apps.
         assert!(items.iter().any(|i| i.kind == ItemKind::App));
         assert!(items
@@ -222,7 +244,7 @@ mod tests {
 
     #[test]
     fn scan_has_no_duplicate_ids() {
-        let items = scan(&[]);
+        let items = scan(&[], false);
         let mut ids: Vec<_> = items.iter().map(|i| &i.id).collect();
         let before = ids.len();
         ids.sort();

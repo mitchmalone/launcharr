@@ -92,7 +92,7 @@ pub fn extract_missing(app: AppHandle) {
 /// icon into the cache directory, then exit (taking AppKit's icon caches with it).
 pub fn extract_cli(icon_dir: &Path) {
     let _ = fs::create_dir_all(icon_dir);
-    for item in crate::indexer::scan(&[]) {
+    for item in crate::indexer::scan(&[], false) {
         if item.kind != ItemKind::App {
             continue;
         }
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     #[ignore]
     fn bulk_native_png_only_probe() {
-        let apps = crate::indexer::scan(&[]);
+        let apps = crate::indexer::scan(&[], false);
         let before = rss_mb();
         let mut n = 0;
         for app in apps.iter().filter(|a| a.kind == ItemKind::App) {
@@ -194,7 +194,7 @@ mod tests {
     fn bulk_extraction_in_process_leaks_by_design_of_appkit() {
         let dir = std::env::temp_dir().join("launcharr-icon-bulk");
         let _ = fs::create_dir_all(&dir);
-        let apps = crate::indexer::scan(&[]);
+        let apps = crate::indexer::scan(&[], false);
         let before = rss_mb();
         let mut n = 0;
         for app in apps.iter().filter(|a| a.kind == ItemKind::App) {

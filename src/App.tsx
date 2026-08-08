@@ -52,6 +52,7 @@ const DEFAULT_CONFIG: Config = {
   links: [],
   shortcuts: {},
   searchFallback: 'https://www.google.com/search?q={query}',
+  indexBookmarks: false,
 };
 
 export default function App() {

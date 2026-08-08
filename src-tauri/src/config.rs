@@ -49,6 +49,8 @@ pub struct Config {
     /// Alfred-style dead-end fallback: opened when a query matches nothing. `{query}`
     /// placeholder, URL-encoded by the frontend.
     pub search_fallback: String,
+    /// Opt-in: index browser bookmarks (Chrome-family + Safari) as results. Default off.
+    pub index_bookmarks: bool,
 }
 
 impl Default for Config {
@@ -63,6 +65,7 @@ impl Default for Config {
             links: Vec::new(),
             shortcuts: std::collections::HashMap::new(),
             search_fallback: "https://www.google.com/search?q={query}".into(),
+            index_bookmarks: false,
         }
     }
 }
@@ -131,7 +134,9 @@ pub fn watch(app: AppHandle) {
                     if old.launch_at_login != new_config.launch_at_login {
                         crate::apply_launch_at_login(&app, new_config.launch_at_login);
                     }
-                    if old.links != new_config.links {
+                    if old.links != new_config.links
+                        || old.index_bookmarks != new_config.index_bookmarks
+                    {
                         crate::indexer::refresh(&app);
                     }
                     let _ = app.emit("config-changed", &new_config);
