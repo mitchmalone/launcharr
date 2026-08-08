@@ -28,15 +28,18 @@ pub fn icon_path(icon_dir: &Path, app_path: &str) -> Option<PathBuf> {
     cache_name(app_path).map(|n| icon_dir.join(n))
 }
 
-/// Fill `icon` for items whose cached PNG already exists on disk.
+/// Fill `icon` for items whose cached PNG already exists on disk (apps and link favicons).
 pub fn annotate_cached(items: &mut [IndexItem], icon_dir: &Path) {
     for item in items.iter_mut() {
-        if item.kind == ItemKind::App {
-            if let Some(p) = icon_path(icon_dir, &item.path) {
-                // Zero-byte files are failed-extraction markers, not icons.
-                if fs::metadata(&p).map(|m| m.len() > 0).unwrap_or(false) {
-                    item.icon = Some(p.to_string_lossy().into_owned());
-                }
+        let cached = match item.kind {
+            ItemKind::App => icon_path(icon_dir, &item.path),
+            ItemKind::Link => Some(crate::favicon::link_icon_path(icon_dir, &item.path)),
+            _ => None,
+        };
+        if let Some(p) = cached {
+            // Zero-byte files are failed-extraction markers, not icons.
+            if fs::metadata(&p).map(|m| m.len() > 0).unwrap_or(false) {
+                item.icon = Some(p.to_string_lossy().into_owned());
             }
         }
     }

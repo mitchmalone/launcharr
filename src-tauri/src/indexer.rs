@@ -34,6 +34,9 @@ pub struct IndexItem {
     pub icon: Option<String>,
     /// Extra strings the fuzzy matcher may match against.
     pub aliases: Vec<String>,
+    /// Links only: open in this browser (`open -a`); None = default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub browser: Option<String>,
 }
 
 const APP_DIRS: &[&str] = &[
@@ -67,6 +70,7 @@ pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
             hint: "settings".into(),
             icon: None,
             aliases: vec!["settings".into(), "preferences".into()],
+            browser: None,
         });
     }
 
@@ -80,6 +84,7 @@ pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
             hint: "link".into(),
             icon: None,
             aliases: Vec::new(),
+            browser: link.browser.clone(),
         });
     }
 
@@ -101,6 +106,7 @@ pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
             hint: "launcharr".into(),
             icon: None,
             aliases: alias.split(' ').map(String::from).collect(),
+            browser: None,
         });
     }
 
@@ -129,6 +135,7 @@ fn scan_dir(dir: &Path, depth: u8, items: &mut Vec<IndexItem>) {
                 hint: "app".into(),
                 icon: None,
                 aliases: Vec::new(),
+                browser: None,
             });
         } else if depth < 1 && path.is_dir() {
             // One level of vendor folders (Adobe …, Utilities) is enough.

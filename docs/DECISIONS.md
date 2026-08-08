@@ -5,6 +5,19 @@
 
 ---
 
+### 2026-08-09 · Network carve-out: user-initiated favicon fetch at quicklink-add time
+
+- **Decision.** The add-quicklink flow fetches the site's favicon (apple-touch-icon and
+  sized icons preferred; favicon.ico as explicit last resort, per Mitch). This is the only
+  network launcharr core may touch: one-shot, user-initiated, at add time. No background
+  fetches, no refresh jobs, no telemetry — the zero-network invariant otherwise stands.
+- **Why.** Quicklinks without icons look broken next to apps; Mitch asked for detection with
+  quality preference. A user pressing "Add quicklink" is consenting to exactly one fetch of
+  exactly that site.
+- **Mechanics.** ureq (4s/6s timeouts, 512KB HTML / 2MB icon caps), pure tested `<link rel>`
+  scanner, cached as `link-<hash>.png` beside app icons. Browser choice stored per link
+  (`open -a`).
+
 ### 2026-08-09 · launcharr gets a menubar icon (accessory policy stays)
 
 - **Decision.** A single NSStatusItem with a template pirate-flag icon (⌘ cut-out) and a

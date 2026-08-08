@@ -8,6 +8,7 @@ export type IndexItem = {
   hint: string;
   icon: string | null;
   aliases: string[];
+  browser?: string | null;
 };
 
 export type Link = {

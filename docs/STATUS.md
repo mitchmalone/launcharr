@@ -28,6 +28,12 @@
 
 ## Done (latest)
 
+- **Add-quicklink flow + favicons** (2026-08-09): URL detected → Open / Add quicklink…;
+  two-step mini-form (name → browser: default or any installed browser); saved to config
+  `links`; favicon fetched once at add time preferring apple-touch-icon/sized PNGs over
+  .ico (network carve-out in DECISIONS — core stays otherwise zero-network). Esc backs out
+  of the form before dismissing. Plan: `plans/done/add-quicklink-flow.md`.
+
 - **URLs + search + quicklinks** (2026-08-09): URL-ish queries get an "Open ▸" top row;
   dead-end queries offer "Search Google for …" (Alfred-style, engine configurable via
   `searchFallback`); `links` entries with `trigger` + `{query}` are Raycast-style

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { launchRows, quicklinkRows, searchEngineLabel } from './rows';
+import {
+  draftRows,
+  launchRows,
+  quicklinkRows,
+  searchEngineLabel,
+} from './rows';
 import type { IndexItem, Link } from './types';
 
 const GOOGLE = 'https://www.google.com/search?q={query}';
@@ -88,5 +93,39 @@ describe('searchEngineLabel', () => {
       'Duckduckgo'
     );
     expect(searchEngineLabel('not a url')).toBe('the web');
+  });
+});
+
+describe('add-quicklink rows', () => {
+  it('URL detection yields Open + Add quicklink rows', () => {
+    const rows = launchRows('stripe.com', ITEMS, {}, GOOGLE);
+    expect(rows[0].key).toBe('url');
+    expect(rows[1].key).toBe('add-quicklink');
+    expect(rows[1].enter).toEqual({
+      kind: 'add-quicklink',
+      url: 'https://stripe.com',
+    });
+  });
+
+  it('draft name step reflects the typed name', () => {
+    const d = { url: 'https://stripe.com', name: '', step: 'name' as const };
+    expect(draftRows(d, '', ['Safari'])[0].title).toContain('type a name');
+    expect(draftRows(d, 'Stripe', ['Safari'])[0].title).toContain('“Stripe”');
+  });
+
+  it('draft browser step lists default first, then installed browsers', () => {
+    const d = {
+      url: 'https://stripe.com',
+      name: 'Stripe',
+      step: 'browser' as const,
+    };
+    const rows = draftRows(d, '', ['Safari', 'Arc']);
+    expect(rows.map((r) => r.title)).toEqual([
+      'Default browser',
+      'Safari',
+      'Arc',
+    ]);
+    expect(rows[0].enter).toEqual({ kind: 'pick-browser', browser: null });
+    expect(rows[2].enter).toEqual({ kind: 'pick-browser', browser: 'Arc' });
   });
 });

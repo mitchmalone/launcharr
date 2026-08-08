@@ -57,7 +57,9 @@ look, a preferences UI beyond the essentials, auto-update/signing/notarization (
 when releasing to the wild), Windows/Linux, and anything requiring Accessibility permissions
 (this is why clipboard "paste" is copy-on-Enter: auto-⌘V needs Accessibility). launcharr runs
 with **zero granted permissions** (the one exception: sending to iTerm2 triggers macOS's
-standard Automation consent prompt on first use) and **makes zero network requests**.
+standard Automation consent prompt on first use) and **makes zero network requests**, with
+one deliberate carve-out (decided 9 Aug 2026): a single user-initiated favicon fetch when a
+quicklink is added through the panel. Nothing runs in the background; core never phones out.
 
 **Deferred, not rejected** (triggers in `docs/DECISIONS.md`): Google Translate and public-IP
 lookup (need network), Calendar (needs EventKit consent).

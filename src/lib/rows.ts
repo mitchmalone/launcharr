@@ -25,7 +25,10 @@ export type RowEnter =
   | { kind: 'open-url'; url: string }
   | { kind: 'script-action'; index: number }
   | { kind: 'copy-clip'; content: string }
-  | { kind: 'clear-clips' };
+  | { kind: 'clear-clips' }
+  | { kind: 'add-quicklink'; url: string }
+  | { kind: 'draft-commit-name' }
+  | { kind: 'pick-browser'; browser: string | null };
 
 function kindGlyph(item: IndexItem): string {
   if (item.kind === 'settings') return '⚙';
@@ -68,6 +71,15 @@ export function launchRows(
       glyph: '↗',
       enter: { kind: 'open-url', url },
     });
+    rows.push({
+      key: 'add-quicklink',
+      title: 'Add quicklink…',
+      hint: 'name · browser · favicon',
+      positions: [],
+      icon: null,
+      glyph: '+',
+      enter: { kind: 'add-quicklink', url },
+    });
   }
 
   const math = evaluate(query);
@@ -109,6 +121,56 @@ export function launchRows(
   }
 
   return rows.slice(0, MAX_RESULTS);
+}
+
+/** The add-quicklink mini-form (Raycast-style): a name step, then a browser step. */
+export type QuicklinkDraft = {
+  url: string;
+  name: string;
+  step: 'name' | 'browser';
+};
+
+export function draftRows(
+  draft: QuicklinkDraft,
+  typedName: string,
+  browsers: string[]
+): Row[] {
+  const shortUrl = draft.url.replace(/^https?:\/\//, '');
+  if (draft.step === 'name') {
+    return [
+      {
+        key: 'draft-name',
+        title: typedName.trim()
+          ? `Name “${typedName.trim()}” → ${shortUrl}`
+          : `Quicklink for ${shortUrl} — type a name`,
+        hint: '⏎ next',
+        positions: [],
+        icon: null,
+        glyph: '+',
+        enter: { kind: 'draft-commit-name' },
+      },
+    ];
+  }
+  return [
+    {
+      key: 'browser-default',
+      title: 'Default browser',
+      hint: '⏎ save',
+      positions: [],
+      icon: null,
+      glyph: '↗',
+      enter: { kind: 'pick-browser', browser: null },
+    },
+    ...browsers.map((b) => ({
+      key: `browser-${b}`,
+      title: b,
+      hint: '⏎ save',
+      positions: [],
+      icon: null,
+      glyph: '↗',
+      enter: { kind: 'pick-browser', browser: b } as RowEnter,
+    })),
+  ];
 }
 
 /** Raycast-style quicklink in trigger mode: `yt cute otters ⏎`. */

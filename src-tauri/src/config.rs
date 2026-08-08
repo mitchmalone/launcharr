@@ -22,6 +22,9 @@ pub struct Link {
     /// Raycast-style quicklink (`yt cute otters ⏎`). Resolved frontend-side.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
+    /// Open in a specific browser (app name for `open -a`); None = default browser.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub browser: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

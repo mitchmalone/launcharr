@@ -6,9 +6,11 @@ import { parseInput } from './lib/grammar';
 import { markInput, reportResultsPainted } from './lib/perf';
 import {
   clipRows,
+  draftRows,
   launchRows,
   quicklinkRows,
   scriptRows,
+  type QuicklinkDraft,
   type Row,
 } from './lib/rows';
 import type {
@@ -25,6 +27,19 @@ const INPUT_HEIGHT = 54;
 const ROW_HEIGHT = 40;
 const BORDER = 2;
 const SCRIPT_DEBOUNCE_MS = 120;
+
+const KNOWN_BROWSERS = [
+  'Safari',
+  'Google Chrome',
+  'Arc',
+  'Firefox',
+  'Brave Browser',
+  'Microsoft Edge',
+  'Vivaldi',
+  'Opera',
+  'Orion',
+  'Zen Browser',
+];
 
 const DEFAULT_CONFIG: Config = {
   hotkey: 'Alt+Space',
@@ -47,7 +62,16 @@ export default function App() {
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([]);
+  const [draft, setDraft] = useState<QuicklinkDraft | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const browsers = useMemo(
+    () =>
+      KNOWN_BROWSERS.filter((b) =>
+        index.some((i) => i.kind === 'app' && i.name === b)
+      ),
+    [index]
+  );
 
   // Trigger precedence on collision: clip (built-in) > scripts > quicklinks.
   const quicklinks = useMemo(
@@ -90,6 +114,7 @@ export default function App() {
         setRaw('');
         setSelected(0);
         setScriptItems([]);
+        setDraft(null);
         refetchFrecency();
         refetchClips();
         inputRef.current?.focus();
@@ -129,6 +154,7 @@ export default function App() {
   }, [scriptTrigger, trigger, args]);
 
   const rows: Row[] = useMemo(() => {
+    if (draft) return draftRows(draft, raw, browsers);
     switch (parsed.mode) {
       case 'launch':
         return launchRows(parsed.query, index, frecency, config.searchFallback);
@@ -150,6 +176,9 @@ export default function App() {
     config.searchFallback,
     quicklinks,
     isScript,
+    draft,
+    raw,
+    browsers,
   ]);
 
   const rowCount =
@@ -197,9 +226,31 @@ export default function App() {
         case 'clear-clips':
           invoke('clear_clips').then(refetchClips).catch(console.error);
           break;
+        case 'add-quicklink':
+          setDraft({ url: row.enter.url, name: '', step: 'name' });
+          setRaw('');
+          setSelected(0);
+          break;
+        case 'draft-commit-name':
+          if (draft && raw.trim()) {
+            setDraft({ ...draft, name: raw.trim(), step: 'browser' });
+            setRaw('');
+            setSelected(0);
+          }
+          break;
+        case 'pick-browser':
+          if (draft) {
+            invoke('add_quicklink', {
+              name: draft.name,
+              url: draft.url,
+              browser: row.enter.browser,
+            }).catch(console.error);
+            setDraft(null);
+          }
+          break;
       }
     },
-    [parsed, scriptItems, refetchClips]
+    [parsed, scriptItems, refetchClips, draft, raw]
   );
 
   const onKeyDown = useCallback(
@@ -213,7 +264,14 @@ export default function App() {
 
       if (e.key === 'Escape') {
         e.preventDefault();
-        invoke('hide_panel').catch(console.error);
+        // In the quicklink form, Esc backs out to the launcher; a second Esc dismisses.
+        if (draft) {
+          setDraft(null);
+          setRaw('');
+          setSelected(0);
+        } else {
+          invoke('hide_panel').catch(console.error);
+        }
         return;
       }
       if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) return move(1);
@@ -236,10 +294,19 @@ export default function App() {
         }
       }
     },
-    [rows, parsed, clampedSelection, enterRow]
+    [rows, parsed, clampedSelection, enterRow, draft]
   );
 
-  const sigil = parsed.mode === 'bang' ? config.bangSigil : config.sigil;
+  const sigil = draft
+    ? '+'
+    : parsed.mode === 'bang'
+      ? config.bangSigil
+      : config.sigil;
+  const placeholder = draft
+    ? draft.step === 'name'
+      ? 'name this quicklink…'
+      : 'choose a browser (↑↓ then ⏎)'
+    : `${config.hotkey.toLowerCase().replace('+', ' ')} to summon · ! to run in terminal`;
 
   return (
     <div className={`panel ${parsed.mode}`}>
@@ -255,7 +322,7 @@ export default function App() {
           autoCapitalize="off"
           autoComplete="off"
           autoFocus
-          placeholder={`${config.hotkey.toLowerCase().replace('+', ' ')} to summon · ! to run in terminal`}
+          placeholder={placeholder}
           onChange={(e) => {
             markInput();
             setRaw(e.target.value);

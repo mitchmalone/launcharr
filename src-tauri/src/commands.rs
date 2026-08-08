@@ -68,6 +68,15 @@ pub fn execute(
     }
 
     match item.kind {
+        ItemKind::Link if item.browser.is_some() => {
+            // infallible: guarded by the match arm
+            let browser = item.browser.as_deref().unwrap();
+            Command::new("open")
+                .arg("-a")
+                .arg(browser)
+                .arg(&item.path)
+                .spawn()?;
+        }
         ItemKind::App | ItemKind::Settings | ItemKind::Link => {
             // `open` handles both bundle paths and x-apple.systempreferences: deep links,
             // with standard NSWorkspace activation (already-running apps come to front).
@@ -175,6 +184,46 @@ pub fn clear_clips(state: State<'_, AppState>) -> CmdResult<()> {
 pub fn copy_text(app: AppHandle, text: String) -> CmdResult<()> {
     panel::hide(&app);
     crate::clipboard::set_string(&text);
+    Ok(())
+}
+
+/// Save a new quicklink to config.json (the watcher picks it up and reindexes), then fetch
+/// its favicon — the single user-initiated network touchpoint (DECISIONS 2026-08-09).
+#[tauri::command]
+pub fn add_quicklink(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+    url: String,
+    browser: Option<String>,
+) -> CmdResult<()> {
+    if name.trim().is_empty() {
+        return Err(CmdError::Internal("quicklink needs a name".into()));
+    }
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(CmdError::Internal(format!("refusing non-http url: {url}")));
+    }
+    panel::hide(&app);
+
+    let path = crate::config::config_path();
+    let raw = std::fs::read_to_string(&path)?;
+    let mut cfg: crate::config::Config = serde_json::from_str(&raw).unwrap_or_default();
+    cfg.links.push(crate::config::Link {
+        name: name.trim().to_string(),
+        url: url.clone(),
+        trigger: None,
+        browser: browser.filter(|b| !b.trim().is_empty()),
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&cfg).unwrap())?;
+
+    // Favicon in the background; when it lands, re-annotate so the row gets its icon.
+    let icon_dir = state.icon_dir.clone();
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        if crate::favicon::fetch(&url, &icon_dir).is_some() {
+            crate::indexer::refresh(&handle);
+        }
+    });
     Ok(())
 }
 
