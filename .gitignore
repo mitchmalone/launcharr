@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Env & local
+*.local
+.env
+!.env.example
+
+# Editors
+.idea/
+*.log
