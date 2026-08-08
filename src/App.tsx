@@ -12,6 +12,7 @@ import {
   scriptRows,
   type QuicklinkDraft,
   type Row,
+  type RowEnter,
 } from './lib/rows';
 import type {
   Clip,
@@ -63,6 +64,7 @@ export default function App() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([]);
   const [draft, setDraft] = useState<QuicklinkDraft | null>(null);
+  const [altHeld, setAltHeld] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const browsers = useMemo(
@@ -196,21 +198,21 @@ export default function App() {
   const clampedSelection = Math.min(selected, Math.max(rows.length - 1, 0));
 
   const enterRow = useCallback(
-    (row: Row) => {
-      switch (row.enter.kind) {
+    (enter: RowEnter) => {
+      switch (enter.kind) {
         case 'execute': {
           const query = parsed.mode === 'launch' ? parsed.query : '';
-          invoke('execute', { id: row.enter.id, query }).catch(console.error);
+          invoke('execute', { id: enter.id, query }).catch(console.error);
           break;
         }
         case 'copy':
-          invoke('copy_text', { text: row.enter.text }).catch(console.error);
+          invoke('copy_text', { text: enter.text }).catch(console.error);
           break;
         case 'open-url':
-          invoke('open_url', { url: row.enter.url }).catch(console.error);
+          invoke('open_url', { url: enter.url }).catch(console.error);
           break;
         case 'script-action': {
-          const item = scriptItems[row.enter.index];
+          const item = scriptItems[enter.index];
           if (item) {
             invoke('script_action', { action: item.action }).catch(
               console.error
@@ -219,15 +221,13 @@ export default function App() {
           break;
         }
         case 'copy-clip':
-          invoke('copy_clip', { content: row.enter.content }).catch(
-            console.error
-          );
+          invoke('copy_clip', { content: enter.content }).catch(console.error);
           break;
         case 'clear-clips':
           invoke('clear_clips').then(refetchClips).catch(console.error);
           break;
         case 'add-quicklink':
-          setDraft({ url: row.enter.url, name: '', step: 'name' });
+          setDraft({ url: enter.url, name: '', step: 'name' });
           setRaw('');
           setSelected(0);
           break;
@@ -243,11 +243,27 @@ export default function App() {
             invoke('add_quicklink', {
               name: draft.name,
               url: draft.url,
-              browser: row.enter.browser,
+              browser: enter.browser,
             }).catch(console.error);
             setDraft(null);
           }
           break;
+        case 'reveal':
+          invoke('reveal_item', { path: enter.path }).catch(console.error);
+          break;
+        case 'delete-clip':
+          // Deleting keeps the panel open — you're grooming the list.
+          invoke('delete_clip', { id: enter.id })
+            .then(refetchClips)
+            .catch(console.error);
+          break;
+        case 'script-alt-action': {
+          const alt = scriptItems[enter.index]?.altAction;
+          if (alt) {
+            invoke('script_action', { action: alt }).catch(console.error);
+          }
+          break;
+        }
       }
     },
     [parsed, scriptItems, refetchClips, draft, raw]
@@ -255,6 +271,7 @@ export default function App() {
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Alt') setAltHeld(true);
       const move = (delta: number) => {
         e.preventDefault();
         if (rows.length > 0) {
@@ -280,7 +297,7 @@ export default function App() {
       if (e.metaKey && e.key >= '1' && e.key <= '8') {
         e.preventDefault();
         const row = rows[Number(e.key) - 1];
-        if (row) enterRow(row);
+        if (row) enterRow(row.enter);
         return;
       }
 
@@ -290,7 +307,12 @@ export default function App() {
           invoke('run_bang', { command: parsed.command }).catch(console.error);
         } else {
           const row = rows[clampedSelection];
-          if (row) enterRow(row);
+          if (!row) return;
+          if (e.altKey && row.alt) {
+            enterRow(row.alt.enter);
+          } else {
+            enterRow(row.enter);
+          }
         }
       }
     },
@@ -329,6 +351,10 @@ export default function App() {
             setSelected(0);
           }}
           onKeyDown={onKeyDown}
+          onKeyUp={(e) => {
+            if (e.key === 'Alt') setAltHeld(false);
+          }}
+          onBlur={() => setAltHeld(false)}
         />
       </div>
 
@@ -345,7 +371,7 @@ export default function App() {
               className={`row result ${i === clampedSelection ? 'selected' : ''}`}
               onMouseDown={(e) => {
                 e.preventDefault();
-                enterRow(row);
+                enterRow(e.altKey && row.alt ? row.alt.enter : row.enter);
               }}
             >
               {row.icon ? (
@@ -365,7 +391,7 @@ export default function App() {
               </span>
               <span className="hint">
                 {i < 8 ? <kbd>⌘{i + 1}</kbd> : null}
-                {row.hint}
+                {altHeld && row.alt ? `⌥⏎ ${row.alt.label}` : row.hint}
               </span>
             </li>
           ))}

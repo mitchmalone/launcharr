@@ -17,6 +17,8 @@ export type Row = {
   icon: string | null;
   glyph: string;
   enter: RowEnter;
+  /** Secondary action on ⌥⏎; the hint column shows `label` while ⌥ is held. */
+  alt?: { label: string; enter: RowEnter };
 };
 
 export type RowEnter =
@@ -28,7 +30,24 @@ export type RowEnter =
   | { kind: 'clear-clips' }
   | { kind: 'add-quicklink'; url: string }
   | { kind: 'draft-commit-name' }
-  | { kind: 'pick-browser'; browser: string | null };
+  | { kind: 'pick-browser'; browser: string | null }
+  | { kind: 'reveal'; path: string }
+  | { kind: 'delete-clip'; id: number }
+  | { kind: 'script-alt-action'; index: number };
+
+/** ⌥⏎ per item kind: apps reveal in Finder, links copy their URL. */
+function itemAlt(item: IndexItem): Row['alt'] {
+  if (item.kind === 'app') {
+    return {
+      label: 'reveal in finder',
+      enter: { kind: 'reveal', path: item.path },
+    };
+  }
+  if (item.kind === 'link') {
+    return { label: 'copy url', enter: { kind: 'copy', text: item.path } };
+  }
+  return undefined;
+}
 
 function kindGlyph(item: IndexItem): string {
   if (item.kind === 'settings') return '⚙';
@@ -71,6 +90,7 @@ export function launchRows(
       icon: null,
       glyph: '↗',
       enter: { kind: 'open-url', url },
+      alt: { label: 'copy url', enter: { kind: 'copy', text: url } },
     });
     rows.push({
       key: 'add-quicklink',
@@ -106,6 +126,7 @@ export function launchRows(
       icon: item.icon,
       glyph: kindGlyph(item),
       enter: { kind: 'execute', id: item.id },
+      alt: itemAlt(item),
     });
   }
 
@@ -185,6 +206,10 @@ export function quicklinkRows(link: Link, args: string): Row[] {
       icon: null,
       glyph: '↗',
       enter: { kind: 'open-url', url: fillQuery(link.url, args.trim()) },
+      alt: {
+        label: 'copy url',
+        enter: { kind: 'copy', text: fillQuery(link.url, args.trim()) },
+      },
     },
   ];
 }
@@ -198,6 +223,9 @@ export function scriptRows(items: ScriptItem[]): Row[] {
     icon: null,
     glyph: '❯',
     enter: { kind: 'script-action', index: i },
+    alt: item.altAction
+      ? { label: 'alt action', enter: { kind: 'script-alt-action', index: i } }
+      : undefined,
   }));
 }
 
@@ -234,6 +262,7 @@ export function clipRows(args: string, clips: Clip[]): Row[] {
     icon: null,
     glyph: '⧉',
     enter: { kind: 'copy-clip', content: clip.content },
+    alt: { label: 'delete', enter: { kind: 'delete-clip', id: clip.id } },
   }));
 }
 

@@ -49,6 +49,7 @@ export type ScriptItem = {
   title: string;
   subtitle: string;
   action: ScriptAction;
+  altAction?: ScriptAction | null;
 };
 
 export type Clip = {

@@ -55,6 +55,11 @@ pub fn history(conn: &Connection) -> CmdResult<Vec<Clip>> {
     Ok(rows.flatten().collect())
 }
 
+pub fn delete(conn: &Connection, id: i64) -> CmdResult<()> {
+    conn.execute("DELETE FROM clips WHERE id = ?1", [id])?;
+    Ok(())
+}
+
 pub fn clear(conn: &Connection) -> CmdResult<()> {
     conn.execute("DELETE FROM clips", [])?;
     Ok(())
@@ -153,6 +158,18 @@ mod tests {
             record(&conn, &format!("clip {i}"), i).unwrap();
         }
         assert_eq!(history(&conn).unwrap().len() as i64, MAX_CLIPS);
+    }
+
+    #[test]
+    fn delete_removes_one_clip() {
+        let conn = mem_db();
+        record(&conn, "keep", 1).unwrap();
+        record(&conn, "drop", 2).unwrap();
+        let id = history(&conn).unwrap()[0].id;
+        delete(&conn, id).unwrap();
+        let left = history(&conn).unwrap();
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].content, "keep");
     }
 
     #[test]

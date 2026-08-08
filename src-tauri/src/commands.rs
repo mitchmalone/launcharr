@@ -230,6 +230,21 @@ pub fn add_quicklink(
     Ok(())
 }
 
+/// ⌥⏎ on an app: dismiss and reveal the bundle in Finder.
+#[tauri::command]
+pub fn reveal_item(app: AppHandle, path: String) -> CmdResult<()> {
+    panel::hide(&app);
+    Command::new("open").arg("-R").arg(&path).spawn()?;
+    Ok(())
+}
+
+/// ⌥⏎ on a clip: delete it from history. Deliberately does NOT dismiss — list grooming.
+#[tauri::command]
+pub fn delete_clip(state: State<'_, AppState>, id: i64) -> CmdResult<()> {
+    let db = state.db.lock().unwrap();
+    crate::clipboard::delete(&db, id)
+}
+
 /// URL/quicklink/search Enter: dismiss and hand the URL to the default browser. Only real
 /// URLs — this is not a general `open` proxy.
 #[tauri::command]

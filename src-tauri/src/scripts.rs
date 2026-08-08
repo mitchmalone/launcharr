@@ -47,6 +47,9 @@ pub struct ScriptItem {
     pub subtitle: String,
     #[serde(default = "default_action")]
     pub action: ScriptAction,
+    /// Optional ⌥⏎ action.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alt_action: Option<ScriptAction>,
 }
 
 fn default_action() -> ScriptAction {

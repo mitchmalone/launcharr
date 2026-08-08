@@ -92,6 +92,8 @@ pub fn run() {
             commands::copy_text,
             commands::open_url,
             commands::add_quicklink,
+            commands::reveal_item,
+            commands::delete_clip,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).
