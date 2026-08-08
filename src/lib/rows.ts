@@ -1,3 +1,4 @@
+import { searchEmoji } from './emoji';
 import { evaluate, formatResult } from './math';
 import { fuzzyMatch } from './matcher';
 import { rank, MAX_RESULTS } from './ranking';
@@ -226,6 +227,19 @@ export function scriptRows(items: ScriptItem[]): Row[] {
     alt: item.altAction
       ? { label: 'alt action', enter: { kind: 'script-alt-action', index: i } }
       : undefined,
+  }));
+}
+
+/** Emoji mode (`:fire`): fuzzy over names/keywords, Enter copies the emoji. */
+export function emojiRows(query: string): Row[] {
+  return searchEmoji(query, MAX_RESULTS).map(({ entry, positions }) => ({
+    key: `emoji-${entry.emoji}`,
+    title: entry.name,
+    hint: 'copy',
+    positions,
+    icon: null,
+    glyph: entry.emoji,
+    enter: { kind: 'copy', text: entry.emoji },
   }));
 }
 

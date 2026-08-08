@@ -7,6 +7,7 @@ import { markInput, reportResultsPainted } from './lib/perf';
 import {
   clipRows,
   draftRows,
+  emojiRows,
   launchRows,
   quicklinkRows,
   scriptRows,
@@ -167,6 +168,8 @@ export default function App() {
         const link = quicklinks.find((l) => l.trigger === parsed.trigger);
         return link ? quicklinkRows(link, parsed.args) : [];
       }
+      case 'emoji':
+        return emojiRows(parsed.query);
       case 'bang':
         return [];
     }

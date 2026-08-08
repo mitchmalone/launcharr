@@ -7,12 +7,14 @@
 export type ParsedInput =
   | { mode: 'launch'; query: string }
   | { mode: 'bang'; command: string }
+  | { mode: 'emoji'; query: string }
   | { mode: 'trigger'; trigger: string; args: string };
 
-type PrefixMode = 'bang';
+type PrefixMode = 'bang' | 'emoji';
 
 const PREFIX_MODES: Record<string, PrefixMode> = {
   '!': 'bang',
+  ':': 'emoji',
 };
 
 export function parseInput(
@@ -23,6 +25,9 @@ export function parseInput(
   if (mode === 'bang') {
     // Everything after the bang, verbatim — no trimming beyond the prefix itself.
     return { mode: 'bang', command: raw.slice(1) };
+  }
+  if (mode === 'emoji') {
+    return { mode: 'emoji', query: raw.slice(1) };
   }
 
   // First-token trigger: the trigger word followed by end-of-input or a space. A trigger

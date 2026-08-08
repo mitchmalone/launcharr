@@ -83,6 +83,21 @@ describe('parseInput', () => {
     });
   });
 
+  it('dispatches emoji mode on a leading colon', () => {
+    expect(parseInput(':fire', TRIGGERS)).toEqual({
+      mode: 'emoji',
+      query: 'fire',
+    });
+    expect(parseInput(':', TRIGGERS)).toEqual({ mode: 'emoji', query: '' });
+  });
+
+  it('a colon later in the input stays launch mode', () => {
+    expect(parseInput('localhost:3000', TRIGGERS)).toEqual({
+      mode: 'launch',
+      query: 'localhost:3000',
+    });
+  });
+
   it('unknown triggers stay launch queries', () => {
     expect(parseInput('translate hello', TRIGGERS)).toEqual({
       mode: 'launch',
