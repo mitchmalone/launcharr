@@ -34,9 +34,9 @@
 
 ## Next
 
-- Fixes from the checklist, then the **M4 holdout restarts** on the v1.1 build (the feature
-  freeze was knowingly broken for v1.1 — it needs a fresh two weeks).
-- During holdout, watch: per-keystroke script latency feel, clip privacy comfort, whether
+- Fixes from the checklist. **No holdout — the freeze is repealed** (Mitch, 2026-08-09);
+  features and fixes ship continuously, daily use is the judge.
+- While living with it, watch: per-keystroke script latency feel, clip privacy comfort, whether
   deferred items (Translate, Calendar, public IP) earn a PRD revision.
 
 ## Blocked / waiting on Mitch

@@ -18,15 +18,16 @@ All v1 milestones below are **code-complete as of 2026-08-08**; M4's holdout is 
   instrumentation against the budgets. _Exit: launcharr replaces the incumbent daily launcher._
 - **M3 — Bang mode.** ✅ `!` grammar dispatch, iTerm2 hand-off, Terminal.app fallback, config file.
   _Exit: `!git status ⏎` feels better than switching to iTerm2 by hand._
-- **M4 — Polish & holdout.** 🔄 (launch-at-login + first-run hint shipped; holdout 2026-08-08 → ~08-22) Launch-at-login, first-run hint, two weeks of daily use with a
-  "no new features, only fixes" rule. _Exit: v1 declared done._
+- **M4 — Polish & daily use.** 🔄 Launch-at-login + first-run hint shipped; the feature
+  freeze is repealed — features and fixes ship continuously. _Exit: launcharr is the
+  incumbent and nothing broken survives a week._
 
 ## v1.1 — Sol parity, scripts-first ✅ (2026-08-08, overnight)
 
 Script protocol (v2's flagship, pulled forward) + bundled lorem/json/ip scripts, clipboard
 history (copy-on-Enter, concealed-safe), inline math, custom links, custom shortcuts. Scope
 negotiation in DECISIONS (zero-network + zero-permissions held; Translate/Calendar/public-IP
-deferred). Record: `plans/done/v1.1-scripts-and-sol-parity.md`. Holdout restarts on this build.
+deferred). Record: `plans/done/v1.1-scripts-and-sol-parity.md`.
 
 ## v2 horizon (recorded now, built later — PRD §10)
 
