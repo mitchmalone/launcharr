@@ -29,6 +29,13 @@ history (copy-on-Enter, concealed-safe), inline math, custom links, custom short
 negotiation in DECISIONS (zero-network + zero-permissions held; Translate/Calendar/public-IP
 deferred). Record: `plans/done/v1.1-scripts-and-sol-parity.md`.
 
+## v1.2 — release core ✅ (2026-08-09) — v0.2.0
+
+System commands, ⌥⏎ secondary actions, opt-in bookmarks, emoji picker, settings window,
+README/RELEASING. Ship blocked only on signing (Mitch's Apple Developer ID).
+Record: `plans/done/v1.2-release-core.md`. Deferred by choice: file search (mdfind route
+documented), dx pack (tmux/projects/ssh/ports — see 2026-08-09 brainstorm in git history).
+
 ## v2 horizon (recorded now, built later — PRD §10)
 
 | Item                                                      | Trigger                                                   |

@@ -42,6 +42,7 @@ Called on every keystroke (debounced ~120ms). Print results to stdout and exit 0
 ```
 
 - Up to 8 items are shown. `subtitle` is optional (renders in the dimmed hint column).
+- `altAction` (optional, same shape as `action`) runs on ⌥⏎ instead.
 - `action` decides what Enter does:
   - `{"type": "copy", "value": "…"}` — put text on the clipboard
   - `{"type": "open", "value": "…"}` — `open` a URL, file, or app

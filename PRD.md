@@ -50,11 +50,22 @@ v1's definition of success is simple: **launcharr replaces whatever Mitch curren
 11. **Custom links** — config-defined, indexed like apps, open in the browser
 12. **Custom shortcuts** — config-defined extra global hotkeys that launch a named item
 
+### In scope — v1.2 (release core; decided 9 Aug 2026)
+
+13. **System commands** — sleep/sleep displays/lock/trash/dark mode/caffeinate etc., a
+    static table like the settings panes
+14. **Secondary actions** — ⌥⏎ per row kind (reveal in Finder, copy URL, delete clip);
+    scripts may declare `altAction`
+15. **Browser bookmarks** — strictly opt-in (`indexBookmarks`, default off)
+16. **Emoji picker** — `:` prefix, copy on Enter
+17. **Settings window** — a form over config.json; the file remains the source of truth
+18. **Release engineering** — README, signing/notarization pipeline (docs/RELEASING.md)
+
 ### Out of scope (non-goals)
 
-File search, window management, snippets, web search fallbacks, theming beyond the built-in
-look, a preferences UI beyond the essentials, auto-update/signing/notarization (needed only
-when releasing to the wild), Windows/Linux, and anything requiring Accessibility permissions
+File search (deferred by choice, 9 Aug 2026 — Spotlight's `mdfind` is the route if demand
+appears), window management, snippets, theming beyond the built-in look, Windows/Linux, and
+anything requiring Accessibility permissions
 (this is why clipboard "paste" is copy-on-Enter: auto-⌘V needs Accessibility). launcharr runs
 with **zero granted permissions** (the one exception: sending to iTerm2 triggers macOS's
 standard Automation consent prompt on first use) and **makes zero network requests**, with

@@ -28,6 +28,12 @@
 
 ## Done (latest)
 
+- **v1.2 release core — v0.2.0** (2026-08-09): system commands (sleep displays et al),
+  ⌥⏎ secondary actions (+ script `altAction`), opt-in bookmarks, `:emoji` picker,
+  settings window over config.json, README + RELEASING.md. File search deferred by choice.
+  Plan: `plans/done/v1.2-release-core.md`. **Release blocked only on signing** — needs
+  Mitch's Apple Developer ID (checklist in `docs/RELEASING.md`).
+
 - **Add-quicklink flow + favicons** (2026-08-09): URL detected → Open / Add quicklink…;
   two-step mini-form (name → browser: default or any installed browser); saved to config
   `links`; favicon fetched once at add time preferring apple-touch-icon/sized PNGs over
