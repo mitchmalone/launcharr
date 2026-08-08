@@ -16,6 +16,7 @@ pub enum ItemKind {
     App,
     Settings,
     Launcharr,
+    Link,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,7 +43,7 @@ const APP_DIRS: &[&str] = &[
     "/System/Applications/Utilities",
 ];
 
-pub fn scan() -> Vec<IndexItem> {
+pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
     let mut items: Vec<IndexItem> = Vec::with_capacity(300);
 
     let mut dirs: Vec<PathBuf> = APP_DIRS.iter().map(PathBuf::from).collect();
@@ -66,6 +67,19 @@ pub fn scan() -> Vec<IndexItem> {
             hint: "settings".into(),
             icon: None,
             aliases: vec!["settings".into(), "preferences".into()],
+        });
+    }
+
+    // Custom links from config: first-class results that open in the browser.
+    for link in links {
+        items.push(IndexItem {
+            id: format!("link:{}", link.url),
+            name: link.name.clone(),
+            kind: ItemKind::Link,
+            path: link.url.clone(),
+            hint: "link".into(),
+            icon: None,
+            aliases: Vec::new(),
         });
     }
 
@@ -125,8 +139,9 @@ fn scan_dir(dir: &Path, depth: u8, items: &mut Vec<IndexItem>) {
 
 /// Rescan, publish to state, notify the frontend, then top up missing icons.
 pub fn refresh(app: &AppHandle) {
-    let mut items = scan();
     let state = app.state::<crate::AppState>();
+    let links = state.config.read().unwrap().links.clone();
+    let mut items = scan(&links);
     crate::icons::annotate_cached(&mut items, &state.icon_dir);
     *state.index.write().unwrap() = items;
     let _ = app.emit("index-updated", ());
@@ -174,7 +189,7 @@ mod tests {
 
     #[test]
     fn scan_finds_apps_and_settings_and_self() {
-        let items = scan();
+        let items = scan(&[]);
         // Any Mac has Safari and Finder-adjacent system apps.
         assert!(items.iter().any(|i| i.kind == ItemKind::App));
         assert!(items
@@ -185,7 +200,7 @@ mod tests {
 
     #[test]
     fn scan_has_no_duplicate_ids() {
-        let items = scan();
+        let items = scan(&[]);
         let mut ids: Vec<_> = items.iter().map(|i| &i.id).collect();
         let before = ids.len();
         ids.sort();

@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
+mod clipboard;
 mod commands;
 mod config;
 mod error;
@@ -18,6 +19,7 @@ mod frecency;
 mod icons;
 mod indexer;
 mod panel;
+mod scripts;
 mod settings_panes;
 mod shortcut;
 mod terminal;
@@ -47,6 +49,9 @@ pub struct AppState {
     pub index: RwLock<Vec<indexer::IndexItem>>,
     pub db: Mutex<Connection>,
     pub icon_dir: PathBuf,
+    pub scripts: RwLock<Vec<scripts::ScriptInfo>>,
+    pub summon: RwLock<tauri_plugin_global_shortcut::Shortcut>,
+    pub custom_shortcuts: RwLock<Vec<shortcut::CustomShortcut>>,
 }
 
 pub fn run() {
@@ -59,10 +64,9 @@ pub fn run() {
         ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    // Only one shortcut is ever registered: the summon hotkey.
+                .with_handler(|app, pressed, event| {
                     if event.state() == ShortcutState::Pressed {
-                        panel::toggle(app);
+                        shortcut::handle(app, pressed);
                     }
                 })
                 .build(),
@@ -76,6 +80,13 @@ pub fn run() {
             commands::reindex,
             commands::execute,
             commands::run_bang,
+            commands::get_scripts,
+            commands::run_script,
+            commands::script_action,
+            commands::get_clips,
+            commands::copy_clip,
+            commands::clear_clips,
+            commands::copy_text,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).
@@ -86,17 +97,23 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             let db = frecency::open(&data_dir.join("launcharr.db"))?;
+            clipboard::init_table(&db)?;
 
             app.manage(AppState {
                 config: RwLock::new(cfg.clone()),
                 index: RwLock::new(Vec::new()),
                 db: Mutex::new(db),
                 icon_dir: data_dir.join("icons"),
+                scripts: RwLock::new(Vec::new()),
+                summon: RwLock::new("Alt+Space".parse().expect("default hotkey parses")),
+                custom_shortcuts: RwLock::new(Vec::new()),
             });
 
             panel::init(app.handle())?;
-            shortcut::register(app.handle(), &cfg.hotkey);
+            shortcut::sync(app.handle(), &cfg);
             indexer::start(app.handle().clone());
+            scripts::start(app.handle().clone());
+            clipboard::watch(app.handle().clone());
             config::watch(app.handle().clone());
             apply_launch_at_login(app.handle(), cfg.launch_at_login);
 

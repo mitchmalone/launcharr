@@ -21,19 +21,26 @@ All v1 milestones below are **code-complete as of 2026-08-08**; M4's holdout is 
 - **M4 — Polish & holdout.** 🔄 (launch-at-login + first-run hint shipped; holdout 2026-08-08 → ~08-22) Launch-at-login, first-run hint, two weeks of daily use with a
   "no new features, only fixes" rule. _Exit: v1 declared done._
 
+## v1.1 — Sol parity, scripts-first ✅ (2026-08-08, overnight)
+
+Script protocol (v2's flagship, pulled forward) + bundled lorem/json/ip scripts, clipboard
+history (copy-on-Enter, concealed-safe), inline math, custom links, custom shortcuts. Scope
+negotiation in DECISIONS (zero-network + zero-permissions held; Translate/Calendar/public-IP
+deferred). Record: `plans/done/v1.1-scripts-and-sol-parity.md`. Holdout restarts on this build.
+
 ## v2 horizon (recorded now, built later — PRD §10)
 
-| Item                                                                        | Trigger                                                   |
-| --------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Script plugins (`~/.config/launcharr/scripts/`, JSON-over-stdout responses) | v1 done + daily-driver confirmed                          |
-| Per-query learned bindings (schema already records query)                   | Frecency data shows repeated query→pick                   |
-| Richer bangs (`!!` repeat, project-scoped commands)                         | Bang mode proves itself daily                             |
-| Theming beyond the built-in look                                            | A second user exists                                      |
-| Signing, notarization, auto-update, public README                           | Releasing to the wild                                     |
-| Move matching to Rust                                                       | R2 fires: WKWebView can't hold the 16 ms keystroke budget |
+| Item                                                      | Trigger                                                   |
+| --------------------------------------------------------- | --------------------------------------------------------- |
+| Per-query learned bindings (schema already records query) | Frecency data shows repeated query→pick                   |
+| Richer bangs (`!!` repeat, project-scoped commands)       | Bang mode proves itself daily                             |
+| Theming beyond the built-in look                          | A second user exists                                      |
+| Signing, notarization, auto-update, public README         | Releasing to the wild                                     |
+| Move matching to Rust                                     | R2 fires: WKWebView can't hold the 16 ms keystroke budget |
 
-## Explicitly not doing (v1 non-goals — load-bearing, PRD §3)
+## Explicitly not doing (non-goals — load-bearing, PRD §3)
 
-File search, calculator, clipboard history, window management, snippets, web search fallbacks,
-preferences UI beyond essentials, light mode, Windows/Linux, anything requiring Accessibility
-permissions, any network request.
+File search, window management, snippets, web search fallbacks, preferences UI beyond
+essentials, light mode, Windows/Linux, anything requiring Accessibility permissions, any
+network request from launcharr core. Deferred with triggers (DECISIONS): Google Translate,
+public IP, Calendar.

@@ -3,35 +3,42 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-08
+> Last updated: 2026-08-08 (late)
 
 ## Done
 
-- **PRD v1 drafted** (2026-08-08). See `PRD.md`.
-- **Pre-scaffold + conventions** (2026-08-08): pnpm, Lefthook, Rust standards, docs system.
-- **v1 core M0–M3** (2026-08-08): panel + hotkey, index + fuzzy + frecency, bang mode, config.
-  **Mitch verified the M0 focus dance manually** — incl. full-screen and second display.
-  Plan: `plans/done/m0-nspanel-spike.md`.
-- **AppKit icon-leak fix** (2026-08-08): extraction in throwaway subprocess; RSS 90MB steady
-  (budget <120). See JOURNAL.
-- **v1 remaining polish** (2026-08-08): §7 instrumentation (**cold start 163ms** vs <1s,
-  **native summon 3.7ms** vs <100ms; keystroke→results logged in webview console),
-  **launch-at-login** (LaunchAgent, `launchAtLogin` config key, verified toggling live),
-  **first-run hint** (fresh config → panel auto-shows once). Plan:
-  `plans/done/v1-remaining-polish.md`.
-- **Installed & running**: `/Applications/launcharr.app`, LaunchAgent points there.
+- **v1 shipped and human-verified** (2026-08-08): panel/focus dance, index + fuzzy + frecency,
+  bang mode, config, instrumentation, launch-at-login, first-run hint. Budgets: cold start
+  157ms, native summon 3.7ms, RSS ~90MB. Plans in `plans/done/`.
+- **v1.1 built overnight** (2026-08-08, Sol parity — scope in DECISIONS, contract in
+  `docs/SCRIPTS.md`):
+  - **Script protocol** (v2 pulled forward): `~/.config/launcharr/scripts/`, manifest/query,
+    FSEvents-watched. Bundled: `lorem`, `json` (format clipboard), `ip` (local only).
+  - **Clipboard history**: `clip` trigger, copy-on-Enter, concealed types never recorded,
+    SQLite cap 200, `clip clear`.
+  - **Inline math**: arithmetic query → result row → Enter copies.
+  - **Custom links + custom shortcuts** in config.json, hot-reloading.
+  - PRD rewritten to v1.1; grammar is now the full dispatch table (`!` + trigger words).
+  - All machine-verifiable paths tested live; 41 TS + 24 Rust tests green.
+- **Installed**: `/Applications/launcharr.app` running with all of the above.
 
 ## In progress
 
-- **M4 holdout**: two weeks of daily use, "no new features, only fixes." Started 2026-08-08.
+- **Mitch's morning checklist** (the parts only hands can verify):
+  1. `lorem 2 ⏎` → paste somewhere. `json` with JSON on the clipboard. `ip ⏎`.
+  2. `2*(14.5+3)` → `= 35` top row, Enter, ⌘V.
+  3. Copy a few things, then `clip` → filter → Enter → ⌘V. `clip clear` too.
+  4. Add a link + a shortcut to config.json (examples in PRD §5.4) and try both.
+  5. Drop any executable answering `manifest`/`query` into scripts/ — trigger goes live,
+     no restart (`docs/SCRIPTS.md`).
 
 ## Next
 
-- Fixes only, driven by daily use. Watch for: keystroke→results >16ms in console, hotkey
-  collisions (PRD §11.1), whether bang-mode session-reuse or empty-query top-3 earn their
-  place (§11.2–3).
-- Holdout ends ≈ 2026-08-22 → declare v1 done in ROADMAP + STATUS.
+- Fixes from the checklist, then the **M4 holdout restarts** on the v1.1 build (the feature
+  freeze was knowingly broken for v1.1 — it needs a fresh two weeks).
+- During holdout, watch: per-keystroke script latency feel, clip privacy comfort, whether
+  deferred items (Translate, Calendar, public IP) earn a PRD revision.
 
 ## Blocked / waiting on Mitch
 
-- Living with it. Report anything that feels slow or wrong; JOURNAL it.
+- The checklist above. Anything off → JOURNAL it, I fix.

@@ -29,6 +29,7 @@ objc2-app-kit = { version = "0.3", features = [
   "NSImageRep",
   "NSBitmapImageRep",
   "NSGraphics",
+  "NSPasteboard",
 ] }
 objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSData", "NSDictionary"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }

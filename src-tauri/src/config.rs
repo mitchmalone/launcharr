@@ -13,6 +13,13 @@ pub enum Terminal {
     TerminalApp,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Link {
+    pub name: String,
+    pub url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Config {
@@ -28,6 +35,10 @@ pub struct Config {
     pub bang_sigil: String,
     /// Register launcharr as a login item (a launcher that isn't running is furniture).
     pub launch_at_login: bool,
+    /// Custom links: indexed like apps, Enter opens the URL in the default browser.
+    pub links: Vec<Link>,
+    /// Extra global hotkeys → item name to launch (e.g. "Cmd+Shift+S": "Safari").
+    pub shortcuts: std::collections::HashMap<String, String>,
 }
 
 impl Default for Config {
@@ -39,6 +50,8 @@ impl Default for Config {
             sigil: "❯".into(),
             bang_sigil: "$".into(),
             launch_at_login: true,
+            links: Vec::new(),
+            shortcuts: std::collections::HashMap::new(),
         }
     }
 }
@@ -101,11 +114,14 @@ pub fn watch(app: AppHandle) {
                         *cfg = new_config.clone();
                         old
                     };
-                    if old.hotkey != new_config.hotkey {
-                        crate::shortcut::reregister(&app, &new_config.hotkey);
+                    if old.hotkey != new_config.hotkey || old.shortcuts != new_config.shortcuts {
+                        crate::shortcut::sync(&app, &new_config);
                     }
                     if old.launch_at_login != new_config.launch_at_login {
                         crate::apply_launch_at_login(&app, new_config.launch_at_login);
+                    }
+                    if old.links != new_config.links {
+                        crate::indexer::refresh(&app);
                     }
                     let _ = app.emit("config-changed", &new_config);
                 }

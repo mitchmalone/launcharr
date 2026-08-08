@@ -68,7 +68,7 @@ pub fn execute(
     }
 
     match item.kind {
-        ItemKind::App | ItemKind::Settings => {
+        ItemKind::App | ItemKind::Settings | ItemKind::Link => {
             // `open` handles both bundle paths and x-apple.systempreferences: deep links,
             // with standard NSWorkspace activation (already-running apps come to front).
             Command::new("open").arg(&item.path).spawn()?;
@@ -93,4 +93,87 @@ pub fn run_bang(app: AppHandle, state: State<'_, AppState>, command: String) -> 
     let config = state.config.read().unwrap().clone();
     panel::hide(&app);
     terminal::run(config.terminal, &command, config.bang_new_window)
+}
+
+/// Launch an indexed item by display name — the custom-shortcut path. Exact
+/// case-insensitive match first, then prefix.
+pub fn launch_by_name(app: &AppHandle, name: &str) -> CmdResult<()> {
+    use tauri::Manager;
+    let state = app.state::<AppState>();
+    let needle = name.to_lowercase();
+    let item = {
+        let index = state.index.read().unwrap();
+        index
+            .iter()
+            .find(|i| i.name.to_lowercase() == needle)
+            .or_else(|| {
+                index
+                    .iter()
+                    .find(|i| i.name.to_lowercase().starts_with(&needle))
+            })
+            .cloned()
+            .ok_or_else(|| CmdError::NotFound(name.to_string()))?
+    };
+    Command::new("open").arg(&item.path).spawn()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_scripts(state: State<'_, AppState>) -> Vec<crate::scripts::ScriptInfo> {
+    state.scripts.read().unwrap().clone()
+}
+
+#[tauri::command]
+pub fn run_script(
+    app: AppHandle,
+    trigger: String,
+    args: String,
+) -> CmdResult<Vec<crate::scripts::ScriptItem>> {
+    crate::scripts::query(&app, &trigger, &args)
+}
+
+/// Enter on a script result row: dismiss, perform the item's declared action.
+#[tauri::command]
+pub fn script_action(app: AppHandle, action: crate::scripts::ScriptAction) -> CmdResult<()> {
+    use crate::scripts::ScriptAction;
+    panel::hide(&app);
+    match action {
+        ScriptAction::Copy(text) => crate::clipboard::set_string(&text),
+        ScriptAction::Open(target) => {
+            Command::new("open").arg(&target).spawn()?;
+        }
+        ScriptAction::None => {}
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_clips(state: State<'_, AppState>) -> CmdResult<Vec<crate::clipboard::Clip>> {
+    let db = state.db.lock().unwrap();
+    crate::clipboard::history(&db)
+}
+
+/// Enter on a clip: dismiss and put it back on the pasteboard (you ⌘V yourself — the
+/// no-Accessibility deal).
+#[tauri::command]
+pub fn copy_clip(app: AppHandle, state: State<'_, AppState>, content: String) -> CmdResult<()> {
+    panel::hide(&app);
+    crate::clipboard::set_string(&content);
+    // Bump it to the top of history immediately rather than waiting for the poller.
+    let db = state.db.lock().unwrap();
+    crate::clipboard::record(&db, &content, crate::frecency::now_secs())
+}
+
+#[tauri::command]
+pub fn clear_clips(state: State<'_, AppState>) -> CmdResult<()> {
+    let db = state.db.lock().unwrap();
+    crate::clipboard::clear(&db)
+}
+
+/// Inline-math Enter: dismiss and copy the result.
+#[tauri::command]
+pub fn copy_text(app: AppHandle, text: String) -> CmdResult<()> {
+    panel::hide(&app);
+    crate::clipboard::set_string(&text);
+    Ok(())
 }

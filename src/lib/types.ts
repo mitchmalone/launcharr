@@ -1,4 +1,4 @@
-export type ItemKind = 'app' | 'settings' | 'launcharr';
+export type ItemKind = 'app' | 'settings' | 'launcharr' | 'link';
 
 export type IndexItem = {
   id: string;
@@ -20,3 +20,27 @@ export type Config = {
 };
 
 export type FrecencyMap = Record<string, number>;
+
+export type ScriptInfo = {
+  trigger: string;
+  name: string;
+  description: string;
+  path: string;
+};
+
+export type ScriptAction =
+  | { type: 'copy'; value: string }
+  | { type: 'open'; value: string }
+  | { type: 'none' };
+
+export type ScriptItem = {
+  title: string;
+  subtitle: string;
+  action: ScriptAction;
+};
+
+export type Clip = {
+  id: number;
+  content: string;
+  ts: number;
+};

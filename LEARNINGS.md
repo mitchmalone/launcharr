@@ -17,6 +17,11 @@ if it needs more. Never duplicate global AGENTS.md rules here.
 - The macro's mandatory `-> ()` trips clippy `unused_unit`; allowed crate-wide in lib.rs.
 - `tauri.conf.json` assetProtocol requires the `protocol-asset` cargo feature on `tauri`.
 
+## Scripts / Python
+
+- Never name a script after a python stdlib module — the scripts dir is `sys.path[0]` and it
+  shadows the real module for every script there. Bundled scripts `del sys.path[0]` first.
+
 ## Toolchain
 
 - brew's rustup puts cargo proxies in `/opt/homebrew/opt/rustup/bin`, not `~/.cargo/bin`;

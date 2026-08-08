@@ -6,6 +6,22 @@
 
 ---
 
+### 2026-08-08 · A script named json.py shadows python's stdlib for the whole scripts dir
+
+The bundled-scripts test caught it before prod: python puts the invoked script's directory at
+`sys.path[0]`, so `scripts/json.py` made every neighbouring script's `import json` resolve to
+itself. Fixed by renaming to `json-format.py` AND `del sys.path[0]` at the top of every
+bundled script. Documented in SCRIPTS.md as a user-facing rule.
+
+### 2026-08-08 · v1.1 built overnight: script protocol + Sol parity
+
+Scripts-first per the scope decision (see DECISIONS). Machine-verified: bundled scripts
+install + answer manifest/query (lorem/json/ip exercised end-to-end), clipboard watcher
+records to SQLite (concealed types skipped by design), config link/shortcut hot-reload
+registers cleanly, RSS 92MB steady, cold start 157ms. NOT machine-verifiable, needs Mitch:
+panel rendering of script/clip/math rows, ⌘-digit + Enter actions per row type, the
+Cmd+Alt+F9-style custom shortcut actually firing, and dropping a new script in live.
+
 ### 2026-08-08 · AppKit leaks ~20–30MB per rasterized app icon; subprocess is the fix
 
 First launch hit **10GB RSS**. Bulk `NSWorkspace.iconForFile` + `TIFFRepresentation` retains

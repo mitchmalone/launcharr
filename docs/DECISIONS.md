@@ -5,11 +5,26 @@
 
 ---
 
+### 2026-08-08 · v1.1: scripts-first Sol parity; invariants hold; three features deferred
+
+- **Decision.** Sol feature-matching lands as v1.1 by pulling the v2 script protocol forward:
+  bundled, user-editable scripts (lorem, JSON-format, local IP) + built-ins only where scripts
+  can't reach (inline math on the hot path, clipboard watcher, custom links/shortcuts from
+  config). **Zero-network and zero-permissions stand** (Mitch, 2026-08-08): Google Translate,
+  public IP, and Calendar (EventKit consent) are deferred, not built; clipboard is
+  copy-on-Enter only — auto-paste would need Accessibility, which stays banned.
+- **Why scripts-first.** Hackability is the differentiator; every feature built as a script is
+  both a feature and living documentation of the plugin surface. Built-ins would Raycast-ify
+  the codebase and make the v2 protocol a second-class retrofit.
+- **Deferred triggers.** Translate/public-IP: if zero-network is ever relaxed, as opt-in
+  config. Calendar: if the permission stance softens to "consent-gated, Accessibility still
+  banned."
+
 ### 2026-08-08 · Repo conventions: pnpm + Lefthook (and a global AGENTS.md change)
 
 - **Decision.** launcharr uses pnpm and Lefthook (pre-commit format/lint on staged files,
   commit-msg commitlint, pre-push tests incl. `cargo test`). This settled PRD open question
-  §11.4 and updated the *global* AGENTS.md at the same time — npm→pnpm and Husky→Lefthook are
+  §11.4 and updated the _global_ AGENTS.md at the same time — npm→pnpm and Husky→Lefthook are
   now the standard everywhere, matching emberstash in practice.
 - **Why.** The global file said npm+Husky while real projects had moved to pnpm+lefthook; docs
   that disagree with practice are worse than either choice. pnpm's speed/strictness and
@@ -33,7 +48,7 @@
 - **Why.** The panel/focus problem is the hard native part and tauri-nspanel exists precisely
   for it (Sol/SuperCmd as references). TS matching keeps the product-opinion layer hackable —
   the long-term differentiator — and the index is a few hundred items, so Rust-speed matching
-  is premature. The architecture isolates the matcher so it *can* move to Rust if the 16 ms
+  is premature. The architecture isolates the matcher so it _can_ move to Rust if the 16 ms
   keystroke budget fails (risk R2).
 - **Alternatives.** Pure AppKit/Swift (fastest, least hackable, slowest to build); Electron
   (weight budget dead on arrival). Revisit only if M0's exit criterion fails.

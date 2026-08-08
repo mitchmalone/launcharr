@@ -1,14 +1,14 @@
 # launcharr — v1 Product Requirements Document
 
-> *An app launcher for pirates.*
+> _An app launcher for pirates._
 
-| | |
-|---|---|
-| **Project** | launcharr (always lowercase) |
-| **Version** | v1 (personal-use milestone) |
-| **Owner** | Mitch Malone |
-| **Status** | Draft — 8 Aug 2026 |
-| **Platform** | macOS (Apple Silicon first; Intel if free) |
+|              |                                                           |
+| ------------ | --------------------------------------------------------- |
+| **Project**  | launcharr (always lowercase)                              |
+| **Version**  | v1.1 (v1 shipped 8 Aug 2026; v1.1 scope decided same day) |
+| **Owner**    | Mitch Malone                                              |
+| **Status**   | Revised — 8 Aug 2026                                      |
+| **Platform** | macOS (Apple Silicon first; Intel if free)                |
 
 ---
 
@@ -28,9 +28,9 @@ v1's definition of success is simple: **launcharr replaces whatever Mitch curren
 - Primary (v1): Mitch. A JS/TS developer who lives in the terminal (iTerm2), values speed and minimalism, and wants a launcher that feels like a tool he owns rather than a product he rents.
 - Secondary (post-v1, if released): developers and terminal-first users who find Raycast heavy and Alfred dated, and who would rather write a shell script than browse an extension store.
 
-## 3. v1 scope
+## 3. Scope
 
-### In scope
+### In scope — v1 (shipped 8 Aug 2026)
 
 1. Global hotkey summon/dismiss of a floating prompt panel
 2. Launching applications
@@ -40,9 +40,27 @@ v1's definition of success is simple: **launcharr replaces whatever Mitch curren
 6. Bang mode: `!command` hands the command to iTerm2
 7. Terminal-prompt visual identity
 
-### Out of scope (v1 non-goals)
+### In scope — v1.1 (Sol parity, scripts-first; decided 8 Aug 2026)
 
-File search, calculator, clipboard history, window management, snippets, web search fallbacks, the script-response plugin protocol (v2 — see §10), theming beyond the built-in look, a preferences UI beyond the essentials, auto-update/signing/notarization (needed only when releasing to the wild), Windows/Linux, and anything requiring Accessibility permissions. v1 must run with **zero granted permissions** (the one exception: sending to iTerm2 triggers macOS's standard Automation consent prompt on first use).
+8. **The script protocol** (§5.5, `docs/SCRIPTS.md`) — pulled forward from v2, with bundled
+   reference scripts: lorem ipsum, JSON format-and-copy, local IP
+9. **Clipboard history** — copy-on-Enter only (`clip` trigger, §5.6); concealed/transient
+   pasteboard types never recorded
+10. **Inline math** — arithmetic queries get a result row, Enter copies (§5.7)
+11. **Custom links** — config-defined, indexed like apps, open in the browser
+12. **Custom shortcuts** — config-defined extra global hotkeys that launch a named item
+
+### Out of scope (non-goals)
+
+File search, window management, snippets, web search fallbacks, theming beyond the built-in
+look, a preferences UI beyond the essentials, auto-update/signing/notarization (needed only
+when releasing to the wild), Windows/Linux, and anything requiring Accessibility permissions
+(this is why clipboard "paste" is copy-on-Enter: auto-⌘V needs Accessibility). launcharr runs
+with **zero granted permissions** (the one exception: sending to iTerm2 triggers macOS's
+standard Automation consent prompt on first use) and **makes zero network requests**.
+
+**Deferred, not rejected** (triggers in `docs/DECISIONS.md`): Google Translate and public-IP
+lookup (need network), Calendar (needs EventKit consent).
 
 ## 4. User experience
 
@@ -77,7 +95,7 @@ The panel is a terminal prompt cosplay, not an Alfred knock-off:
 - Implementation: iTerm2's AppleScript API (`create window with default profile` / `write text`). If iTerm2 isn't installed, fall back to Terminal.app; the target is a setting, but iTerm2 is the blessed default.
 - The command string is passed through verbatim — no shell parsing, no quoting games, no environment munging by launcharr. What you typed is what runs.
 - `!` alone (empty command) opens a new iTerm2 window and nothing else. Free feature, feels right.
-- **Grammar note for the future:** `!` is the first reserved prefix in the input grammar. v1 must implement prefix detection as a general dispatch step (mode = first-char lookup) rather than a special case, because v2 adds script-defined commands to the same grammar (§10).
+- **Grammar note:** `!` is the first-char entry in the dispatch table; v1.1 added first-token entries — script trigger words and the built-in `clip` — to the same table, as this note always intended.
 
 ### 4.5 First run
 
@@ -106,20 +124,32 @@ On first launch: register the default hotkey, build the app index, show the pane
 
 ### 5.4 Settings (minimal)
 
-A JSON file in `~/.config/launcharr/config.json` — hand-editable, watched for changes, no settings UI in v1 beyond what the prompt itself exposes. Contents: hotkey, terminal target (iTerm2/Terminal.app), new-window-vs-current-session for bang mode, prompt sigil, launch-at-login. A config file you edit in your editor *is* the terminal-nerd settings UI.
+A JSON file in `~/.config/launcharr/config.json` — hand-editable, watched for changes, no settings UI beyond what the prompt itself exposes. Contents: hotkey, terminal target (iTerm2/Terminal.app), new-window-vs-current-session for bang mode, prompt sigils, launch-at-login, custom links, custom shortcuts. A config file you edit in your editor _is_ the terminal-nerd settings UI.
+
+### 5.5 Scripts (v1.1)
+
+Executables in `~/.config/launcharr/scripts/` declare a trigger word (`<script> manifest`) and answer queries (`<script> query <args>`) with JSON items launcharr renders as results; actions are copy/open/none. Discovery is FSEvents-watched — drop a file in, its trigger is live. Full contract: `docs/SCRIPTS.md`. Bundled reference scripts: `lorem`, `json`, `ip`.
+
+### 5.6 Clipboard history (v1.1)
+
+A changeCount poll (800ms) records textual clips into SQLite (cap 200, dedupe-to-top). Pasteboard items marked concealed or transient (password managers) are never recorded. `clip` lists history with fuzzy filtering; **Enter copies** — pasting stays a human ⌘V, because auto-paste requires Accessibility. `clip clear` wipes.
+
+### 5.7 Inline math (v1.1)
+
+A launch-mode query that parses as arithmetic (`2*(14.5+3)`, `+ - * / % ^`, parens) shows its result as the top row; Enter copies. Pure TS evaluator on the hot path — no eval, no subprocess.
 
 ## 6. Technical architecture
 
 ### 6.1 Stack (decided)
 
-| Layer | Choice | Notes |
-|---|---|---|
-| Shell | **Tauri 2** (Rust) | Window management, global shortcut (official plugin), tray-less accessory app |
-| Panel behavior | **tauri-nspanel** (community plugin) | Non-activating `NSPanel`, the Spotlight-style floating window |
-| UI | **TypeScript + React** in system WKWebView | Vite dev server, hot reload; virtualized-enough list (8 rows — trivial) |
-| Matching/ranking | **TypeScript** (frontend process) | Pure functions; index is small (a few hundred items), no need for Rust here in v1 |
-| Indexing & launch | **Rust commands** | Filesystem scan, FSEvents watch, icon extraction, `NSWorkspace`/`open` launch, AppleScript hand-off to iTerm2 |
-| Persistence | **SQLite** (via Rust, e.g. rusqlite) | Frecency events + icon cache metadata; config is plain JSON |
+| Layer             | Choice                                     | Notes                                                                                                         |
+| ----------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Shell             | **Tauri 2** (Rust)                         | Window management, global shortcut (official plugin), tray-less accessory app                                 |
+| Panel behavior    | **tauri-nspanel** (community plugin)       | Non-activating `NSPanel`, the Spotlight-style floating window                                                 |
+| UI                | **TypeScript + React** in system WKWebView | Vite dev server, hot reload; virtualized-enough list (8 rows — trivial)                                       |
+| Matching/ranking  | **TypeScript** (frontend process)          | Pure functions; index is small (a few hundred items), no need for Rust here in v1                             |
+| Indexing & launch | **Rust commands**                          | Filesystem scan, FSEvents watch, icon extraction, `NSWorkspace`/`open` launch, AppleScript hand-off to iTerm2 |
+| Persistence       | **SQLite** (via Rust, e.g. rusqlite)       | Frecency events + icon cache metadata; config is plain JSON                                                   |
 
 Guiding split: **Rust owns the OS, TypeScript owns the experience.** Anything touching AppKit, the filesystem, or process launch is a small, boring, well-named Rust command; everything with product opinion in it (grammar, matching, ranking, rendering) is TypeScript, because that's the layer that must stay fun to hack on — for Mitch in v1 and for plugin authors in v2.
 
@@ -132,46 +162,46 @@ Guiding split: **Rust owns the OS, TypeScript owns the experience.** Anything to
 
 ## 7. Performance budgets (requirements, not aspirations)
 
-| Metric | Budget |
-|---|---|
-| Hotkey press → panel visible and accepting input | **< 100 ms** (target 50) |
-| Keystroke → updated results on screen | **< 16 ms** (one frame) |
-| Enter → app launch initiated + panel dismissed | **< 50 ms** launcharr-side |
-| Idle memory (resident, panel hidden) | **< 120 MB** (WKWebView floor makes ~sub-100 heroic; 120 is the ceiling, not the goal) |
-| Cold app start → hotkey registered | **< 1 s** |
-| Full index rebuild | **< 500 ms** for ~300 apps |
+| Metric                                           | Budget                                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Hotkey press → panel visible and accepting input | **< 100 ms** (target 50)                                                               |
+| Keystroke → updated results on screen            | **< 16 ms** (one frame)                                                                |
+| Enter → app launch initiated + panel dismissed   | **< 50 ms** launcharr-side                                                             |
+| Idle memory (resident, panel hidden)             | **< 120 MB** (WKWebView floor makes ~sub-100 heroic; 120 is the ceiling, not the goal) |
+| Cold app start → hotkey registered               | **< 1 s**                                                                              |
+| Full index rebuild                               | **< 500 ms** for ~300 apps                                                             |
 
 If a budget can't be met, the feature causing the miss gets cut or moved behind a flag. These numbers are the "lightweight" value made falsifiable — and the honest scoreboard against Raycast's 350–450 MB.
 
 ## 8. Risks
 
-| # | Risk | Mitigation |
-|---|---|---|
-| R1 | Non-activating panel / focus restore edge cases (full-screen Spaces, stage manager, multiple displays) | Spike first (§9 M0); tauri-nspanel exists precisely for this; Sol/SuperCmd source as references |
-| R2 | WKWebView keystroke latency spoils the REPL feel | 8-row list, no animation on the hot path, measure with instrumentation from day one; worst case, move matching to Rust (architecture already isolates it) |
-| R3 | AppleScript → iTerm2 requires Automation permission; prompt timing is OS-controlled | Trigger it deliberately on first `!` use with a hint line in the panel; fall back gracefully if denied |
-| R4 | System Settings pane IDs are undocumented and shift between macOS versions | Static curated table, versioned; a broken pane link is low-severity |
-| R5 | Scope creep toward Raycast | This document. Non-goals list is load-bearing. |
+| #   | Risk                                                                                                   | Mitigation                                                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Non-activating panel / focus restore edge cases (full-screen Spaces, stage manager, multiple displays) | Spike first (§9 M0); tauri-nspanel exists precisely for this; Sol/SuperCmd source as references                                                           |
+| R2  | WKWebView keystroke latency spoils the REPL feel                                                       | 8-row list, no animation on the hot path, measure with instrumentation from day one; worst case, move matching to Rust (architecture already isolates it) |
+| R3  | AppleScript → iTerm2 requires Automation permission; prompt timing is OS-controlled                    | Trigger it deliberately on first `!` use with a hint line in the panel; fall back gracefully if denied                                                    |
+| R4  | System Settings pane IDs are undocumented and shift between macOS versions                             | Static curated table, versioned; a broken pane link is low-severity                                                                                       |
+| R5  | Scope creep toward Raycast                                                                             | This document. Non-goals list is load-bearing.                                                                                                            |
 
 ## 9. Milestones
 
-- **M0 — Spike (the scary parts first).** Tauri 2 + tauri-nspanel: hotkey summons a non-activating panel with a text field; Esc restores focus correctly over a full-screen app. *Exit: the focus dance works or the stack decision gets revisited.*
-- **M1 — Launcher.** Index + fuzzy match + launch + System Settings panes. No frecency, ugly UI. *Exit: Mitch can launch any app.*
-- **M2 — Feel.** Frecency, keyboard bindings, the terminal-prompt visual identity, performance instrumentation against §7. *Exit: launcharr replaces the incumbent as Mitch's daily launcher.*
-- **M3 — Bang mode.** `!` grammar dispatch, iTerm2 hand-off, Terminal.app fallback, config file. *Exit: `!git status ⏎` feels better than switching to iTerm2 by hand.*
-- **M4 — Polish & holdout.** Launch-at-login, first-run hint, two weeks of daily use with a "no new features, only fixes" rule. *Exit: v1 declared done.*
+- **M0 — Spike (the scary parts first).** Tauri 2 + tauri-nspanel: hotkey summons a non-activating panel with a text field; Esc restores focus correctly over a full-screen app. _Exit: the focus dance works or the stack decision gets revisited._
+- **M1 — Launcher.** Index + fuzzy match + launch + System Settings panes. No frecency, ugly UI. _Exit: Mitch can launch any app._
+- **M2 — Feel.** Frecency, keyboard bindings, the terminal-prompt visual identity, performance instrumentation against §7. _Exit: launcharr replaces the incumbent as Mitch's daily launcher._
+- **M3 — Bang mode.** `!` grammar dispatch, iTerm2 hand-off, Terminal.app fallback, config file. _Exit: `!git status ⏎` feels better than switching to iTerm2 by hand._
+- **M4 — Polish & holdout.** Launch-at-login, first-run hint, two weeks of daily use with a "no new features, only fixes" rule. _Exit: v1 declared done._
 
 ## 10. v2 horizon (recorded now, built later)
 
-The differentiating bet, stated so v1 doesn't accidentally preclude it: **scripts as first-class citizens.** Users drop executables (any language) into `~/.config/launcharr/scripts/`; a script declares a trigger word and, when invoked, can either fire-and-forget or **respond to the launcher** — returning JSON over stdout that launcharr renders as results/output in the panel, Claude-Code style, instead of opening a terminal. Bang mode's inline-output variant, per-query learned bindings, richer bangs (`!!` = repeat last, project-scoped commands), theming, and — if launcharr goes to the wild — signing, notarization, updates, and a real README with a pirate flag on it.
+The differentiating bet — **scripts as first-class citizens** — shipped early in v1.1 (§5.5). Still on the horizon: script-declared richer rendering (beyond result rows), bang mode's inline-output variant, per-query learned bindings, richer bangs (`!!` = repeat last, project-scoped commands), theming, and — if launcharr goes to the wild — signing, notarization, updates, and a real README with a pirate flag on it.
 
 ## 11. Open questions
 
 1. ⌥Space collides with some keyboard layouts' non-breaking space and with Raycast's default — fine as default with easy remap, or pick something else out of the gate?
 2. Should bang mode's "reuse current iTerm2 session" variant ship in v1 config or wait for real demand?
 3. Empty-query panel: strictly blank (current spec) or show top-3 frecent apps after the database warms up?
-4. Repo conventions (package manager, linting, tests, CI) — deliberately unspecified pending Mitch's preferences.
+4. ~~Repo conventions~~ — settled 8 Aug 2026: pnpm, Lefthook, Vitest, ESLint 9, clippy (see `docs/DECISIONS.md`).
 
 ---
 
-*launcharr: because the apps won't launch themselves. Yarr.*
+_launcharr: because the apps won't launch themselves. Yarr._
