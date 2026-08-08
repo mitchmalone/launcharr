@@ -22,6 +22,11 @@ mod settings_panes;
 mod shortcut;
 mod terminal;
 
+/// `--extract-icons <dir>` child-process entry (see icons.rs for why this exists).
+pub fn extract_icons_cli(icon_dir: &std::path::Path) {
+    icons::extract_cli(icon_dir);
+}
+
 pub struct AppState {
     pub config: RwLock<config::Config>,
     pub index: RwLock<Vec<indexer::IndexItem>>,
