@@ -23,6 +23,7 @@ mod indexer;
 mod panel;
 mod scripts;
 mod settings_panes;
+mod settings_window;
 mod shortcut;
 mod system_commands;
 mod terminal;
@@ -95,6 +96,8 @@ pub fn run() {
             commands::add_quicklink,
             commands::reveal_item,
             commands::delete_clip,
+            commands::write_config,
+            commands::open_settings,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).

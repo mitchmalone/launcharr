@@ -1,0 +1,182 @@
+/* launcharr settings — same terminal identity as the panel. */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --fg: #e6edf3;
+  --dim: #7d8590;
+  --accent: #58a6ff;
+  --sigil: #3fb950;
+  --danger: #f85149;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, 'Courier New',
+    monospace;
+  font-size: 13px;
+}
+
+.settings {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+}
+
+h1 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+h1 .sigil {
+  color: var(--sigil);
+}
+
+.pathline {
+  color: var(--dim);
+  margin-bottom: 20px;
+}
+
+code {
+  color: var(--accent);
+}
+
+section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+h2 {
+  font-size: 12px;
+  text-transform: lowercase;
+  color: var(--dim);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--fg);
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+input[type='text'],
+input:not([type]),
+select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  font: inherit;
+  padding: 6px 8px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+input[type='checkbox'] {
+  accent-color: var(--sigil);
+  width: 14px;
+  height: 14px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.linkrow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.linkrow input {
+  margin-top: 0;
+}
+
+.linkrow .grow {
+  flex: 1;
+}
+
+.linkrow .small {
+  width: 90px;
+}
+
+button {
+  font: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  padding: 4px 8px;
+}
+
+.ghost:hover {
+  color: var(--fg);
+  border-color: var(--dim);
+}
+
+.ghost.add {
+  margin-top: 2px;
+}
+
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.save {
+  background: var(--sigil);
+  border: none;
+  color: #04140a;
+  font-weight: 700;
+  padding: 8px 22px;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 12px;
+}

@@ -124,6 +124,11 @@ pub fn scan(links: &[crate::config::Link], include_bookmarks: bool) -> Vec<Index
 
     // launcharr self-indexes (PRD §4.5): the prompt is the preferences UI.
     for (action, name, alias) in [
+        (
+            "settings",
+            "launcharr — Settings",
+            "settings preferences options",
+        ),
         ("reindex", "launcharr — Reindex apps", "reindex"),
         (
             "config",

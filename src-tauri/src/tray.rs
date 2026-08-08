@@ -13,6 +13,8 @@ use crate::error::{CmdError, CmdResult};
 pub fn init(app: &AppHandle) -> CmdResult<()> {
     let summon = MenuItem::with_id(app, "summon", "Summon panel\t⌥Space", true, None::<&str>)
         .map_err(tray_err)?;
+    let settings =
+        MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>).map_err(tray_err)?;
     let config =
         MenuItem::with_id(app, "config", "Open config", true, None::<&str>).map_err(tray_err)?;
     let scripts = MenuItem::with_id(app, "scripts", "Open scripts folder", true, None::<&str>)
@@ -25,6 +27,7 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     let menu = MenuBuilder::new(app)
         .item(&summon)
         .separator()
+        .item(&settings)
         .item(&config)
         .item(&scripts)
         .item(&reindex)
@@ -42,6 +45,9 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "summon" => crate::panel::show(app),
+            "settings" => {
+                let _ = crate::settings_window::open(app);
+            }
             "config" => {
                 let _ = std::process::Command::new("open")
                     .arg(crate::config::config_path())

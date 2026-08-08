@@ -87,6 +87,7 @@ pub fn execute(
         }
         ItemKind::Launcharr => match item.id.as_str() {
             "launcharr:quit" => app.exit(0),
+            "launcharr:settings" => crate::settings_window::open(&app)?,
             "launcharr:reindex" => crate::indexer::refresh(&app),
             "launcharr:config" => {
                 Command::new("open")
@@ -228,6 +229,21 @@ pub fn add_quicklink(
         }
     });
     Ok(())
+}
+
+/// Settings window save: validate by type, write pretty JSON; the watcher hot-applies.
+#[tauri::command]
+pub fn write_config(config: Config) -> CmdResult<()> {
+    let path = crate::config::config_path();
+    std::fs::create_dir_all(crate::config::config_dir())?;
+    std::fs::write(&path, serde_json::to_string_pretty(&config).unwrap())?;
+    Ok(())
+}
+
+/// Open (or focus) the settings window.
+#[tauri::command]
+pub fn open_settings(app: AppHandle) -> CmdResult<()> {
+    crate::settings_window::open(&app)
 }
 
 /// ⌥⏎ on an app: dismiss and reveal the bundle in Finder.
