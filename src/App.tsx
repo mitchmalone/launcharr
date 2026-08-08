@@ -4,7 +4,13 @@ import { listen } from '@tauri-apps/api/event';
 
 import { parseInput } from './lib/grammar';
 import { markInput, reportResultsPainted } from './lib/perf';
-import { clipRows, launchRows, scriptRows, type Row } from './lib/rows';
+import {
+  clipRows,
+  launchRows,
+  quicklinkRows,
+  scriptRows,
+  type Row,
+} from './lib/rows';
 import type {
   Clip,
   Config,
@@ -27,6 +33,9 @@ const DEFAULT_CONFIG: Config = {
   sigil: '❯',
   bangSigil: '$',
   launchAtLogin: true,
+  links: [],
+  shortcuts: {},
+  searchFallback: 'https://www.google.com/search?q={query}',
 };
 
 export default function App() {
@@ -40,9 +49,19 @@ export default function App() {
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Trigger precedence on collision: clip (built-in) > scripts > quicklinks.
+  const quicklinks = useMemo(
+    () => config.links.filter((l) => l.trigger && l.url.includes('{query}')),
+    [config.links]
+  );
   const triggers = useMemo(
-    () => new Set(['clip', ...scripts.map((s) => s.trigger)]),
-    [scripts]
+    () =>
+      new Set([
+        'clip',
+        ...scripts.map((s) => s.trigger),
+        ...quicklinks.map((l) => l.trigger as string),
+      ]),
+    [scripts, quicklinks]
   );
   const parsed = useMemo(() => parseInput(raw, triggers), [raw, triggers]);
 
@@ -86,7 +105,11 @@ export default function App() {
   }, [refetchIndex, refetchFrecency, refetchScripts, refetchClips]);
 
   // Script mode queries the script on a debounce; stale rows stay up meanwhile.
-  const scriptTrigger = parsed.mode === 'trigger' && parsed.trigger !== 'clip';
+  const isScript = useCallback(
+    (t: string) => t !== 'clip' && scripts.some((s) => s.trigger === t),
+    [scripts]
+  );
+  const scriptTrigger = parsed.mode === 'trigger' && isScript(parsed.trigger);
   const trigger = parsed.mode === 'trigger' ? parsed.trigger : '';
   const args = parsed.mode === 'trigger' ? parsed.args : '';
   useEffect(() => {
@@ -108,15 +131,26 @@ export default function App() {
   const rows: Row[] = useMemo(() => {
     switch (parsed.mode) {
       case 'launch':
-        return launchRows(parsed.query, index, frecency);
-      case 'trigger':
-        return parsed.trigger === 'clip'
-          ? clipRows(parsed.args, clips)
-          : scriptRows(scriptItems);
+        return launchRows(parsed.query, index, frecency, config.searchFallback);
+      case 'trigger': {
+        if (parsed.trigger === 'clip') return clipRows(parsed.args, clips);
+        if (isScript(parsed.trigger)) return scriptRows(scriptItems);
+        const link = quicklinks.find((l) => l.trigger === parsed.trigger);
+        return link ? quicklinkRows(link, parsed.args) : [];
+      }
       case 'bang':
         return [];
     }
-  }, [parsed, index, frecency, clips, scriptItems]);
+  }, [
+    parsed,
+    index,
+    frecency,
+    clips,
+    scriptItems,
+    config.searchFallback,
+    quicklinks,
+    isScript,
+  ]);
 
   const rowCount =
     parsed.mode === 'bang' ? 1 : rows.length > 0 ? rows.length : raw ? 1 : 0;
@@ -142,6 +176,9 @@ export default function App() {
         }
         case 'copy':
           invoke('copy_text', { text: row.enter.text }).catch(console.error);
+          break;
+        case 'open-url':
+          invoke('open_url', { url: row.enter.url }).catch(console.error);
           break;
         case 'script-action': {
           const item = scriptItems[row.enter.index];

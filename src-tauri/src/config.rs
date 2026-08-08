@@ -18,6 +18,10 @@ pub enum Terminal {
 pub struct Link {
     pub name: String,
     pub url: String,
+    /// Optional trigger word; with a `{query}` placeholder in `url` this becomes a
+    /// Raycast-style quicklink (`yt cute otters ⏎`). Resolved frontend-side.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +43,9 @@ pub struct Config {
     pub links: Vec<Link>,
     /// Extra global hotkeys → item name to launch (e.g. "Cmd+Shift+S": "Safari").
     pub shortcuts: std::collections::HashMap<String, String>,
+    /// Alfred-style dead-end fallback: opened when a query matches nothing. `{query}`
+    /// placeholder, URL-encoded by the frontend.
+    pub search_fallback: String,
 }
 
 impl Default for Config {
@@ -52,6 +59,7 @@ impl Default for Config {
             launch_at_login: true,
             links: Vec::new(),
             shortcuts: std::collections::HashMap::new(),
+            search_fallback: "https://www.google.com/search?q={query}".into(),
         }
     }
 }

@@ -177,3 +177,15 @@ pub fn copy_text(app: AppHandle, text: String) -> CmdResult<()> {
     crate::clipboard::set_string(&text);
     Ok(())
 }
+
+/// URL/quicklink/search Enter: dismiss and hand the URL to the default browser. Only real
+/// URLs — this is not a general `open` proxy.
+#[tauri::command]
+pub fn open_url(app: AppHandle, url: String) -> CmdResult<()> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(CmdError::Internal(format!("refusing non-http url: {url}")));
+    }
+    panel::hide(&app);
+    Command::new("open").arg(&url).spawn()?;
+    Ok(())
+}

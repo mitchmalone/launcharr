@@ -10,6 +10,13 @@ export type IndexItem = {
   aliases: string[];
 };
 
+export type Link = {
+  name: string;
+  url: string;
+  /** Optional trigger word: with a {query} placeholder this becomes a Raycast-style quicklink. */
+  trigger?: string | null;
+};
+
 export type Config = {
   hotkey: string;
   terminal: 'iTerm2' | 'Terminal';
@@ -17,6 +24,10 @@ export type Config = {
   sigil: string;
   bangSigil: string;
   launchAtLogin: boolean;
+  links: Link[];
+  shortcuts: Record<string, string>;
+  /** Alfred-style dead-end fallback, {query} placeholder. */
+  searchFallback: string;
 };
 
 export type FrecencyMap = Record<string, number>;

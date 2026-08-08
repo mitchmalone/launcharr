@@ -26,6 +26,14 @@
   `cargo run --example make_tray_icon` from `design/menubar-icon-source.png`. Accessory
   policy unchanged (no Dock icon). Eyeball check: icon crispness + dark/light menubar.
 
+## Done (latest)
+
+- **URLs + search + quicklinks** (2026-08-09): URL-ish queries get an "Open ▸" top row;
+  dead-end queries offer "Search Google for …" (Alfred-style, engine configurable via
+  `searchFallback`); `links` entries with `trigger` + `{query}` are Raycast-style
+  quicklinks (`yt cute otters ⏎` — example seeded in config). Plan:
+  `plans/done/urls-and-search.md`.
+
 ## In progress
 
 - **Mitch's morning checklist** (the parts only hands can verify):

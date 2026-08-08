@@ -1,7 +1,8 @@
 import { evaluate, formatResult } from './math';
 import { fuzzyMatch } from './matcher';
 import { rank, MAX_RESULTS } from './ranking';
-import type { Clip, FrecencyMap, IndexItem, ScriptItem } from './types';
+import { detectUrl, fillQuery } from './url';
+import type { Clip, FrecencyMap, IndexItem, Link, ScriptItem } from './types';
 
 /**
  * The one row model every mode renders through, so selection, keyboard handling, and
@@ -21,6 +22,7 @@ export type Row = {
 export type RowEnter =
   | { kind: 'execute'; id: string }
   | { kind: 'copy'; text: string }
+  | { kind: 'open-url'; url: string }
   | { kind: 'script-action'; index: number }
   | { kind: 'copy-clip'; content: string }
   | { kind: 'clear-clips' };
@@ -31,13 +33,43 @@ function kindGlyph(item: IndexItem): string {
   return '⚓︎';
 }
 
-/** Launch mode: an inline-math row (when the query computes) above the ranked matches. */
+/** "https://www.google.com/search?q={query}" → "Google", best-effort. */
+export function searchEngineLabel(template: string): string {
+  try {
+    const host = new URL(template.replace('{query}', 'x')).hostname;
+    const label = host.replace(/^www\./, '').split('.')[0];
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  } catch {
+    return 'the web';
+  }
+}
+
+/**
+ * Launch mode, top to bottom: URL row (when the query is URL-ish), inline-math row (when it
+ * computes), ranked matches, and — only when none of the above produced anything — the
+ * Alfred-style search fallback.
+ */
 export function launchRows(
   query: string,
   index: IndexItem[],
-  frecency: FrecencyMap
+  frecency: FrecencyMap,
+  searchFallback: string
 ): Row[] {
   const rows: Row[] = [];
+
+  const url = detectUrl(query);
+  if (url !== null) {
+    rows.push({
+      key: 'url',
+      title: `Open ${url.replace(/^https?:\/\//, '')}`,
+      hint: 'open',
+      positions: [],
+      icon: null,
+      glyph: '↗',
+      enter: { kind: 'open-url', url },
+    });
+  }
+
   const math = evaluate(query);
   if (math !== null) {
     const text = formatResult(math);
@@ -51,6 +83,7 @@ export function launchRows(
       enter: { kind: 'copy', text },
     });
   }
+
   for (const { item, positions } of rank(query, index, frecency)) {
     rows.push({
       key: item.id,
@@ -62,7 +95,35 @@ export function launchRows(
       enter: { kind: 'execute', id: item.id },
     });
   }
+
+  if (rows.length === 0 && query.trim().length > 0) {
+    rows.push({
+      key: 'search-fallback',
+      title: `Search ${searchEngineLabel(searchFallback)} for “${query.trim()}”`,
+      hint: 'search',
+      positions: [],
+      icon: null,
+      glyph: '⌕',
+      enter: { kind: 'open-url', url: fillQuery(searchFallback, query.trim()) },
+    });
+  }
+
   return rows.slice(0, MAX_RESULTS);
+}
+
+/** Raycast-style quicklink in trigger mode: `yt cute otters ⏎`. */
+export function quicklinkRows(link: Link, args: string): Row[] {
+  return [
+    {
+      key: `quicklink-${link.trigger ?? link.name}`,
+      title: `${link.name} ▸ ${args.trim() || 'type a query…'}`,
+      hint: 'quicklink',
+      positions: [],
+      icon: null,
+      glyph: '↗',
+      enter: { kind: 'open-url', url: fillQuery(link.url, args.trim()) },
+    },
+  ];
 }
 
 export function scriptRows(items: ScriptItem[]): Row[] {
