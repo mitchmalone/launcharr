@@ -3,6 +3,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 import { parseInput } from './lib/grammar';
+import { markInput, reportResultsPainted } from './lib/perf';
 import { rank } from './lib/ranking';
 import type { Config, FrecencyMap, IndexItem } from './lib/types';
 
@@ -17,6 +18,7 @@ const DEFAULT_CONFIG: Config = {
   bangNewWindow: true,
   sigil: '❯',
   bangSigil: '$',
+  launchAtLogin: true,
 };
 
 function kindGlyph(item: IndexItem): string {
@@ -78,6 +80,11 @@ export default function App() {
     const height = INPUT_HEIGHT + rows * ROW_HEIGHT + BORDER;
     invoke('resize_panel', { height }).catch(console.error);
   }, [rows]);
+
+  // Runs after the commit that rendered the new results — the §7 keystroke budget.
+  useEffect(() => {
+    reportResultsPainted(results.length);
+  }, [results]);
 
   const clampedSelection = Math.min(selected, Math.max(results.length - 1, 0));
 
@@ -144,6 +151,7 @@ export default function App() {
           autoFocus
           placeholder={`${config.hotkey.toLowerCase().replace('+', ' ')} to summon · ! to run in terminal`}
           onChange={(e) => {
+            markInput();
             setRaw(e.target.value);
             setSelected(0);
           }}

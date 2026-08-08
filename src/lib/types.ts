@@ -16,6 +16,7 @@ export type Config = {
   bangNewWindow: boolean;
   sigil: string;
   bangSigil: string;
+  launchAtLogin: boolean;
 };
 
 export type FrecencyMap = Record<string, number>;

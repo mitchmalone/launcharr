@@ -8,30 +8,30 @@
 ## Done
 
 - **PRD v1 drafted** (2026-08-08). See `PRD.md`.
-- **Pre-scaffold** (2026-08-08): repo, docs system, conventions (pnpm, Lefthook, Rust rules).
-- **v1 core implemented** (2026-08-08): M0–M3 code complete — nspanel non-activating panel +
-  ⌥Space toggle + accessory policy, indexer (apps, 35 settings panes, self-index) with
-  FSEvents watch, icon cache, fzf-style TS matcher + frecency ranking (26 TS tests), SQLite
-  launch log, bang mode with iTerm2/Terminal.app hand-off (17 Rust tests), watched config at
-  `~/.config/launcharr/config.json`, terminal-prompt UI. All gates green.
-- **First real bug found & fixed by smoke test** (2026-08-08): AppKit icon-rasterization leak
-  took RSS to 10GB; extraction moved to a throwaway subprocess + 128px downscale. Steady-state
-  **RSS 90MB** (budget <120), icon cache 7.5MB. See JOURNAL.
-- **Installed**: `/Applications/launcharr.app` (ad-hoc signed local build), running.
+- **Pre-scaffold + conventions** (2026-08-08): pnpm, Lefthook, Rust standards, docs system.
+- **v1 core M0–M3** (2026-08-08): panel + hotkey, index + fuzzy + frecency, bang mode, config.
+  **Mitch verified the M0 focus dance manually** — incl. full-screen and second display.
+  Plan: `plans/done/m0-nspanel-spike.md`.
+- **AppKit icon-leak fix** (2026-08-08): extraction in throwaway subprocess; RSS 90MB steady
+  (budget <120). See JOURNAL.
+- **v1 remaining polish** (2026-08-08): §7 instrumentation (**cold start 163ms** vs <1s,
+  **native summon 3.7ms** vs <100ms; keystroke→results logged in webview console),
+  **launch-at-login** (LaunchAgent, `launchAtLogin` config key, verified toggling live),
+  **first-run hint** (fresh config → panel auto-shows once). Plan:
+  `plans/done/v1-remaining-polish.md`.
+- **Installed & running**: `/Applications/launcharr.app`, LaunchAgent points there.
 
 ## In progress
 
-- **Manual verification** — ⚠️ the M0 focus dance is implemented but NO HUMAN has pressed
-  ⌥Space yet. The M0 plan stays in `active/` until Mitch runs its acceptance checklist.
+- **M4 holdout**: two weeks of daily use, "no new features, only fixes." Started 2026-08-08.
 
 ## Next
 
-- Mitch: hit **⌥Space**. Then the M0 checklist in `plans/active/m0-nspanel-spike.md`
-  (summon over a normal app, over full-screen, Esc/click-outside restore, second display).
-- First `!` use will trigger the one-time macOS Automation consent prompt (expected).
-- Instrument hotkey→visible and keystroke→results latency against PRD §7 (remaining M2 exit).
-- Launch-at-login + first-run hint polish (M4).
+- Fixes only, driven by daily use. Watch for: keystroke→results >16ms in console, hotkey
+  collisions (PRD §11.1), whether bang-mode session-reuse or empty-query top-3 earn their
+  place (§11.2–3).
+- Holdout ends ≈ 2026-08-22 → declare v1 done in ROADMAP + STATUS.
 
 ## Blocked / waiting on Mitch
 
-- Everything above — the panel/focus behavior can't be machine-verified.
+- Living with it. Report anything that feels slow or wrong; JOURNAL it.

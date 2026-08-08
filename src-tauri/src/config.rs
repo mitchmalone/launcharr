@@ -26,6 +26,8 @@ pub struct Config {
     pub sigil: String,
     /// Prompt sigil in bang mode.
     pub bang_sigil: String,
+    /// Register launcharr as a login item (a launcher that isn't running is furniture).
+    pub launch_at_login: bool,
 }
 
 impl Default for Config {
@@ -36,6 +38,7 @@ impl Default for Config {
             bang_new_window: true,
             sigil: "❯".into(),
             bang_sigil: "$".into(),
+            launch_at_login: true,
         }
     }
 }
@@ -53,17 +56,18 @@ pub fn config_path() -> PathBuf {
 }
 
 /// Load the config, writing the default file on first run so it's discoverable/editable.
-pub fn load_or_create() -> CmdResult<Config> {
+/// The bool is true when this call created the file — i.e. this is a first run.
+pub fn load_or_create() -> CmdResult<(Config, bool)> {
     let path = config_path();
     if !path.exists() {
         fs::create_dir_all(config_dir())?;
         let default = Config::default();
         fs::write(&path, serde_json::to_string_pretty(&default).unwrap())?;
-        return Ok(default);
+        return Ok((default, true));
     }
     let raw = fs::read_to_string(&path)?;
     // A broken hand-edit must not brick the launcher: fall back to defaults.
-    Ok(serde_json::from_str(&raw).unwrap_or_default())
+    Ok((serde_json::from_str(&raw).unwrap_or_default(), false))
 }
 
 /// Watch ~/.config/launcharr for edits; reload, re-register the hotkey, notify the frontend.
@@ -89,16 +93,19 @@ pub fn watch(app: AppHandle) {
             // Debounce editor save bursts.
             while rx.recv_timeout(Duration::from_millis(300)).is_ok() {}
             match load_or_create() {
-                Ok(new_config) => {
-                    let old_hotkey = {
+                Ok((new_config, _)) => {
+                    let old = {
                         let state = app.state::<crate::AppState>();
                         let mut cfg = state.config.write().unwrap();
-                        let old = cfg.hotkey.clone();
+                        let old = cfg.clone();
                         *cfg = new_config.clone();
                         old
                     };
-                    if old_hotkey != new_config.hotkey {
+                    if old.hotkey != new_config.hotkey {
                         crate::shortcut::reregister(&app, &new_config.hotkey);
+                    }
+                    if old.launch_at_login != new_config.launch_at_login {
+                        crate::apply_launch_at_login(&app, new_config.launch_at_login);
                     }
                     let _ = app.emit("config-changed", &new_config);
                 }

@@ -72,6 +72,7 @@ pub fn toggle(app: &AppHandle) {
 }
 
 pub fn show(app: &AppHandle) {
+    let started = std::time::Instant::now();
     let Ok(panel) = app.get_webview_panel("main") else {
         return;
     };
@@ -79,6 +80,11 @@ pub fn show(app: &AppHandle) {
     // Fresh prompt every summon (PRD §4.1): the frontend clears on this event.
     let _ = app.emit("panel-shown", ());
     panel.show_and_make_key();
+    // §7 budget: hotkey → visible < 100ms. This measures the native side of that path.
+    eprintln!(
+        "[launcharr perf] summon {}µs",
+        started.elapsed().as_micros()
+    );
 }
 
 pub fn hide(app: &AppHandle) {

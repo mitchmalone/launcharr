@@ -32,3 +32,4 @@ objc2-app-kit = { version = "0.3", features = [
 ] }
 objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSData", "NSDictionary"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+tauri-plugin-autostart = "2.5.1"

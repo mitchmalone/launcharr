@@ -27,6 +27,21 @@ pub fn extract_icons_cli(icon_dir: &std::path::Path) {
     icons::extract_cli(icon_dir);
 }
 
+/// Sync the login-item registration with config. Failure is logged, never fatal — a broken
+/// LaunchAgent must not stop the launcher from launching things.
+pub(crate) fn apply_launch_at_login(app: &tauri::AppHandle, enabled: bool) {
+    use tauri_plugin_autostart::ManagerExt;
+    let autolaunch = app.autolaunch();
+    let result = if enabled {
+        autolaunch.enable()
+    } else {
+        autolaunch.disable()
+    };
+    if let Err(e) = result {
+        eprintln!("[launcharr] launch-at-login ({enabled}) failed: {e}");
+    }
+}
+
 pub struct AppState {
     pub config: RwLock<config::Config>,
     pub index: RwLock<Vec<indexer::IndexItem>>,
@@ -35,8 +50,13 @@ pub struct AppState {
 }
 
 pub fn run() {
+    let boot = std::time::Instant::now();
     tauri::Builder::default()
         .plugin(tauri_nspanel::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -57,11 +77,11 @@ pub fn run() {
             commands::execute,
             commands::run_bang,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-            let cfg = config::load_or_create()?;
+            let (cfg, first_run) = config::load_or_create()?;
 
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -78,6 +98,25 @@ pub fn run() {
             shortcut::register(app.handle(), &cfg.hotkey);
             indexer::start(app.handle().clone());
             config::watch(app.handle().clone());
+            apply_launch_at_login(app.handle(), cfg.launch_at_login);
+
+            // §7 budget: cold start → hotkey registered < 1s.
+            eprintln!(
+                "[launcharr perf] cold start {}ms",
+                boot.elapsed().as_millis()
+            );
+
+            // First run: show the panel once with the hint line (PRD §4.5). Delayed so the
+            // webview has rendered by the time the panel appears.
+            if first_run {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(800));
+                    let inner = handle.clone();
+                    // AppKit calls belong on the main thread.
+                    let _ = handle.run_on_main_thread(move || panel::show(&inner));
+                });
+            }
 
             Ok(())
         })
