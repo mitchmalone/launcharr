@@ -1,0 +1,33 @@
+[package]
+name = "launcharr"
+version = "0.1.0"
+description = "An app launcher for pirates"
+authors = ["Mitch Malone"]
+edition = "2021"
+
+[lib]
+name = "launcharr_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
+tauri-plugin-global-shortcut = "2"
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+notify = "8"
+dirs = "6"
+thiserror = "2"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = [
+  "NSWorkspace",
+  "NSImage",
+  "NSImageRep",
+  "NSBitmapImageRep",
+  "NSGraphics",
+] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSData", "NSDictionary"] }

@@ -1,0 +1,3 @@
+# Sourced by lefthook before running hooks (see `rc` in lefthook.yml).
+# Cargo lives behind brew's rustup proxies, which aren't on the default hook PATH.
+export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
