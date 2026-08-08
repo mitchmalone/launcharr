@@ -1,4 +1,4 @@
-export type ItemKind = 'app' | 'settings' | 'launcharr' | 'link';
+export type ItemKind = 'app' | 'settings' | 'launcharr' | 'link' | 'command';
 
 export type IndexItem = {
   id: string;

@@ -82,6 +82,9 @@ pub fn execute(
             // with standard NSWorkspace activation (already-running apps come to front).
             Command::new("open").arg(&item.path).spawn()?;
         }
+        ItemKind::Command => {
+            crate::system_commands::run(item.id.trim_start_matches("cmd:"))?;
+        }
         ItemKind::Launcharr => match item.id.as_str() {
             "launcharr:quit" => app.exit(0),
             "launcharr:reindex" => crate::indexer::refresh(&app),

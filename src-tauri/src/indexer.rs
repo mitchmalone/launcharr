@@ -17,6 +17,7 @@ pub enum ItemKind {
     Settings,
     Launcharr,
     Link,
+    Command,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +71,20 @@ pub fn scan(links: &[crate::config::Link]) -> Vec<IndexItem> {
             hint: "settings".into(),
             icon: None,
             aliases: vec!["settings".into(), "preferences".into()],
+            browser: None,
+        });
+    }
+
+    // System commands: sleep displays and friends (see system_commands.rs).
+    for cmd in crate::system_commands::SYSTEM_COMMANDS {
+        items.push(IndexItem {
+            id: format!("cmd:{}", cmd.slug),
+            name: cmd.name.to_string(),
+            kind: ItemKind::Command,
+            path: String::new(),
+            hint: "command".into(),
+            icon: None,
+            aliases: cmd.aliases.split(' ').map(String::from).collect(),
             browser: None,
         });
     }

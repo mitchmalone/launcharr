@@ -23,6 +23,7 @@ mod panel;
 mod scripts;
 mod settings_panes;
 mod shortcut;
+mod system_commands;
 mod terminal;
 mod tray;
 

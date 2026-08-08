@@ -33,6 +33,7 @@ export type RowEnter =
 function kindGlyph(item: IndexItem): string {
   if (item.kind === 'settings') return '⚙';
   if (item.kind === 'link') return '↗';
+  if (item.kind === 'command') return '⏻';
   return '⚓︎';
 }
 
