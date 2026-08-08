@@ -189,7 +189,7 @@ If a budget can't be met, the feature causing the miss gets cut or moved behind 
 - **M1 — Launcher.** Index + fuzzy match + launch + System Settings panes. No frecency, ugly UI. _Exit: Mitch can launch any app._
 - **M2 — Feel.** Frecency, keyboard bindings, the terminal-prompt visual identity, performance instrumentation against §7. _Exit: launcharr replaces the incumbent as Mitch's daily launcher._
 - **M3 — Bang mode.** `!` grammar dispatch, iTerm2 hand-off, Terminal.app fallback, config file. _Exit: `!git status ⏎` feels better than switching to iTerm2 by hand._
-- **M4 — Polish & holdout.** Launch-at-login, first-run hint, two weeks of daily use with a "no new features, only fixes" rule. _Exit: v1 declared done._
+- **M4 — Polish & daily use.** Launch-at-login, first-run hint, sustained daily use. _Exit: launcharr is the incumbent and nothing broken survives a week._
 
 ## 10. v2 horizon (recorded now, built later)
 

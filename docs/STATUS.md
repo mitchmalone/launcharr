@@ -34,8 +34,7 @@
 
 ## Next
 
-- Fixes from the checklist. **No holdout — the freeze is repealed** (Mitch, 2026-08-09);
-  features and fixes ship continuously, daily use is the judge.
+- Fixes from the checklist; features ship whenever — daily use is the judge.
 - While living with it, watch: per-keystroke script latency feel, clip privacy comfort, whether
   deferred items (Translate, Calendar, public IP) earn a PRD revision.
 

@@ -6,7 +6,7 @@
 
 ## v1 milestones
 
-All v1 milestones below are **code-complete as of 2026-08-08**; M4's holdout is running.
+All v1 milestones below are **code-complete as of 2026-08-08**.
 
 - **M0 — Spike (the scary parts first).** ✅ Tauri 2 + tauri-nspanel: hotkey summons a
   non-activating panel with a text field; Esc restores focus correctly over a full-screen app.
@@ -18,9 +18,9 @@ All v1 milestones below are **code-complete as of 2026-08-08**; M4's holdout is 
   instrumentation against the budgets. _Exit: launcharr replaces the incumbent daily launcher._
 - **M3 — Bang mode.** ✅ `!` grammar dispatch, iTerm2 hand-off, Terminal.app fallback, config file.
   _Exit: `!git status ⏎` feels better than switching to iTerm2 by hand._
-- **M4 — Polish & daily use.** 🔄 Launch-at-login + first-run hint shipped; the feature
-  freeze is repealed — features and fixes ship continuously. _Exit: launcharr is the
-  incumbent and nothing broken survives a week._
+- **M4 — Polish & daily use.** 🔄 Launch-at-login + first-run hint shipped; features and
+  fixes ship continuously. _Exit: launcharr is the incumbent and nothing broken survives
+  a week._
 
 ## v1.1 — Sol parity, scripts-first ✅ (2026-08-08, overnight)
 
