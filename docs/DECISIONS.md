@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-08-10 · Home moves to ~/.launcharr; config/scripts access lives in settings; themes land
+
+- **Decision (home).** launcharr's home is `~/.launcharr` (config.json + scripts/), migrated
+  from `~/.config/launcharr` by a one-shot tested `fs::rename` at startup (no-op when already
+  moved or fresh). Data caches stay in Application Support. Tray drops "Open config"/"Open
+  scripts folder"; settings ▸ General ▸ Hackables gains "edit config.json" and "open scripts
+  folder" buttons via one new validated-enum IPC command, `open_path` (config|scripts) —
+  recorded here per the tiny-IPC invariant.
+- **Decision (themes).** A theme is a flat map of the CSS tokens both windows already use
+  (bg, surface, glass, border, fg, dim, accent, sigil, bang, selected, danger). Built-ins
+  `launcharr` (brand blue/pink — now the panel's look too), `dracula`, `terminal`
+  (matrix black/green) live in `src/lib/themes.ts`; `config.theme` selects; `config.themes`
+  holds user themes as partial overrides (may also override a built-in by name). No new IPC:
+  themes ride the existing config watcher and hot-apply everywhere. Unknown names fall back
+  to `launcharr` so a hand-edit can't blank the UI.
+- **Why.** Mitch wants config at `~/.launcharr` and settings as the single gateway (tray
+  stays lean); themes were the natural next step after the brand-color pass, and doing them
+  as config-resident JSON keeps the hackable value — your theme is a text edit, not a plugin.
+
 ### 2026-08-10 · Settings goes native-structured: autosave, toolbar tabs, hidden titlebar, hotkey recorder
 
 - **Decision.** The settings window keeps the terminal skin but adopts native macOS settings

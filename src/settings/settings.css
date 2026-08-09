@@ -215,6 +215,11 @@ label.check {
   cursor: pointer;
 }
 
+.buttonrow {
+  display: flex;
+  gap: 8px;
+}
+
 /* --- Hotkey recorder pill. --- */
 
 .hotkey {

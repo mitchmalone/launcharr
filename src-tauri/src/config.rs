@@ -51,6 +51,11 @@ pub struct Config {
     pub search_fallback: String,
     /// Opt-in: index browser bookmarks (Chrome-family + Safari) as results. Default off.
     pub index_bookmarks: bool,
+    /// Active theme: a built-in name (launcharr, dracula, terminal) or a key of `themes`.
+    /// Resolution and the token model live frontend-side (src/lib/themes.ts).
+    pub theme: String,
+    /// User-defined themes: name → token overrides. Opaque to Rust; just persisted.
+    pub themes: std::collections::HashMap<String, serde_json::Value>,
 }
 
 impl Default for Config {
@@ -66,25 +71,50 @@ impl Default for Config {
             shortcuts: std::collections::HashMap::new(),
             search_fallback: "https://www.google.com/search?q={query}".into(),
             index_bookmarks: false,
+            theme: "launcharr".into(),
+            themes: std::collections::HashMap::new(),
         }
     }
 }
 
 pub fn config_dir() -> PathBuf {
-    // ~/.config/launcharr — deliberate: a terminal-nerd path, not ~/Library.
+    // ~/.launcharr — deliberate: a terminal-nerd path, not ~/Library. Moved from
+    // ~/.config/launcharr on 2026-08-10 (see DECISIONS); migrate_home handles the rename.
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(".config")
-        .join("launcharr")
+        .join(".launcharr")
 }
 
 pub fn config_path() -> PathBuf {
     config_dir().join("config.json")
 }
 
+fn legacy_config_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join(".config")
+        .join("launcharr")
+}
+
+/// One-shot home migration: rename `old` to `new` when `new` doesn't exist yet. Atomic on
+/// the same volume; a no-op on fresh installs and already-migrated homes. Returns whether
+/// a move happened.
+pub fn migrate_home(old: &std::path::Path, new: &std::path::Path) -> std::io::Result<bool> {
+    if new.exists() || !old.exists() {
+        return Ok(false);
+    }
+    fs::rename(old, new)?;
+    Ok(true)
+}
+
 /// Load the config, writing the default file on first run so it's discoverable/editable.
 /// The bool is true when this call created the file — i.e. this is a first run.
 pub fn load_or_create() -> CmdResult<(Config, bool)> {
+    if let Err(e) = migrate_home(&legacy_config_dir(), &config_dir()) {
+        // Don't brick startup over a failed move; the old path simply stays put and a
+        // fresh default is created at the new one.
+        eprintln!("launcharr: home migration failed: {e}");
+    }
     let path = config_path();
     if !path.exists() {
         fs::create_dir_all(config_dir())?;
@@ -97,7 +127,7 @@ pub fn load_or_create() -> CmdResult<(Config, bool)> {
     Ok((serde_json::from_str(&raw).unwrap_or_default(), false))
 }
 
-/// Watch ~/.config/launcharr for edits; reload, re-register the hotkey, notify the frontend.
+/// Watch ~/.launcharr for edits; reload, re-register the hotkey, notify the frontend.
 pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
         use notify::{RecursiveMode, Watcher};
@@ -166,6 +196,40 @@ mod tests {
         assert_eq!(cfg.hotkey, "Cmd+Space");
         assert_eq!(cfg.sigil, "❯");
         assert_eq!(cfg.terminal, Terminal::ITerm2);
+    }
+
+    #[test]
+    fn theme_fields_default_and_parse() {
+        let cfg: Config = serde_json::from_str("{}").unwrap();
+        assert_eq!(cfg.theme, "launcharr");
+        assert!(cfg.themes.is_empty());
+        let cfg: Config =
+            serde_json::from_str(r##"{"theme":"dracula","themes":{"mine":{"accent":"#f00"}}}"##)
+                .unwrap();
+        assert_eq!(cfg.theme, "dracula");
+        assert!(cfg.themes.contains_key("mine"));
+    }
+
+    #[test]
+    fn migrate_home_moves_once_and_only_when_target_absent() {
+        let base = std::env::temp_dir().join(format!("launcharr-mig-{}", std::process::id()));
+        let old = base.join("old");
+        let new = base.join("new");
+        fs::create_dir_all(old.join("scripts")).unwrap();
+        fs::write(old.join("config.json"), "{}").unwrap();
+
+        assert!(migrate_home(&old, &new).unwrap());
+        assert!(new.join("config.json").exists());
+        assert!(new.join("scripts").is_dir());
+        assert!(!old.exists());
+
+        // Idempotent: nothing left to move, and an existing target is never clobbered.
+        assert!(!migrate_home(&old, &new).unwrap());
+        fs::create_dir_all(&old).unwrap();
+        assert!(!migrate_home(&old, &new).unwrap());
+        assert!(old.exists());
+
+        fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]

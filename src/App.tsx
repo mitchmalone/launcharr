@@ -3,6 +3,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 import { parseInput } from './lib/grammar';
+import { applyTheme } from './lib/themes';
 import { markInput, reportResultsPainted } from './lib/perf';
 import {
   clipRows,
@@ -54,6 +55,8 @@ const DEFAULT_CONFIG: Config = {
   shortcuts: {},
   searchFallback: 'https://www.google.com/search?q={query}',
   indexBookmarks: false,
+  theme: 'launcharr',
+  themes: {},
 };
 
 export default function App() {
@@ -62,6 +65,10 @@ export default function App() {
   const [index, setIndex] = useState<IndexItem[]>([]);
   const [frecency, setFrecency] = useState<FrecencyMap>({});
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
+  useEffect(
+    () => applyTheme(config.theme, config.themes, 'panel'),
+    [config.theme, config.themes]
+  );
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([]);

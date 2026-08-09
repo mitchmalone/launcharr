@@ -80,6 +80,7 @@ pub fn run() {
             commands::get_index,
             commands::get_frecency,
             commands::read_config,
+            commands::open_path,
             commands::hide_panel,
             commands::resize_panel,
             commands::reindex,

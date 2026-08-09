@@ -15,10 +15,6 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         .map_err(tray_err)?;
     let settings =
         MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>).map_err(tray_err)?;
-    let config =
-        MenuItem::with_id(app, "config", "Open config", true, None::<&str>).map_err(tray_err)?;
-    let scripts = MenuItem::with_id(app, "scripts", "Open scripts folder", true, None::<&str>)
-        .map_err(tray_err)?;
     let reindex =
         MenuItem::with_id(app, "reindex", "Reindex apps", true, None::<&str>).map_err(tray_err)?;
     let quit =
@@ -28,8 +24,6 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         .item(&summon)
         .separator()
         .item(&settings)
-        .item(&config)
-        .item(&scripts)
         .item(&reindex)
         .separator()
         .item(&quit)
@@ -47,16 +41,6 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
             "summon" => crate::panel::show(app),
             "settings" => {
                 let _ = crate::settings_window::open(app);
-            }
-            "config" => {
-                let _ = std::process::Command::new("open")
-                    .arg(crate::config::config_path())
-                    .spawn();
-            }
-            "scripts" => {
-                let _ = std::process::Command::new("open")
-                    .arg(crate::scripts::scripts_dir())
-                    .spawn();
             }
             "reindex" => crate::indexer::refresh(app),
             "quit" => app.exit(0),

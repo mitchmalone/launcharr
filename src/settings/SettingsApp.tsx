@@ -11,6 +11,7 @@ import {
   Terminal,
 } from 'lucide-react';
 
+import { applyTheme, themeNames } from '../lib/themes';
 import type { Config, Link } from '../lib/types';
 import HotkeyRecorder from './HotkeyRecorder';
 import iconUrl from './launcharr.svg';
@@ -76,6 +77,10 @@ export default function SettingsApp() {
         .catch((e) => setError(String(e)));
     }, SAVE_DEBOUNCE_MS);
     return () => clearTimeout(t);
+  }, [config]);
+
+  useEffect(() => {
+    if (config) applyTheme(config.theme, config.themes, 'settings');
   }, [config]);
 
   if (!config) return <div className="settings" />;
@@ -149,6 +154,22 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
         </label>
       </Row>
       <hr />
+      <Row label="Theme">
+        <select
+          value={config.theme}
+          onChange={(e) => set('theme', e.target.value)}
+        >
+          {themeNames(config.themes).map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <p className="hint">
+          Add your own under <code>"themes"</code> in config.json — partial
+          overrides welcome.
+        </p>
+      </Row>
       <Row label="Prompt sigil">
         <input
           className="tiny"
@@ -162,6 +183,27 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
           value={config.bangSigil}
           onChange={(e) => set('bangSigil', e.target.value)}
         />
+      </Row>
+      <hr />
+      <Row label="Hackables">
+        <div className="buttonrow">
+          <button
+            className="ghost"
+            onClick={() => invoke('open_path', { target: 'config' })}
+          >
+            edit config.json
+          </button>
+          <button
+            className="ghost"
+            onClick={() => invoke('open_path', { target: 'scripts' })}
+          >
+            open scripts folder
+          </button>
+        </div>
+        <p className="hint">
+          This whole window is a view over <code>~/.launcharr/config.json</code>{' '}
+          — edit either place, changes apply live.
+        </p>
       </Row>
     </>
   );
@@ -340,11 +382,6 @@ function AboutTab() {
         {version ? ` v${version}` : ''}
       </p>
       <p className="hint">An app launcher for pirates.</p>
-      <p className="hint">
-        Everything in this window lives in{' '}
-        <code>~/.config/launcharr/config.json</code> — edit either place,
-        changes apply live.
-      </p>
     </div>
   );
 }

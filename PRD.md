@@ -137,11 +137,11 @@ On first launch: register the default hotkey, build the app index, show the pane
 
 ### 5.4 Settings (minimal)
 
-A JSON file in `~/.config/launcharr/config.json` — hand-editable, watched for changes, no settings UI beyond what the prompt itself exposes. Contents: hotkey, terminal target (iTerm2/Terminal.app), new-window-vs-current-session for bang mode, prompt sigils, launch-at-login, custom links, custom shortcuts. A config file you edit in your editor _is_ the terminal-nerd settings UI.
+A JSON file in `~/.launcharr/config.json` — hand-editable, watched for changes, no settings UI beyond what the prompt itself exposes. Contents: hotkey, terminal target (iTerm2/Terminal.app), new-window-vs-current-session for bang mode, prompt sigils, launch-at-login, custom links, custom shortcuts. A config file you edit in your editor _is_ the terminal-nerd settings UI.
 
 ### 5.5 Scripts (v1.1)
 
-Executables in `~/.config/launcharr/scripts/` declare a trigger word (`<script> manifest`) and answer queries (`<script> query <args>`) with JSON items launcharr renders as results; actions are copy/open/none. Discovery is FSEvents-watched — drop a file in, its trigger is live. Full contract: `docs/SCRIPTS.md`. Bundled reference scripts: `lorem`, `json`, `ip`.
+Executables in `~/.launcharr/scripts/` declare a trigger word (`<script> manifest`) and answer queries (`<script> query <args>`) with JSON items launcharr renders as results; actions are copy/open/none. Discovery is FSEvents-watched — drop a file in, its trigger is live. Full contract: `docs/SCRIPTS.md`. Bundled reference scripts: `lorem`, `json`, `ip`.
 
 ### 5.6 Clipboard history (v1.1)
 

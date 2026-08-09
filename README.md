@@ -20,7 +20,7 @@ Two values govern every decision:
 - **Launch** apps and System Settings panes, fuzzy-matched (fzf-family scoring),
   frecency-ranked from your actual usage
 - **`!git status ⏎`** — bang mode hands the command to iTerm2 (or Terminal.app), verbatim
-- **[Scripts](docs/SCRIPTS.md)** — executables in `~/.config/launcharr/scripts/` join the
+- **[Scripts](docs/SCRIPTS.md)** — executables in `~/.launcharr/scripts/` join the
   grammar with their own trigger words; bundled: `lorem`, `json`, `ip`
 - **`clip`** — clipboard history (text, 200 items, concealed types never recorded);
   Enter copies — no Accessibility permission, ever
@@ -32,7 +32,7 @@ Two values govern every decision:
 - **⌥⏎** — secondary actions: reveal app in Finder, copy URL, delete clip
 - **Bookmarks** _(opt-in)_ — index Chrome-family/Safari bookmarks as results
 - **Settings** — a real settings window _and_ a hand-editable
-  `~/.config/launcharr/config.json` (watched, hot-applied); both stay in sync
+  `~/.launcharr/config.json` (watched, hot-applied); both stay in sync
 
 ## Principles
 
@@ -58,7 +58,7 @@ open /Applications/launcharr.app
 ```
 
 First run: the panel appears once with the hint line, a default config is written to
-`~/.config/launcharr/config.json`, and launcharr registers as a login item (toggle in
+`~/.launcharr/config.json`, and launcharr registers as a login item (toggle in
 settings). Signed releases: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Hacking
@@ -72,7 +72,7 @@ console.
 
 ```sh
 rm -rf /Applications/launcharr.app \
-       ~/.config/launcharr \
+       ~/.launcharr \
        ~/Library/Application\ Support/com.mitchmalone.launcharr \
        ~/Library/LaunchAgents/launcharr.plist
 ```

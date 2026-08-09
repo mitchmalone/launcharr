@@ -240,6 +240,23 @@ pub fn write_config(config: Config) -> CmdResult<()> {
     Ok(())
 }
 
+/// Open launcharr's editable surfaces from settings: the config file (default editor) or
+/// the scripts folder (Finder). Validated enum — never an arbitrary path across IPC.
+#[tauri::command]
+pub fn open_path(target: String) -> CmdResult<()> {
+    let path = match target.as_str() {
+        "config" => crate::config::config_path(),
+        "scripts" => {
+            let dir = crate::scripts::scripts_dir();
+            std::fs::create_dir_all(&dir)?;
+            dir
+        }
+        other => return Err(CmdError::Internal(format!("unknown open target: {other}"))),
+    };
+    std::process::Command::new("open").arg(path).spawn()?;
+    Ok(())
+}
+
 /// Open (or focus) the settings window.
 #[tauri::command]
 pub fn open_settings(app: AppHandle) -> CmdResult<()> {
