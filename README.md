@@ -26,7 +26,7 @@ Two values govern every decision:
   Enter copies — no Accessibility permission, ever
 - **`2*(14.5+3)`** — inline math, Enter copies; **`:fire`** — emoji picker
 - **URLs** — type one to open it, or add it as a quicklink (name, browser, favicon)
-  in-panel; `{query}` templates make Raycast-style quicklinks (`yt cute otters ⏎`)
+  in-panel; `{query}` templates make Raycast-style quicklinks (`yt cute otters ⏎`; a bare trigger opens the site itself)
 - **Search fallback** — dead-end queries offer "Search Google for …" (engine configurable)
 - **System commands** — sleep displays, lock, empty trash, dark mode, caffeinate…
 - **⌥⏎** — secondary actions: reveal app in Finder, copy URL, delete clip

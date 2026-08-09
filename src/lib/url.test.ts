@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectUrl, fillQuery } from './url';
+import { detectUrl, fillQuery, quicklinkTarget } from './url';
 
 describe('detectUrl', () => {
   it('accepts explicit schemes as-is', () => {
@@ -55,5 +55,44 @@ describe('fillQuery', () => {
     expect(fillQuery('https://x.dev/{query}/compare/{query}', 'a b')).toBe(
       'https://x.dev/a%20b/compare/a%20b'
     );
+  });
+});
+
+describe('quicklinkTarget', () => {
+  it('fills the template when a query is given', () => {
+    expect(
+      quicklinkTarget(
+        'https://chill.institute/search?q={query}',
+        'captain hook'
+      )
+    ).toBe('https://chill.institute/search?q=captain%20hook');
+  });
+
+  it('falls back to the site root when the query is empty', () => {
+    expect(
+      quicklinkTarget('https://chill.institute/search?q={query}', '')
+    ).toBe('https://chill.institute/');
+    expect(
+      quicklinkTarget('https://chill.institute/search?q={query}', '  ')
+    ).toBe('https://chill.institute/');
+  });
+
+  it('roots to the origin, dropping any path', () => {
+    expect(
+      quicklinkTarget(
+        'https://www.youtube.com/results?search_query={query}',
+        ''
+      )
+    ).toBe('https://www.youtube.com/');
+  });
+
+  it('keeps a plain link (no placeholder) as-is when empty', () => {
+    expect(quicklinkTarget('https://news.ycombinator.com/newest', '')).toBe(
+      'https://news.ycombinator.com/newest'
+    );
+  });
+
+  it('falls back to filled template if the URL cannot be parsed', () => {
+    expect(quicklinkTarget('not a url {query}', '')).toBe('not a url ');
   });
 });

@@ -80,3 +80,21 @@ export function detectUrl(query: string): string | null {
 export function fillQuery(template: string, query: string): string {
   return template.replaceAll('{query}', encodeURIComponent(query));
 }
+
+/**
+ * Where a quicklink trigger goes. With a query: the filled template. Bare trigger on a
+ * search-style template ({query} present): the site root — `chill ⏎` means "take me to
+ * chill.institute", not "search for nothing". Plain links and unparseable templates fall
+ * back to fill-as-is.
+ */
+export function quicklinkTarget(template: string, query: string): string {
+  const q = query.trim();
+  if (q.length > 0 || !template.includes('{query}')) {
+    return fillQuery(template, q);
+  }
+  try {
+    return new URL(fillQuery(template, '')).origin + '/';
+  } catch {
+    return fillQuery(template, '');
+  }
+}

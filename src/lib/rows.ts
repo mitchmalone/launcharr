@@ -2,7 +2,7 @@ import { searchEmoji } from './emoji';
 import { evaluate, formatResult } from './math';
 import { fuzzyMatch } from './matcher';
 import { rank, MAX_RESULTS } from './ranking';
-import { detectUrl, fillQuery } from './url';
+import { detectUrl, fillQuery, quicklinkTarget } from './url';
 import type { Clip, FrecencyMap, IndexItem, Link, ScriptItem } from './types';
 
 /**
@@ -196,23 +196,35 @@ export function draftRows(
   ];
 }
 
-/** Raycast-style quicklink in trigger mode: `yt cute otters ⏎`. */
+/** Raycast-style quicklink in trigger mode: `yt cute otters ⏎`; bare trigger opens the site. */
 export function quicklinkRows(link: Link, args: string): Row[] {
+  const query = args.trim();
+  const url = quicklinkTarget(link.url, query);
+  const subtitle = query || hostOf(url);
   return [
     {
       key: `quicklink-${link.trigger ?? link.name}`,
-      title: `${link.name} ▸ ${args.trim() || 'type a query…'}`,
+      title: `${link.name} ▸ ${subtitle}`,
       hint: 'quicklink',
       positions: [],
       icon: null,
       glyph: '↗',
-      enter: { kind: 'open-url', url: fillQuery(link.url, args.trim()) },
+      enter: { kind: 'open-url', url },
       alt: {
         label: 'copy url',
-        enter: { kind: 'copy', text: fillQuery(link.url, args.trim()) },
+        enter: { kind: 'copy', text: url },
       },
     },
   ];
+}
+
+/** Bare hostname of a URL for display, the URL itself if unparseable. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }
 
 export function scriptRows(items: ScriptItem[]): Row[] {

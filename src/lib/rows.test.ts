@@ -76,12 +76,25 @@ describe('quicklinkRows', () => {
     });
   });
 
-  it('empty args prompt for a query but still open the base search', () => {
+  it('bare trigger goes to the site root, titled with the hostname', () => {
     const rows = quicklinkRows(yt, '');
-    expect(rows[0].title).toBe('YouTube ▸ type a query…');
+    expect(rows[0].title).toBe('YouTube ▸ www.youtube.com');
     expect(rows[0].enter).toEqual({
       kind: 'open-url',
-      url: 'https://www.youtube.com/results?search_query=',
+      url: 'https://www.youtube.com/',
+    });
+  });
+
+  it('bare trigger on a plain link (no placeholder) opens the link itself', () => {
+    const hn: Link = {
+      name: 'HN newest',
+      trigger: 'hn',
+      url: 'https://news.ycombinator.com/newest',
+    };
+    const rows = quicklinkRows(hn, '');
+    expect(rows[0].enter).toEqual({
+      kind: 'open-url',
+      url: 'https://news.ycombinator.com/newest',
     });
   });
 });
