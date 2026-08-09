@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_THEMES, resolveTheme, themeNames, themeVars } from './themes';
+import {
+  BUILTIN_THEMES,
+  isLightColor,
+  resolveTheme,
+  themeNames,
+  themeVars,
+} from './themes';
 
 describe('resolveTheme', () => {
   it('returns a built-in by name', () => {
@@ -27,13 +33,42 @@ describe('resolveTheme', () => {
 
 describe('themeNames', () => {
   it('lists built-ins first, then customs, deduped', () => {
+    const builtins = Object.keys(BUILTIN_THEMES);
     expect(themeNames({ zebra: {}, dracula: {} })).toEqual([
+      ...builtins,
+      'zebra',
+    ]);
+    expect(themeNames(undefined)).toEqual(builtins);
+  });
+
+  it('ships the full built-in roster', () => {
+    for (const name of [
       'launcharr',
       'dracula',
       'terminal',
-      'zebra',
-    ]);
-    expect(themeNames(undefined)).toEqual(['launcharr', 'dracula', 'terminal']);
+      'amber',
+      'catppuccin',
+      'gruvbox',
+      'monokai',
+      'nord',
+      'one-dark',
+      'rose-pine',
+      'solarized',
+      'solarized-light',
+      'synthwave',
+      'tokyo-night',
+    ]) {
+      expect(BUILTIN_THEMES[name], name).toBeDefined();
+    }
+  });
+});
+
+describe('isLightColor', () => {
+  it('classifies the light and dark solarized grounds', () => {
+    expect(isLightColor(BUILTIN_THEMES['solarized-light'].bg)).toBe(true);
+    expect(isLightColor(BUILTIN_THEMES.solarized.bg)).toBe(false);
+    expect(isLightColor('#fff')).toBe(true);
+    expect(isLightColor('rgba(0,0,0,0.9)')).toBe(false);
   });
 });
 
@@ -50,5 +85,12 @@ describe('themeVars', () => {
     expect(vars['--bg']).toBe(BUILTIN_THEMES.dracula.bg);
     expect(vars['--panel']).toBe(BUILTIN_THEMES.dracula.surface);
     expect(vars['--danger']).toBe(BUILTIN_THEMES.dracula.danger);
+  });
+
+  it('renders the checkmark glyph in the theme fg', () => {
+    const vars = themeVars(BUILTIN_THEMES['solarized-light'], 'settings');
+    expect(vars['--check']).toContain(
+      encodeURIComponent(BUILTIN_THEMES['solarized-light'].fg)
+    );
   });
 });

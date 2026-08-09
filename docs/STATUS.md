@@ -58,7 +58,7 @@
   checkboxes/radios; `chill ⏎` → site root, `chill captain hook ⏎` → templated search.
 - **Home move + themes** (2026-08-10): `~/.launcharr` is home (auto-migrated from
   `~/.config/launcharr`); tray slimmed, config/scripts buttons in settings (new `open_path`
-  command — DECISIONS); theme system with `launcharr`/`dracula`/`terminal` built-ins +
+  command — DECISIONS); theme system with 14 built-ins (launcharr, dracula, terminal, amber CRT, catppuccin, gruvbox, monokai, nord, one-dark, rose-pine, solarized, solarized-light, synthwave, tokyo-night) +
   user themes in config.json, hot-applied to panel and settings. The panel now wears the
   brand palette by default. Plan: `plans/done/config-home-and-themes.md`.
   **Needs eyeball pass:** theme switch restyles both windows live; migration kept config +
