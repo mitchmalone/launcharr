@@ -5,6 +5,26 @@
 
 ---
 
+### 2026-08-10 · Settings goes native-structured: autosave, toolbar tabs, hidden titlebar, hotkey recorder
+
+- **Decision.** The settings window keeps the terminal skin but adopts native macOS settings
+  structure (Raycast as the reference): no Save button — every edit autosaves debounced
+  (~400ms) and hot-applies via the existing watcher; toolbar-style tabs with Lucide icons
+  (new dep `lucide-react`, tree-shaken); `TitleBarStyle::Overlay` + hidden title, tab strip
+  is the drag region; hotkeys and custom shortcuts are recorded by keypress
+  (`HotkeyRecorder` over pure `acceleratorFromEvent`), not typed as strings. Green is
+  reserved for the sigil glyph; interactive accents are the blue.
+- **Why.** The v0.2.0 form read as a web page: stacked labels, bordered cards, fixed footer
+  with a green Save button, free-text accelerator fields. The web-page tells were structural
+  (Save button, full-width inputs, top-labels), not the terminal identity — so we fixed the
+  structure and kept the skin. Autosave was nearly free: the config watcher already
+  hot-applied everything.
+- **Mechanics.** Echo guard: our own `write_config` fires `config-changed`; the window skips
+  events matching the last-written JSON so a stale round-trip can't clobber in-flight edits.
+  Recorder derives tokens from `event.code` (layout-independent); global-hotkey's
+  `parse_key` accepts friendly aliases ("S", "3", "Space", "Up") — verified against crate
+  source, format unchanged from hand-written configs.
+
 ### 2026-08-09 · Network carve-out: user-initiated favicon fetch at quicklink-add time
 
 - **Decision.** The add-quicklink flow fetches the site's favicon (apple-touch-icon and

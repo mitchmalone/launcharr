@@ -3,7 +3,7 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-08 (late)
+> Last updated: 2026-08-10
 
 ## Done
 
@@ -46,8 +46,19 @@
   quicklinks (`yt cute otters ⏎` — example seeded in config). Plan:
   `plans/done/urls-and-search.md`.
 
+## Done (latest)
+
+- **Settings native polish** (2026-08-10): autosave (no Save button, echo-guarded against the
+  watcher loop), Lucide toolbar tabs, hidden titlebar (`Overlay` + hidden title, tab strip
+  drags), press-to-record hotkey pills for summon + custom shortcuts, two-column native rows,
+  green demoted to sigil-glyph-only. New dep: `lucide-react`. Decision + gotcha logged.
+  Plan: `plans/done/settings-native-polish.md`. **Needs eyeball pass** (see checklist).
+
 ## In progress
 
+- **Settings eyeball checklist** (only hands can verify): traffic lights sit right over the
+  tab strip; window drags by the strip; recorder captures ⌘⇧S-style chords and Esc cancels;
+  edits hot-apply with no Save; hand-editing config.json live-updates the open window.
 - **Mitch's morning checklist** (the parts only hands can verify):
   1. `lorem 2 ⏎` → paste somewhere. `json` with JSON on the clipboard. `ip ⏎`.
   2. `2*(14.5+3)` → `= 35` top row, Enter, ⌘V.

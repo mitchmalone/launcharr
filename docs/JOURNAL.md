@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-08-10 · Autosaving a config the app also watches needs an echo guard
+
+Settings autosave + the config FSEvents watcher form a loop: `write_config` → watcher fires
+`config-changed` → window `setConfig(payload)`. If the user typed during the round-trip, the
+event's (older) payload would clobber their edit. Guard: remember the JSON we last wrote and
+drop matching events; genuinely-external edits (hand-editing config.json) still flow through.
+Also: `global-hotkey`'s `parse_key` accepts friendly aliases ("S", "Space", "Up") _and_ W3C
+code names — checked the crate source rather than trusting docs; the recorder emits the
+friendly form so hand-written and recorded configs look alike.
+
 ### 2026-08-08 · A script named json.py shadows python's stdlib for the whole scripts dir
 
 The bundled-scripts test caught it before prod: python puts the invoked script's directory at
