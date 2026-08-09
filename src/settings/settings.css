@@ -10,12 +10,14 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0d1117;
-  --panel: #161b22;
-  --border: #30363d;
-  --fg: #e6edf3;
-  --dim: #7d8590;
-  --accent: #58a6ff;
+  /* Brand palette from the app icon: #1C1D2D ground, #FF6B8C mark. Panel and
+     border are the ground lightened in the same hue family. */
+  --bg: #1c1d2d;
+  --panel: #26283b;
+  --border: #3a3c56;
+  --fg: #e9eaf4;
+  --dim: #8b8dab;
+  --accent: #ff6b8c;
   --sigil: #3fb950;
   --danger: #f85149;
 }
@@ -250,7 +252,15 @@ button {
 
 .about {
   text-align: center;
-  padding-top: 48px;
+  padding-top: 40px;
+}
+
+.appicon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22%;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.35);
 }
 
 .wordmark {

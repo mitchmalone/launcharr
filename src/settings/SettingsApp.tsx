@@ -13,6 +13,7 @@ import {
 
 import type { Config, Link } from '../lib/types';
 import HotkeyRecorder from './HotkeyRecorder';
+import iconUrl from './launcharr.svg';
 
 /**
  * The settings window: a live view over config.json. Every edit autosaves (debounced);
@@ -333,6 +334,7 @@ function AboutTab() {
   }, []);
   return (
     <div className="about">
+      <img className="appicon" src={iconUrl} alt="launcharr icon" />
       <p className="wordmark">
         <span className="sigil">❯</span> launcharr
         {version ? ` v${version}` : ''}
