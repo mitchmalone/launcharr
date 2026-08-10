@@ -70,8 +70,9 @@ if [[ "$DRY" == 0 ]] && grep -qE '\| _ (ms|MB)' "$NOTES"; then
   die "release notes still contain placeholder perf numbers"
 fi
 [[ -f "$APP_DIR/LICENSE" ]] || echo "⚠ no LICENSE file — fine for now, blocks nothing, but fix it"
-[[ -f "$APP_DIR/.env" ]] || die ".env missing (needs NOTION_API_KEY for the version-tracker update)"
-NOTION_API_KEY=$(sed -n 's/^NOTION_API_KEY=//p' "$APP_DIR/.env" | head -1 | tr -d '"' | tr -d "'")
+# .env lives at the PARENT project root (beside the two repos), never in a repo.
+[[ -f "$PARENT_DIR/.env" ]] || die ".env missing at $PARENT_DIR (needs NOTION_API_KEY)"
+NOTION_API_KEY=$(sed -n 's/^NOTION_API_KEY=//p' "$PARENT_DIR/.env" | head -1 | tr -d '"' | tr -d "'")
 [[ -n "$NOTION_API_KEY" ]] || die "NOTION_API_KEY not set in .env"
 if [[ "$SIGNED" == 1 ]]; then
   # NB: never `cmd | grep -q` under pipefail — grep's early exit SIGPIPEs the writer

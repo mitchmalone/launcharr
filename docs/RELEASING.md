@@ -40,7 +40,7 @@ What the script does, in order — every step fail-fast, nothing optional:
    hand-edited), runs the web gates, pushes (Vercel deploys); bumps the Homebrew cask if
    `../homebrew-launcharr` exists.
 10. **Notion + mitchmalone.com** — sets `Version` on the Launcharr row of the projects
-    database (via `NOTION_API_KEY` in this repo's `.env`, gitignored) and POSTs the
+    database (via `NOTION_API_KEY` in the parent project root's `.env`) and POSTs the
     mitchmalone.com Vercel deploy hook.
 
 Post-release (human): update `docs/STATUS.md`; announcing anywhere is a deliberate,
