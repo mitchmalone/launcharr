@@ -26,3 +26,6 @@ dist-ssr
 # secrets
 .env
 .env.*
+
+# claude session worktrees
+.claude/worktrees/

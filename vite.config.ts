@@ -8,6 +8,11 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  test: {
+    // Session worktrees nest under .claude/ — never run their copies from here.
+    exclude: ['**/node_modules/**', '**/.claude/**'],
+  },
+
   build: {
     rollupOptions: {
       input: {
