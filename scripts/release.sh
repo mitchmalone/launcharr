@@ -157,7 +157,8 @@ confirm "upgrade-path smoke test passed?"
 
 step "7/9 commit, tag, push"
 git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock "docs/releases/$TAG.md"
-git commit -m "chore: release $TAG"
+# Rerun-safe: a prior attempt may have already committed the bump.
+git diff --cached --quiet || git commit -m "chore: release $TAG"
 git tag "$TAG"
 git push origin main --tags
 
