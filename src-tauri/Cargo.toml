@@ -1,6 +1,6 @@
 [package]
 name = "launcharr"
-version = "0.2.0"
+version = "0.3.0"
 description = "An app launcher for pirates"
 authors = ["Mitch Malone"]
 edition = "2021"
