@@ -39,6 +39,9 @@ What the script does, in order — every step fail-fast, nothing optional:
 9. **Website + tap** — writes `../launcharr-web/src/lib/release.json` (generated, never
    hand-edited), runs the web gates, pushes (Vercel deploys); bumps the Homebrew cask if
    `../homebrew-launcharr` exists.
+10. **Notion + mitchmalone.com** — sets `Version` on the Launcharr row of the projects
+    database (via `NOTION_API_KEY` in this repo's `.env`, gitignored) and POSTs the
+    mitchmalone.com Vercel deploy hook.
 
 Post-release (human): update `docs/STATUS.md`; announcing anywhere is a deliberate,
 separate decision.

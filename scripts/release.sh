@@ -16,6 +16,9 @@ WEB_DIR="$PARENT_DIR/launcharr-web"
 TAP_DIR="$PARENT_DIR/homebrew-launcharr"
 REPO="mitchmalone/launcharr"
 NOTARY_PROFILE="launcharr-notary"
+# Launcharr row in Mitch's Notion projects database (NOT the Beeptui row 3b83…c6).
+NOTION_PAGE_ID="3b63d7d179ad80fc934cded657c66ce3"
+MMCOM_DEPLOY_HOOK="https://api.vercel.com/v1/integrations/deploy/prj_Gksjnwsb3VkCo65WfbisbIkOi2Ke/epPY2KlGri"
 
 die() { echo "✗ $*" >&2; exit 1; }
 step() { echo; echo "── $*"; }
@@ -51,7 +54,7 @@ ZIP="launcharr-$VERSION.zip"
 DMG="launcharr-$VERSION.dmg"
 DL="https://github.com/$REPO/releases/download/$TAG"
 
-step "1/9 preflight"
+step "1/10 preflight"
 for tool in pnpm cargo gh shasum ditto jq; do
   command -v "$tool" >/dev/null 2>&1 || die "missing tool: $tool"
 done
@@ -67,6 +70,9 @@ if [[ "$DRY" == 0 ]] && grep -qE '\| _ (ms|MB)' "$NOTES"; then
   die "release notes still contain placeholder perf numbers"
 fi
 [[ -f "$APP_DIR/LICENSE" ]] || echo "⚠ no LICENSE file — fine for now, blocks nothing, but fix it"
+[[ -f "$APP_DIR/.env" ]] || die ".env missing (needs NOTION_API_KEY for the version-tracker update)"
+NOTION_API_KEY=$(sed -n 's/^NOTION_API_KEY=//p' "$APP_DIR/.env" | head -1 | tr -d '"' | tr -d "'")
+[[ -n "$NOTION_API_KEY" ]] || die "NOTION_API_KEY not set in .env"
 if [[ "$SIGNED" == 1 ]]; then
   # NB: never `cmd | grep -q` under pipefail — grep's early exit SIGPIPEs the writer
   # and fails the pipeline. Capture first, grep the variable.
@@ -77,7 +83,7 @@ if [[ "$SIGNED" == 1 ]]; then
     || die "notary profile '$NOTARY_PROFILE' not stored (xcrun notarytool store-credentials $NOTARY_PROFILE)"
 fi
 
-step "2/9 gates"
+step "2/10 gates"
 cd "$APP_DIR"
 pnpm typecheck && pnpm lint && pnpm test
 (cd src-tauri && cargo test && cargo clippy --all-targets -- -D warnings)
@@ -93,11 +99,12 @@ if [[ "$DRY" == 1 ]]; then
   8. gh release create $TAG with artifacts + docs/releases/$TAG.md
   9. write $WEB_DIR/src/lib/release.json, verify web gates, push (Vercel deploys);
      update tap at $TAP_DIR if present
+ 10. notion Launcharr row Version → $VERSION; POST mitchmalone.com deploy hook
 EOF
   exit 0
 fi
 
-step "3/9 version bump → $VERSION"
+step "3/10 version bump → $VERSION"
 jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
 jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > t.tmp && mv t.tmp src-tauri/tauri.conf.json
 sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
@@ -106,7 +113,7 @@ for v in $(jq -r .version package.json) $(jq -r .version src-tauri/tauri.conf.js
   [[ "$v" == "$VERSION" ]] || die "version bump mismatch"
 done
 
-step "4/9 build"
+step "4/10 build"
 if [[ "$SIGNED" == 1 ]]; then
   export APPLE_SIGNING_IDENTITY="$IDENTITY"
 else
@@ -116,7 +123,7 @@ pnpm tauri build
 APP_BUNDLE="src-tauri/target/release/bundle/macos/launcharr.app"
 DMG_SRC=$(ls src-tauri/target/release/bundle/dmg/*.dmg | head -1)
 
-step "5/9 verify, notarize, package"
+step "5/10 verify, notarize, package"
 # The tauri bundler only auto-notarizes via raw APPLE_ID/APPLE_PASSWORD env vars; we
 # notarize explicitly with the stored keychain profile instead — no secrets in env.
 notarize() { # $1: file to submit
@@ -149,24 +156,24 @@ cp "$DMG_SRC" "$DIST/$DMG"
 (cd "$DIST" && shasum -a 256 "$ZIP" "$DMG" > SHA256SUMS)
 cat "$DIST/SHA256SUMS"
 
-step "6/9 manual smoke tests (the two things a script can't feel)"
+step "6/10 manual smoke tests (the two things a script can't feel)"
 echo "  fresh-profile: mv ~/.config/launcharr{,.bak}; open $DIST-extracted app; first-run hint, budgets in range; restore."
 confirm "fresh-profile smoke test passed?"
 echo "  upgrade-path: install this build over the running version; config/themes/frecency/scripts all intact."
 confirm "upgrade-path smoke test passed?"
 
-step "7/9 commit, tag, push"
+step "7/10 commit, tag, push"
 git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock "docs/releases/$TAG.md"
 # Rerun-safe: a prior attempt may have already committed the bump.
 git diff --cached --quiet || git commit -m "chore: release $TAG"
 git tag "$TAG"
 git push origin main --tags
 
-step "8/9 GitHub release"
+step "8/10 GitHub release"
 gh release create "$TAG" "$DIST/$ZIP" "$DIST/$DMG" "$DIST/SHA256SUMS" \
   --repo "$REPO" --title "launcharr $TAG" --notes-file "$NOTES"
 
-step "9/9 website + tap"
+step "9/10 website + tap"
 ZIP_SHA=$(awk -v f="$ZIP" '$2==f{print $1}' "$DIST/SHA256SUMS")
 DMG_SHA=$(awk -v f="$DMG" '$2==f{print $1}' "$DIST/SHA256SUMS")
 jq -n --arg v "$VERSION" --arg d "$(date +%Y-%m-%d)" \
@@ -187,6 +194,19 @@ if [[ -d "$TAP_DIR" ]]; then
 else
   echo "⚠ no tap at $TAP_DIR — create mitchmalone/homebrew-launcharr and re-run step 9 by hand (docs/RELEASING.md)"
 fi
+
+step "10/10 notion version + mitchmalone.com deploy"
+notion_resp=$(curl -sf -X PATCH "https://api.notion.com/v1/pages/$NOTION_PAGE_ID" \
+  -H "Authorization: Bearer $NOTION_API_KEY" \
+  -H "Notion-Version: 2022-06-28" \
+  -H "Content-Type: application/json" \
+  -d "{\"properties\":{\"Version\":{\"rich_text\":[{\"text\":{\"content\":\"$VERSION\"}}]}}}") \
+  || die "notion Version update failed (HTTP error)"
+grep -q '"object":"page"' <<<"$notion_resp" \
+  || { echo "$notion_resp" | head -3; die "notion Version update: unexpected response"; }
+echo "  notion: Launcharr row Version → $VERSION"
+curl -sf -X POST "$MMCOM_DEPLOY_HOOK" >/dev/null || die "mitchmalone.com deploy hook failed"
+echo "  mitchmalone.com: deploy triggered"
 
 echo
 echo "✔ launcharr $TAG released. Post-release: update docs/STATUS.md; announce (deliberate, optional)."
