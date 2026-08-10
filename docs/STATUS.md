@@ -73,6 +73,14 @@
   Blocked on: Developer ID cert, notary profile, tap repo, LICENSE pick (checklist in
   RELEASING.md). Plan: `plans/done/project-restructure-and-release-pipeline.md`.
 
+- **v0.3.0 RELEASED** (2026-08-10, unsigned interim): first public release — repo made
+  public, GitHub Release (zip/dmg/SHA256SUMS), tap live (`brew install
+mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
+  Download, Notion Version row + mitchmalone.com deploy hook fired (release.sh step 10).
+  Shipped `--unsigned` because Apple's first-submission review exceeded an hour;
+  **v0.3.1 signed release queued** — notes drafted, fires when notarization clears
+  (watcher running). Mitch's install is brew-managed now.
+
 ## In progress
 
 - **Settings eyeball checklist** (only hands can verify): traffic lights sit right over the

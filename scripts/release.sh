@@ -64,6 +64,8 @@ for repo_dir in "$APP_DIR" "$WEB_DIR"; do
   [[ "$(git -C "$repo_dir" branch --show-current)" == "main" ]] || die "not on main: $repo_dir"
 done
 gh auth status >/dev/null 2>&1 || die "gh not authenticated"
+visibility=$(gh repo view "$REPO" --json visibility --jq .visibility)
+[[ "$visibility" == "PUBLIC" ]] || die "repo $REPO is $visibility — release assets would 404 for brew and the website"
 git -C "$APP_DIR" rev-parse "$TAG" >/dev/null 2>&1 && die "tag $TAG already exists"
 [[ -f "$NOTES" ]] || die "release notes missing: docs/releases/$TAG.md (copy _TEMPLATE.md; notes are written BEFORE releasing)"
 if [[ "$DRY" == 0 ]] && grep -qE '\| _ (ms|MB)' "$NOTES"; then
