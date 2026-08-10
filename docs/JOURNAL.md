@@ -6,6 +6,15 @@
 
 ---
 
+### 2026-08-10 · Two signing gotchas from the first real release run
+
+(1) `codesign -dv` does NOT print the certificate chain — grepping it for "Developer ID"
+always fails; the Authority= lines only appear at `-dvv`. (2) The tauri bundler
+auto-notarizes only via raw `APPLE_ID`/`APPLE_PASSWORD`/`APPLE_TEAM_ID` (or API key) env
+vars — it ignores notarytool keychain profiles, and skips silently with just a Warn line.
+release.sh now notarizes explicitly (`notarytool submit --keychain-profile --wait`, grep
+"status: Accepted", staple, re-zip the stapled app) so no secrets sit in env.
+
 ### 2026-08-10 · Moving the repo invalidates cargo's build cache with baked absolute paths
 
 After restructuring to `<project>/launcharr`, `cargo` builds failed reading

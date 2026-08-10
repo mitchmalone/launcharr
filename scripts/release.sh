@@ -106,23 +106,41 @@ done
 step "4/9 build"
 if [[ "$SIGNED" == 1 ]]; then
   export APPLE_SIGNING_IDENTITY="$IDENTITY"
-  export APPLE_KEYCHAIN_PROFILE="$NOTARY_PROFILE"   # tauri notarizes via stored profile
 else
-  unset APPLE_SIGNING_IDENTITY APPLE_KEYCHAIN_PROFILE 2>/dev/null || true
+  unset APPLE_SIGNING_IDENTITY 2>/dev/null || true
 fi
 pnpm tauri build
 APP_BUNDLE="src-tauri/target/release/bundle/macos/launcharr.app"
 DMG_SRC=$(ls src-tauri/target/release/bundle/dmg/*.dmg | head -1)
 
-step "5/9 verify + package"
+step "5/9 verify, notarize, package"
+# The tauri bundler only auto-notarizes via raw APPLE_ID/APPLE_PASSWORD env vars; we
+# notarize explicitly with the stored keychain profile instead — no secrets in env.
+notarize() { # $1: file to submit
+  local out
+  out=$(xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait 2>&1) \
+    || { echo "$out" | tail -5; die "notarytool submit failed for $1"; }
+  echo "$out" | grep -q "status: Accepted" \
+    || { echo "$out" | tail -8; die "notarization not accepted for $1"; }
+}
+rm -rf "$DIST" && mkdir -p "$DIST"
 if [[ "$SIGNED" == 1 ]]; then
-  codesign -dv "$APP_BUNDLE" 2>&1 | grep -q "Developer ID" || die "app not Developer ID signed"
-  spctl -a -vv "$APP_BUNDLE" 2>&1 | grep -q "accepted" || die "Gatekeeper rejected the app (notarization missing?)"
+  # codesign only prints the cert chain at -dvv; -dv shows no Authority lines.
+  codesign -dvv "$APP_BUNDLE" 2>&1 | grep -q "Authority=Developer ID Application" \
+    || die "app not Developer ID signed"
+  ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"
+  echo "  notarizing app (zip)…"
+  notarize "$DIST/$ZIP"
+  xcrun stapler staple "$APP_BUNDLE"
+  rm "$DIST/$ZIP" && ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"   # re-zip stapled app
+  echo "  notarizing dmg…"
+  notarize "$DMG_SRC"
+  xcrun stapler staple "$DMG_SRC"
+  spctl -a -vv "$APP_BUNDLE" 2>&1 | grep -q "accepted" || die "Gatekeeper rejected the app"
 else
   echo "⚠ UNSIGNED build — brew/source install only; do not advertise the dmg/zip"
+  ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"
 fi
-rm -rf "$DIST" && mkdir -p "$DIST"
-ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"
 cp "$DMG_SRC" "$DIST/$DMG"
 (cd "$DIST" && shasum -a 256 "$ZIP" "$DMG" > SHA256SUMS)
 cat "$DIST/SHA256SUMS"
