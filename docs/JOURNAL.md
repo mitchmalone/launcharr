@@ -6,6 +6,14 @@
 
 ---
 
+### 2026-08-10 · bash + pipefail + `grep -q` silently fails healthy pipelines
+
+`codesign -dvv … | grep -q pattern` under `set -euo pipefail` fails EVEN WHEN the pattern
+matches: grep -q exits at first match, codesign takes a SIGPIPE mid-write (exit 141),
+pipefail surfaces it. Reproducible in /bin/bash 3.2, invisible in zsh (which is why my
+manual verification passed). Rule for release.sh: capture command output to a variable
+first, grep the variable — never pipe into early-exiting consumers under pipefail.
+
 ### 2026-08-10 · Two signing gotchas from the first real release run
 
 (1) `codesign -dv` does NOT print the certificate chain — grepping it for "Developer ID"

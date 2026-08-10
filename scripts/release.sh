@@ -68,7 +68,10 @@ if [[ "$DRY" == 0 ]] && grep -qE '\| _ (ms|MB)' "$NOTES"; then
 fi
 [[ -f "$APP_DIR/LICENSE" ]] || echo "⚠ no LICENSE file — fine for now, blocks nothing, but fix it"
 if [[ "$SIGNED" == 1 ]]; then
-  IDENTITY=$(security find-identity -v -p codesigning | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"') \
+  # NB: never `cmd | grep -q` under pipefail — grep's early exit SIGPIPEs the writer
+  # and fails the pipeline. Capture first, grep the variable.
+  identities=$(security find-identity -v -p codesigning)
+  IDENTITY=$(grep -o '"Developer ID Application:[^"]*"' <<<"$identities" | head -1 | tr -d '"') \
     || die "no Developer ID Application identity in keychain (or pass --unsigned)"
   xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 \
     || die "notary profile '$NOTARY_PROFILE' not stored (xcrun notarytool store-credentials $NOTARY_PROFILE)"
@@ -126,8 +129,8 @@ notarize() { # $1: file to submit
 rm -rf "$DIST" && mkdir -p "$DIST"
 if [[ "$SIGNED" == 1 ]]; then
   # codesign only prints the cert chain at -dvv; -dv shows no Authority lines.
-  codesign -dvv "$APP_BUNDLE" 2>&1 | grep -q "Authority=Developer ID Application" \
-    || die "app not Developer ID signed"
+  sig=$(codesign -dvv "$APP_BUNDLE" 2>&1)
+  grep -q "Authority=Developer ID Application" <<<"$sig" || die "app not Developer ID signed"
   ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"
   echo "  notarizing app (zip)…"
   notarize "$DIST/$ZIP"
@@ -136,7 +139,8 @@ if [[ "$SIGNED" == 1 ]]; then
   echo "  notarizing dmg…"
   notarize "$DMG_SRC"
   xcrun stapler staple "$DMG_SRC"
-  spctl -a -vv "$APP_BUNDLE" 2>&1 | grep -q "accepted" || die "Gatekeeper rejected the app"
+  gatekeeper=$(spctl -a -vv "$APP_BUNDLE" 2>&1 || true)
+  grep -q "accepted" <<<"$gatekeeper" || { echo "$gatekeeper"; die "Gatekeeper rejected the app"; }
 else
   echo "⚠ UNSIGNED build — brew/source install only; do not advertise the dmg/zip"
   ditto -c -k --keepParent "$APP_BUNDLE" "$DIST/$ZIP"
