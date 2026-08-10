@@ -5,6 +5,18 @@
 
 ---
 
+### 2026-08-10 · Reversal: home stays ~/.config/launcharr (XDG)
+
+- **Decision.** The home-move below is reversed same-day, pre-release: launcharr's home is
+  `~/.config/launcharr` after all. `migrate_home` now points the other way, so a dir at
+  `~/.launcharr` (only Mitch's machine ever had one) moves back automatically. Everything
+  else from that entry — settings Hackables buttons, `open_path`, slimmed tray, themes —
+  stands.
+- **Why.** Mitch's call on reflection: less clutter for the user. XDG is where this
+  audience's dotfile tooling already looks; top-level home dirs are for platform tools
+  with toolchains/caches (cargo, oh-my-zsh), and our scripts are user config in spirit,
+  which `~/.config/launcharr/scripts` expresses fine.
+
 ### 2026-08-10 · Home moves to ~/.launcharr; config/scripts access lives in settings; themes land
 
 - **Decision (home).** launcharr's home is `~/.launcharr` (config.json + scripts/), migrated

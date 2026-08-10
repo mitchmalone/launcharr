@@ -12,7 +12,7 @@
   157ms, native summon 3.7ms, RSS ~90MB. Plans in `plans/done/`.
 - **v1.1 built overnight** (2026-08-08, Sol parity — scope in DECISIONS, contract in
   `docs/SCRIPTS.md`):
-  - **Script protocol** (v2 pulled forward): `~/.launcharr/scripts/`, manifest/query,
+  - **Script protocol** (v2 pulled forward): `~/.config/launcharr/scripts/`, manifest/query,
     FSEvents-watched. Bundled: `lorem`, `json` (format clipboard), `ip` (local only).
   - **Clipboard history**: `clip` trigger, copy-on-Enter, concealed types never recorded,
     SQLite cap 200, `clip clear`.
@@ -56,8 +56,9 @@
 - **Brand colors + flat toggles + bare-trigger quicklinks** (2026-08-10): new app-icon SVG on
   About; settings on icon-blue `#1c1d2d` with pink `#ff6b8c` accents; flat accentless
   checkboxes/radios; `chill ⏎` → site root, `chill captain hook ⏎` → templated search.
-- **Home move + themes** (2026-08-10): `~/.launcharr` is home (auto-migrated from
-  `~/.config/launcharr`); tray slimmed, config/scripts buttons in settings (new `open_path`
+- **Home + themes** (2026-08-10): home stays `~/.config/launcharr` (briefly `~/.launcharr`,
+  reversed same day — DECISIONS; auto-migration heals either direction); tray slimmed,
+  config/scripts buttons in settings (new `open_path`
   command — DECISIONS); theme system with 14 built-ins (launcharr, dracula, terminal, amber CRT, catppuccin, gruvbox, monokai, nord, one-dark, rose-pine, solarized, solarized-light, synthwave, tokyo-night) +
   user themes in config.json, hot-applied to panel and settings. The panel now wears the
   brand palette by default. Plan: `plans/done/config-home-and-themes.md`.

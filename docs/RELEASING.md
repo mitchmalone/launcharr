@@ -54,7 +54,7 @@ spctl -a -vv src-tauri/target/release/bundle/macos/launcharr.app   # should say 
 
 - [ ] All gates green (`pnpm typecheck && pnpm lint && pnpm test`, `cargo test`, clippy)
 - [ ] Version bumped in all three files, `docs/STATUS.md` current
-- [ ] Fresh-profile smoke test: delete `~/.launcharr` + Application Support, launch,
+- [ ] Fresh-profile smoke test: delete `~/.config/launcharr` + Application Support, launch,
       first-run hint appears, budgets logged within range
 - [ ] Signed + notarized + `spctl` accepted
 - [ ] GitHub Release with zip + changelog from `git log`

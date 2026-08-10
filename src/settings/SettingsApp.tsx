@@ -201,8 +201,9 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
           </button>
         </div>
         <p className="hint">
-          This whole window is a view over <code>~/.launcharr/config.json</code>{' '}
-          — edit either place, changes apply live.
+          This whole window is a view over{' '}
+          <code>~/.config/launcharr/config.json</code> — edit either place,
+          changes apply live.
         </p>
       </Row>
     </>

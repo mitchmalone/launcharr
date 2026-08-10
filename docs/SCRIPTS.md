@@ -1,6 +1,6 @@
 # launcharr scripts
 
-Scripts are first-class citizens: drop an executable into `~/.launcharr/scripts/` and
+Scripts are first-class citizens: drop an executable into `~/.config/launcharr/scripts/` and
 its trigger word joins the launcher grammar — no restart, no store, no manifest file. The
 bundled scripts (`lorem`, `json`, `ip`) are reference implementations and yours to edit.
 

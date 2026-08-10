@@ -78,11 +78,13 @@ impl Default for Config {
 }
 
 pub fn config_dir() -> PathBuf {
-    // ~/.launcharr — deliberate: a terminal-nerd path, not ~/Library. Moved from
-    // ~/.config/launcharr on 2026-08-10 (see DECISIONS); migrate_home handles the rename.
+    // ~/.config/launcharr — XDG-style, deliberate: a terminal-nerd path, not ~/Library.
+    // Briefly ~/.launcharr on 2026-08-10, reversed same day (see DECISIONS); migrate_home
+    // brings any dir at the old spot back.
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(".launcharr")
+        .join(".config")
+        .join("launcharr")
 }
 
 pub fn config_path() -> PathBuf {
@@ -92,8 +94,7 @@ pub fn config_path() -> PathBuf {
 fn legacy_config_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(".config")
-        .join("launcharr")
+        .join(".launcharr")
 }
 
 /// One-shot home migration: rename `old` to `new` when `new` doesn't exist yet. Atomic on
@@ -127,7 +128,7 @@ pub fn load_or_create() -> CmdResult<(Config, bool)> {
     Ok((serde_json::from_str(&raw).unwrap_or_default(), false))
 }
 
-/// Watch ~/.launcharr for edits; reload, re-register the hotkey, notify the frontend.
+/// Watch ~/.config/launcharr for edits; reload, re-register the hotkey, notify the frontend.
 pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
         use notify::{RecursiveMode, Watcher};
