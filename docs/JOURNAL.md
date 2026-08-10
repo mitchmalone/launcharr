@@ -6,6 +6,13 @@
 
 ---
 
+### 2026-08-10 · Moving the repo invalidates cargo's build cache with baked absolute paths
+
+After restructuring to `<project>/launcharr`, `cargo` builds failed reading
+`.../mitch/launcharr/src-tauri/target/...` (the pre-move path) — tauri's build script
+caches absolute OUT_DIR paths. One-time `cargo clean` fixes it. Expect this any time the
+repo directory moves.
+
 ### 2026-08-10 · Autosaving a config the app also watches needs an echo guard
 
 Settings autosave + the config FSEvents watcher form a loop: `write_config` → watcher fires
