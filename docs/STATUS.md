@@ -77,9 +77,11 @@
   public, GitHub Release (zip/dmg/SHA256SUMS), tap live (`brew install
 mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   Download, Notion Version row + mitchmalone.com deploy hook fired (release.sh step 10).
-  Shipped `--unsigned` because Apple's first-submission review exceeded an hour;
-  **v0.3.1 signed release queued** — notes drafted, fires when notarization clears
-  (watcher running). Mitch's install is brew-managed now.
+  Shipped `--unsigned` because Apple's first-submission review exceeded an hour.
+- **v0.3.1 RELEASED, signed + notarized** (2026-08-10): identical features, Developer ID
+  signed, `spctl` accepted (`source=Notarized Developer ID`). Full pipeline incl. new
+  step 10 (Notion Version row + mitchmalone.com hook). Mitch runs the brew-managed 0.3.1.
+  `?`-mode AI spike in progress on `worktree-spike-ask-ai` (see its JOURNAL entries).
 
 ## In progress
 

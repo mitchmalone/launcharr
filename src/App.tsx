@@ -339,7 +339,7 @@ export default function App() {
     ? draft.step === 'name'
       ? 'name this quicklink…'
       : 'choose a browser (↑↓ then ⏎)'
-    : `${config.hotkey.toLowerCase().replace('+', ' ')} to summon · ! to run in terminal`;
+    : 'Search for apps and commands…';
 
   return (
     <div className={`panel ${parsed.mode}`}>

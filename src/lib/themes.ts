@@ -35,7 +35,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     fg: '#e9eaf4',
     dim: '#8b8dab',
     accent: '#ff6b8c',
-    sigil: '#3fb950',
+    sigil: '#ff6b8c',
     bang: '#d29922',
     selected: 'rgba(255, 107, 140, 0.14)',
     danger: '#f85149',
