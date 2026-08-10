@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-08-10 · Release channel: sign with the personal Developer ID now; Homebrew tap is the installer and the updater
+
+- **Decision (signing).** Releases are signed + notarized with Mitch's existing paid
+  personal Apple Developer enrollment, starting with v0.3.0. The business account can come
+  whenever; for direct-distributed macOS apps there's no signing continuity requirement —
+  switching identity later costs one re-prompt of the single Automation consent (launcharr
+  holds zero other permissions) and nothing else. Old releases stay notarized forever.
+  Waiting for the business account would block releases for a purely cosmetic gain (the
+  name on the ticket).
+- **Decision (distribution + updates).** Install channel is a personal Homebrew tap
+  (`mitchmalone/homebrew-launcharr`) pointing at the GitHub Release zip; build-from-source
+  is the alternative. The advertised path is brew (curl'd artifacts carry no quarantine
+  attribute, so even pre-signing builds run clean). **No in-app updater, ever, in this
+  design**: tauri-plugin-updater phones home on a schedule, which violates the zero-network
+  invariant; `brew upgrade` is the update story, on-brand for the audience. Never instruct
+  users to strip quarantine (`xattr`/`--no-quarantine`).
+- **Changelog.** Human-written release notes in the GitHub Release body ("what this
+  version is"), `git log` as appendix. No CHANGELOG.md file until someone asks.
+
 ### 2026-08-10 · Reversal: home stays ~/.config/launcharr (XDG)
 
 - **Decision.** The home-move below is reversed same-day, pre-release: launcharr's home is

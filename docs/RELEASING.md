@@ -12,15 +12,19 @@ pnpm install
 pnpm tauri build            # unsigned/ad-hoc local build
 ```
 
-## Signing + notarization (requires Mitch's Apple Developer account)
+## Signing + notarization
 
-One-time setup:
+Signed with Mitch's **paid personal** Apple Developer enrollment (decision 2026-08-10):
+no continuity requirement for direct distribution, so a later switch to a business
+account costs only one re-prompt of the iTerm2 Automation consent. Don't wait on the
+business account.
 
-1. Enroll in the Apple Developer Program (developer.apple.com, USD 99/yr).
-2. In Xcode (or the developer portal), create a **Developer ID Application** certificate
-   and install it in the login keychain.
-3. Create an App Store Connect API key (or use notarytool with Apple ID + app-specific
-   password) for notarization.
+One-time setup (enrollment already done):
+
+1. Create a **Developer ID Application** certificate — Xcode ▸ Settings ▸ Accounts ▸
+   Manage Certificates ▸ + — and confirm with `security find-identity -v -p codesigning`.
+2. Create an app-specific password at appleid.apple.com (or an App Store Connect API
+   key) and store it: `xcrun notarytool store-credentials launcharr-notary`.
 
 Per release:
 
@@ -45,10 +49,12 @@ spctl -a -vv src-tauri/target/release/bundle/macos/launcharr.app   # should say 
 
 - Zip the .app (`ditto -c -k --keepParent launcharr.app launcharr-<version>.zip`) and
   attach it to a GitHub Release on `mitchmalone/launcharr`.
-- Homebrew cask (once releases exist): a `homebrew-launcharr` tap with a cask pointing at
-  the release zip. Unsigned builds need `--no-quarantine`; don't ship that — sign first.
-- Auto-update (later): tauri-plugin-updater needs a signing keypair and a hosted
-  `latest.json`; blocked on signing being in place.
+- **Homebrew tap is the advertised install + update channel** (decision 2026-08-10):
+  `mitchmalone/homebrew-launcharr` with a cask pointing at the release zip. Updates are
+  `brew upgrade` — no in-app updater, ever (zero-network invariant). Never instruct users
+  to strip quarantine.
+- Release notes: human-written "what this version is" in the GitHub Release body,
+  `git log --oneline` since the last tag as appendix. No CHANGELOG.md file.
 
 ## Release checklist
 
