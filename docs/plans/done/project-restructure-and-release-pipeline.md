@@ -1,6 +1,6 @@
 ---
 title: Project restructure + deterministic release pipeline
-status: active
+status: done
 created: 2026-08-10
 updated: 2026-08-10
 links:
@@ -38,13 +38,13 @@ content is one constants file (`src/lib/site.ts`) — a clean seam for generated
 
 ## Steps
 
-- [ ] Restructure dirs; verify both repos healthy after move
-- [ ] Parent CLAUDE.md (layout, two-repo discipline, release entry point)
-- [ ] tauri.conf bundle targets += dmg
-- [ ] `scripts/release.sh` + `docs/releases/_TEMPLATE.md` (notes-file-required design)
-- [ ] Web: release.json + site.ts consumes it; conditional download links in page.tsx
-- [ ] RELEASING.md rewritten around the script; STATUS/DECISIONS updated
-- [ ] Both repos committed
+- [x] Restructure dirs; verify both repos healthy after move
+- [x] Parent CLAUDE.md (layout, two-repo discipline, release entry point)
+- [x] tauri.conf bundle targets += dmg
+- [x] `scripts/release.sh` + `docs/releases/_TEMPLATE.md` (notes-file-required design)
+- [x] Web: release.json + site.ts consumes it; conditional download links in page.tsx
+- [x] RELEASING.md rewritten around the script; STATUS/DECISIONS updated
+- [x] Both repos committed
 
 ## Acceptance criteria
 

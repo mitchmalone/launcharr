@@ -65,6 +65,14 @@
   **Needs eyeball pass:** theme switch restyles both windows live; migration kept config +
   scripts working; Hackables buttons open the right things.
 
+- **Project restructure + release pipeline** (2026-08-10): parent dir now holds the app
+  repo (`launcharr/`) and website repo (`launcharr-web/`, Next.js/Vercel) side by side —
+  rules in parent CLAUDE.md. `scripts/release.sh` is the deterministic release: gates →
+  bump → build (app+dmg) → sign/notarize → verify → smoke-test gates → tag → GitHub
+  Release → website release.json push → cask bump. Notes-file-first (docs/releases/).
+  Blocked on: Developer ID cert, notary profile, tap repo, LICENSE pick (checklist in
+  RELEASING.md). Plan: `plans/done/project-restructure-and-release-pipeline.md`.
+
 ## In progress
 
 - **Settings eyeball checklist** (only hands can verify): traffic lights sit right over the

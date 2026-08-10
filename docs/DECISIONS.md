@@ -5,6 +5,24 @@
 
 ---
 
+### 2026-08-10 · Two-repo project layout + the release IS a script
+
+- **Decision (layout).** The product is a parent dir (`~/Developer/mitch/launcharr`, not a
+  repo) holding two sibling repos: `launcharr/` (this app — upstream for all release
+  facts) and `launcharr-web/` (the site — consumes `src/lib/release.json`, generated,
+  never hand-edited). Cross-repo rules live in the parent CLAUDE.md; one commit never
+  spans repos.
+- **Decision (determinism).** `scripts/release.sh` is the only way to release; if a step
+  isn't in the script it isn't part of the release. Fail-fast preflight (clean trees both
+  repos, notes-file-first, cert + notary profile present), all gates, bump, build
+  (app + dmg targets), spctl-verified, checksummed, interactive gates for the two manual
+  smoke tests (fresh-profile, upgrade-path), tag + GitHub Release, website data push
+  (Vercel deploys), cask bump. Mitch's requirement: releasing must not be agent
+  improvisation or memory — nothing forgettable.
+- **Decision (install methods).** dmg (humans), zip (cask feed), Homebrew (advertised
+  install + only update channel), build from source. No curl|sh installer — CLI idiom,
+  second script to trust, brew already serves that crowd.
+
 ### 2026-08-10 · Release channel: sign with the personal Developer ID now; Homebrew tap is the installer and the updater
 
 - **Decision (signing).** Releases are signed + notarized with Mitch's existing paid
