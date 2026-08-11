@@ -23,3 +23,6 @@ out/
 
 # private notes escape hatch
 local/
+
+# vercel project link (apps/www)
+.vercel/
