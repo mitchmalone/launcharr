@@ -6,6 +6,14 @@
 
 ---
 
+### 2026-08-12 · `brew untap --force` uninstalls the tap's casks — including the app
+
+Migrating to the shared tap: `brew untap mitchmalone/launcharr --force` didn't just remove
+the tap, it uninstalled the launcharr cask and deleted `/Applications/launcharr.app`.
+Also: a locally-cloned tap under `/opt/homebrew/Library/Taps` doesn't see new
+formulae/casks until `git pull` (or `brew update`). Migration order that works: pull the
+new tap, `brew install` from it, THEN untap the old one.
+
 ### 2026-08-11 · launcharr-web's JOURNAL folded in (repo merged as apps/www)
 
 Durable items promoted straight to `LEARNINGS.md` (www section): pnpm 11 `allowBuilds`,
