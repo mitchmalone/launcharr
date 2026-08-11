@@ -36,7 +36,7 @@ pnpm monorepo:
 | `apps/www`      | launcharr.com — static-export Next.js marketing site (Vercel)              |
 | `packages/core` | The shared engine: grammar, fuzzy matcher, ranking, rows — pure TypeScript |
 
-The only external repo is the generated satellite `mitchmalone/homebrew-launcharr` (Cask),
+The only external repo is the generated satellite `mitchmalone/homebrew-tap` (shared tap; `Casks/launcharr.rb`),
 written by the release pipeline — fix the generator, not the output.
 
 **Rust owns the OS, TypeScript owns the experience.** Anything touching AppKit, the

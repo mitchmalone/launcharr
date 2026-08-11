@@ -22,7 +22,7 @@
 ## Install
 
 ```sh
-brew install mitchmalone/launcharr/launcharr
+brew install mitchmalone/tap/launcharr
 ```
 
 Or grab the dmg / zip below, or build from source (README).

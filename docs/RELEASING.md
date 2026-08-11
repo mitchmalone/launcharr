@@ -64,12 +64,12 @@ announcing anywhere is a deliberate, separate decision.
 
 ## Install methods (decision 2026-08-10)
 
-| Method                    | Artifact                                                   | Audience                                           |
-| ------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| **Homebrew** (advertised) | tap `mitchmalone/homebrew-launcharr` → release zip         | everyone; also the update channel (`brew upgrade`) |
-| dmg                       | GitHub Release                                             | browser downloads, drag-to-Applications            |
-| zip                       | GitHub Release                                             | what the cask consumes; direct download            |
-| source                    | git clone + `pnpm --filter @launcharr/desktop tauri build` | the committed                                      |
+| Method                    | Artifact                                                            | Audience                                           |
+| ------------------------- | ------------------------------------------------------------------- | -------------------------------------------------- |
+| **Homebrew** (advertised) | tap `mitchmalone/homebrew-tap` (shared, all projects) → release zip | everyone; also the update channel (`brew upgrade`) |
+| dmg                       | GitHub Release                                                      | browser downloads, drag-to-Applications            |
+| zip                       | GitHub Release                                                      | what the cask consumes; direct download            |
+| source                    | git clone + `pnpm --filter @launcharr/desktop tauri build`          | the committed                                      |
 
 No in-app updater, ever (zero-network invariant). Never instruct users to strip
 quarantine.
@@ -79,7 +79,7 @@ quarantine.
 - [x] **Developer ID cert** — in the keychain (`security find-identity -v -p codesigning`).
       Signed with Mitch's paid personal enrollment (decision 2026-08-10).
 - [x] **Notary profile** — `xcrun notarytool store-credentials launcharr-notary`.
-- [x] **Tap repo** — `mitchmalone/homebrew-launcharr` exists; CI owns updates now (no local
+- [x] **Tap repo** — `mitchmalone/homebrew-tap` (shared across projects; `Casks/launcharr.rb`); CI owns updates (no local
       clone needed).
 - [x] **LICENSE** — MIT.
 - [ ] **Fan-out config** — repo variables `HOMEBREW_TAP_REPO`, `NOTION_RELEASE_PAGE`;

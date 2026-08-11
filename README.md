@@ -57,7 +57,7 @@ cp -R apps/desktop/src-tauri/target/release/bundle/macos/launcharr.app /Applicat
 open /Applications/launcharr.app
 ```
 
-Or via Homebrew: `brew install mitchmalone/launcharr/launcharr`.
+Or via Homebrew: `brew install mitchmalone/tap/launcharr`.
 
 First run: the panel appears once with the hint line, a default config is written to
 `~/.config/launcharr/config.json`, and launcharr registers as a login item (toggle in

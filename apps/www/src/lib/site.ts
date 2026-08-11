@@ -22,7 +22,7 @@ export const VERSION = `v${RELEASE.version}`
 export const GITHUB_URL = 'https://github.com/mitchmalone/launcharr'
 export const RELEASES_URL = `${GITHUB_URL}/releases`
 
-export const BREW_COMMAND = 'brew install mitchmalone/launcharr/launcharr'
+export const BREW_COMMAND = 'brew install mitchmalone/tap/launcharr'
 
 export const SOURCE_INSTALL_COMMANDS = [
   'git clone git@github.com:mitchmalone/launcharr.git',

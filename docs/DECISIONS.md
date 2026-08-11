@@ -5,6 +5,15 @@
 
 ---
 
+### 2026-08-12 · One shared Homebrew tap for all projects — homebrew-launcharr retired
+
+- **Decision.** launcharr's cask moves into `mitchmalone/homebrew-tap` (beside beeptui's
+  formula); `mitchmalone/homebrew-launcharr` is archived. Install command becomes
+  `brew install mitchmalone/tap/launcharr`. One tap per person scales to N projects with
+  one satellite repo and one push credential (`HOMEBREW_TAP_TOKEN`, shared value, stored
+  per app repo); per-project taps were an accident of history. Historical docs/release
+  notes keep the old command — they record what was true at the time.
+
 ### 2026-08-11 · One monorepo per product (jig reconciliation) — supersedes the two-repo layout
 
 - **Decision (topology).** The 2026-08-10 two-repo layout is dissolved: `launcharr-web` is
@@ -12,7 +21,7 @@
   lives at `apps/desktop`, and the shared engine is a workspace package `packages/core`.
   Per the jig standard: the sibling-repo arrangement duplicated tooling and forced
   hand-synced ports that a workspace package dissolves. The only external repo is the
-  generated satellite `homebrew-launcharr`. The umbrella dir and its CLAUDE.md are gone.
+  generated satellite tap. The umbrella dir and its CLAUDE.md are gone.
 - **Decision (engine).** `@launcharr/core` (matcher, grammar, ranking, rows, emoji, math,
   url, types) is imported by both apps. The app's implementations are canonical — the web
   forks and the "port, don't fork" invariant are deleted. The website contains zero engine
