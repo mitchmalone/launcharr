@@ -49,7 +49,7 @@ scripts/release.sh 0.4.0          # or --unsigned while the cert is pending
   (fails the release rather than pushing corrections — branch-protection-safe); release
   assets all present.
 - **homebrew** — bumps `Casks/launcharr.rb` version + zip sha in the tap repo. Gated on
-  `vars.HOMEBREW_TAP_REPO` + `secrets.TAP_TOKEN`.
+  `vars.HOMEBREW_TAP_REPO` + `secrets.HOMEBREW_TAP_TOKEN`.
 - **notion** — sets `Version` on the Launcharr row. Gated on `vars.NOTION_RELEASE_PAGE` +
   `secrets.NOTION_API_KEY`.
 - **deploy-mmcom** — POSTs the mitchmalone.com Vercel deploy hook. Gated on
@@ -83,7 +83,7 @@ quarantine.
       clone needed).
 - [x] **LICENSE** — MIT.
 - [ ] **Fan-out config** — repo variables `HOMEBREW_TAP_REPO`, `NOTION_RELEASE_PAGE`;
-      secrets `TAP_TOKEN` (fine-grained PAT, contents:write on the tap), `NOTION_API_KEY`,
+      secrets `HOMEBREW_TAP_TOKEN` (fine-grained PAT, contents:write on the tap), `NOTION_API_KEY`,
       `MMCOM_DEPLOY_HOOK`. Unset ⇒ that job skips with a notice.
 
 ## Versioning

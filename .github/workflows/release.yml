@@ -67,10 +67,10 @@ jobs:
       - name: Check configuration
         id: config
         env:
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          if [ -z "${{ vars.HOMEBREW_TAP_REPO }}" ] || [ -z "$TAP_TOKEN" ]; then
-            echo "::notice::vars.HOMEBREW_TAP_REPO / secrets.TAP_TOKEN not set — skipping tap update"
+          if [ -z "${{ vars.HOMEBREW_TAP_REPO }}" ] || [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "::notice::vars.HOMEBREW_TAP_REPO / secrets.HOMEBREW_TAP_TOKEN not set — skipping tap update"
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
@@ -79,13 +79,13 @@ jobs:
         name: Bump Cask version + sha256
         env:
           GH_TOKEN: ${{ github.token }}
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
           ZIP_SHA=$(awk -v f="launcharr-$VERSION.zip" '$2==f{print $1}' SHA256SUMS)
           [ -n "$ZIP_SHA" ] || { echo "::error::zip sha not found in SHA256SUMS"; exit 1; }
-          git clone "https://x-access-token:${TAP_TOKEN}@github.com/${{ vars.HOMEBREW_TAP_REPO }}.git" tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${{ vars.HOMEBREW_TAP_REPO }}.git" tap
           cd tap
           sed -i -e "s/version \".*\"/version \"$VERSION\"/" \
                  -e "s/sha256 \".*\"/sha256 \"$ZIP_SHA\"/" Casks/launcharr.rb
