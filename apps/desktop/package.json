@@ -12,8 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@launcharr/core": "workspace:*",
     "@tauri-apps/api": "^2",
-    "emojilib": "^4.0.3",
     "lucide-react": "^1.30.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

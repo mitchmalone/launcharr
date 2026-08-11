@@ -18,24 +18,6 @@ export type Link = {
   trigger?: string | null
 }
 
-export type Config = {
-  hotkey: string
-  terminal: 'iTerm2' | 'Terminal'
-  bangNewWindow: boolean
-  sigil: string
-  bangSigil: string
-  launchAtLogin: boolean
-  links: Link[]
-  shortcuts: Record<string, string>
-  /** Alfred-style dead-end fallback, {query} placeholder. */
-  searchFallback: string
-  indexBookmarks: boolean
-  /** Active theme name: built-in (launcharr, dracula, terminal) or a `themes` key. */
-  theme: string
-  /** User-defined themes: name → partial token overrides (see lib/themes.ts). */
-  themes: Record<string, Partial<import('./themes').ThemeTokens>>
-}
-
 export type FrecencyMap = Record<string, number>
 
 export type ScriptInfo = {

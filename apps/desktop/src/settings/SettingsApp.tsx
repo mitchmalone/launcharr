@@ -1,11 +1,12 @@
+import type { Link } from '@launcharr/core/types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Info, Keyboard, Link2, Search, Settings, Terminal } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import type { Config } from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
-import type { Config, Link } from '../lib/types'
 import HotkeyRecorder from './HotkeyRecorder'
 import iconUrl from './launcharr.svg'
 

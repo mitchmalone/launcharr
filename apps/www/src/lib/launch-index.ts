@@ -350,11 +350,3 @@ export const QUICKLINKS: Quicklink[] = [
 export const TRIGGERS: ReadonlySet<string> = new Set(
   QUICKLINKS.map((l) => l.trigger),
 )
-
-export function kindGlyph(item: IndexItem): string {
-  if (item.icon) return item.icon
-  if (item.kind === 'settings') return '⚙'
-  if (item.kind === 'link') return '↗'
-  if (item.kind === 'command') return '⏻'
-  return '⚓︎'
-}

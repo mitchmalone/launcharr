@@ -44,12 +44,12 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@launcharr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
-      emojilib:
-        specifier: ^4.0.3
-        version: 4.0.3
       lucide-react:
         specifier: ^1.30.0
         version: 1.30.0(react@19.2.8)
@@ -84,6 +84,9 @@ importers:
 
   apps/www:
     dependencies:
+      '@launcharr/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       lucide-react:
         specifier: ^1.30.0
         version: 1.30.0(react@19.2.8)
@@ -121,6 +124,19 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/core:
+    dependencies:
+      emojilib:
+        specifier: ^4.0.3
+        version: 4.0.3
+    devDependencies:
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^4
+        version: 4.1.10(@types/node@26.1.2)(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0))
 
 packages:
 

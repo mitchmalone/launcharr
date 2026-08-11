@@ -1,9 +1,4 @@
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-
-import { parseInput } from './lib/grammar'
-import { markInput, reportResultsPainted } from './lib/perf'
+import { parseInput } from '@launcharr/core/grammar'
 import {
   type QuicklinkDraft,
   type Row,
@@ -14,16 +9,21 @@ import {
   launchRows,
   quicklinkRows,
   scriptRows,
-} from './lib/rows'
-import { applyTheme } from './lib/themes'
+} from '@launcharr/core/rows'
 import type {
   Clip,
-  Config,
   FrecencyMap,
   IndexItem,
   ScriptInfo,
   ScriptItem,
-} from './lib/types'
+} from '@launcharr/core/types'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import type { Config } from './lib/config'
+import { markInput, reportResultsPainted } from './lib/perf'
+import { applyTheme } from './lib/themes'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
 const INPUT_HEIGHT = 54

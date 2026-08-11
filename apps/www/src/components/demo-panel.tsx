@@ -1,16 +1,15 @@
 'use client'
 
+import { parseInput } from '@launcharr/core/grammar'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
+import { type DemoRow, computeDemoRows } from '@/lib/demo-rows'
 import {
   DEMO_THEMES,
   DEMO_THEME_NAMES,
   type DemoTheme,
 } from '@/lib/demo-themes'
-import { parseInput } from '@/lib/grammar'
-import { SEED_FRECENCY } from '@/lib/launch-index'
-import { computeRows } from '@/lib/rows'
-import type { Row } from '@/lib/rows'
+import { SEED_FRECENCY, TRIGGERS } from '@/lib/launch-index'
 
 const TERMINAL = 'iTerm2'
 const SIGIL = '❯'
@@ -112,12 +111,12 @@ export function DemoPanel() {
   const { register, panel, theme: t } = useDemo()
   const { raw, setRaw, selected, setSelected, frecency } = panel
 
-  const parsed = parseInput(raw)
+  const parsed = parseInput(raw, TRIGGERS)
   const isBang = parsed.mode === 'bang'
-  const rows = computeRows(raw, frecency)
+  const rows = computeDemoRows(raw, frecency)
   const sel = Math.min(selected, Math.max(rows.length - 1, 0))
 
-  const fire = (row: Row | undefined) => {
+  const fire = (row: DemoRow | undefined) => {
     if (!row) return
     if (row.id) panel.bump(row.id)
     panel.showToast('⏎ ' + row.action + '  ·  panel dismissed, focus returned')
