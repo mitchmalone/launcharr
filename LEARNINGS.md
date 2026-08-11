@@ -22,6 +22,17 @@ if it needs more. Never duplicate global AGENTS.md rules here.
 - Never name a script after a python stdlib module — the scripts dir is `sys.path[0]` and it
   shadows the real module for every script there. Bundled scripts `del sys.path[0]` first.
 
+## www (Next.js site)
+
+- `lucide-react` v1 removed brand icons (Github, Twitter) — brand marks are inline SVGs in
+  `apps/www/src/components/brand-icons.tsx`.
+- eslint-config-next 16's `react-hooks/set-state-in-effect` rejects the classic
+  `useEffect(() => setMounted(true), [])` hydration guard — use the `useSyncExternalStore`
+  mounted pattern (see `theme-switch.tsx`).
+- The Claude Design MCP cannot serve binary files; the site logo is a `sips` downscale of
+  `apps/desktop/design/menubar-icon-source.png` (the repo copy is the source of truth).
+  Favicons in `apps/www/src/app/` use the ⌘-on-black artwork Mitch supplied verbatim.
+
 ## Toolchain
 
 - brew's rustup puts cargo proxies in `/opt/homebrew/opt/rustup/bin`, not `~/.cargo/bin`;

@@ -1,3 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Build scripts are opt-in; approve only what needs them.
 allowBuilds:
   esbuild: true
   lefthook: true
+  unrs-resolver: true

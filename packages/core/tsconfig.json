@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // DOM only for the URL global (url.ts, rows.ts) — the engine stays I/O-free.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src"]
+}

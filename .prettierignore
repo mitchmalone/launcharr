@@ -1,5 +1,9 @@
 pnpm-lock.yaml
 dist/
-src-tauri/target/
-src-tauri/gen/
-src-tauri/Cargo.lock
+.next/
+out/
+*.gen.ts
+docs/STANDARDS.md
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/Cargo.lock

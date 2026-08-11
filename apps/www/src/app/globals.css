@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+/* Dark is the default theme; light overrides via next-themes' data-theme attr. */
+:root {
+  --bg: #1c1d2d;
+  --bg2: #161724;
+  --panel: rgba(28, 29, 45, 0.96);
+  --chip: #161b22;
+  --border: #30363d;
+  --hair: #21262d;
+  --fg: #e6edf3;
+  --body: #a9b1ba;
+  --muted: #8b949e;
+  --dim: #7d8590;
+  --dim2: #6e7681;
+  --accent: #ffffff;
+  --accent2: #c9d1d9;
+  --green: #3fb950;
+  --green2: #56d364;
+  --amber: #d29922;
+  --cta: #ff6b8c;
+  --cta-hover: #ff85a1;
+  --cta-fg: #1c1d2d;
+  --sel: rgba(230, 237, 243, 0.18);
+  --logo: invert(1);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --demo-top: #11161d;
+}
+
+html[data-theme='light'] {
+  --bg: #ffffff;
+  --bg2: #f6f8fa;
+  --panel: rgba(255, 255, 255, 0.98);
+  --chip: #f6f8fa;
+  --border: #d0d7de;
+  --hair: #d8dee4;
+  --fg: #1f2328;
+  --body: #424a53;
+  --muted: #59636e;
+  --dim: #656d76;
+  --dim2: #818b98;
+  --accent: #000000;
+  --accent2: #424a53;
+  --green: #1a7f37;
+  --green2: #116329;
+  --amber: #9a6700;
+  --cta: #ff6b8c;
+  --cta-hover: #f2537a;
+  --cta-fg: #1c1d2d;
+  --sel: rgba(31, 35, 40, 0.12);
+  --logo: none;
+  --shadow: 0 24px 60px rgba(31, 35, 40, 0.14);
+  --demo-top: #ffffff;
+}
+
+@theme inline {
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent2);
+  text-decoration: underline;
+}
+
+::selection {
+  background: var(--sel);
+}

@@ -1,0 +1,138 @@
+name: release
+
+# Fan-out half of the release. scripts/release.sh builds, signs, notarizes, smoke-tests
+# locally, pushes main, then `gh release create` mints this tag — so by the time this
+# workflow runs, the GitHub Release and its assets already exist. Jobs no-op honestly
+# when their repo variable/secret isn't configured.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Release notes are written first, from docs/releases/_TEMPLATE.md.
+      - name: Require release notes
+        run: |
+          NOTES="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "::error::missing $NOTES — write release notes before tagging"
+            exit 1
+          fi
+          if grep -qE '\| _ (ms|MB)|vX\.Y\.Z' "$NOTES"; then
+            echo "::error::$NOTES still contains template placeholders"
+            exit 1
+          fi
+
+      # In-repo release facts must match the tag. With branch protection on main this
+      # workflow can't push corrections back, so it fails the release instead.
+      - name: Assert release.json matches tag
+        run: |
+          FILE_VERSION=$(jq -r .version apps/www/src/lib/release.json)
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::apps/www/src/lib/release.json says $FILE_VERSION but the tag is $TAG_VERSION — release.sh writes this file; do not hand-edit"
+            exit 1
+          fi
+
+      - name: Assert GitHub Release and assets exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          for i in 1 2 3 4 5; do
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+                 --json assets --jq '.assets[].name' > assets.txt 2>/dev/null; then
+              break
+            fi
+            echo "release not visible yet (attempt $i) — retrying"
+            sleep 10
+          done
+          for asset in "launcharr-$VERSION.zip" "launcharr-$VERSION.dmg" "SHA256SUMS"; do
+            grep -qx "$asset" assets.txt || { echo "::error::release asset missing: $asset"; exit 1; }
+          done
+
+  # Satellite fan-out: the tap is generated output — fix this workflow, not the Cask.
+  homebrew:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          if [ -z "${{ vars.HOMEBREW_TAP_REPO }}" ] || [ -z "$TAP_TOKEN" ]; then
+            echo "::notice::vars.HOMEBREW_TAP_REPO / secrets.TAP_TOKEN not set — skipping tap update"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.config.outputs.configured == 'true'
+        name: Bump Cask version + sha256
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
+          ZIP_SHA=$(awk -v f="launcharr-$VERSION.zip" '$2==f{print $1}' SHA256SUMS)
+          [ -n "$ZIP_SHA" ] || { echo "::error::zip sha not found in SHA256SUMS"; exit 1; }
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/${{ vars.HOMEBREW_TAP_REPO }}.git" tap
+          cd tap
+          sed -i -e "s/version \".*\"/version \"$VERSION\"/" \
+                 -e "s/sha256 \".*\"/sha256 \"$ZIP_SHA\"/" Casks/launcharr.rb
+          git config user.name "launcharr release bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "launcharr v$VERSION"
+          git push
+
+  notion:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        run: |
+          if [ -z "${{ vars.NOTION_RELEASE_PAGE }}" ] || [ -z "$NOTION_API_KEY" ]; then
+            echo "::notice::vars.NOTION_RELEASE_PAGE / secrets.NOTION_API_KEY not set — skipping Notion update"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.config.outputs.configured == 'true'
+        name: Set Version on the Launcharr row
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          resp=$(curl -sf -X PATCH "https://api.notion.com/v1/pages/${{ vars.NOTION_RELEASE_PAGE }}" \
+            -H "Authorization: Bearer $NOTION_API_KEY" \
+            -H "Notion-Version: 2022-06-28" \
+            -H "Content-Type: application/json" \
+            -d "{\"properties\":{\"Version\":{\"rich_text\":[{\"text\":{\"content\":\"$VERSION\"}}]}}}")
+          echo "$resp" | grep -q '"object":"page"' || { echo "::error::unexpected Notion response"; exit 1; }
+
+  deploy-mmcom:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger mitchmalone.com deploy hook
+        env:
+          MMCOM_DEPLOY_HOOK: ${{ secrets.MMCOM_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$MMCOM_DEPLOY_HOOK" ]; then
+            echo "::notice::secrets.MMCOM_DEPLOY_HOOK not set — skipping deploy hook"
+            exit 0
+          fi
+          curl -sf -X POST "$MMCOM_DEPLOY_HOOK" > /dev/null

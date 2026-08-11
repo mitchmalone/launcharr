@@ -1,48 +1,35 @@
 {
   "name": "launcharr",
   "private": true,
-  "version": "0.3.1",
   "type": "module",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lefthook"
-    ]
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "prepare": "lefthook install",
+    "dev": "pnpm --filter \"./apps/*\" --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^2",
-    "emojilib": "^4.0.3",
-    "lucide-react": "^1.30.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "verify:node": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "verify:rust": "cargo test --quiet --manifest-path apps/desktop/src-tauri/Cargo.toml && cargo clippy --quiet --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "verify": "pnpm verify:node && pnpm verify:rust"
   },
   "devDependencies": {
     "@commitlint/cli": "^19",
     "@commitlint/config-conventional": "^19",
     "@eslint/js": "^9",
-    "@tauri-apps/cli": "^2",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "eslint": "^9",
     "eslint-config-prettier": "^10",
     "eslint-plugin-react-hooks": "^5",
     "lefthook": "^1",
     "prettier": "^3",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8",
-    "vite": "^7.0.4",
-    "vitest": "^3"
+    "typescript-eslint": "^8"
   }
 }

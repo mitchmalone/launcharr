@@ -5,6 +5,32 @@
 
 ---
 
+### 2026-08-11 · One monorepo per product (jig reconciliation) — supersedes the two-repo layout
+
+- **Decision (topology).** The 2026-08-10 two-repo layout is dissolved: `launcharr-web` is
+  absorbed as `apps/www` (snapshot import; history stays in the archived repo), the app
+  lives at `apps/desktop`, and the shared engine is a workspace package `packages/core`.
+  Per the jig standard: the sibling-repo arrangement duplicated tooling and forced
+  hand-synced ports that a workspace package dissolves. The only external repo is the
+  generated satellite `homebrew-launcharr`. The umbrella dir and its CLAUDE.md are gone.
+- **Decision (engine).** `@launcharr/core` (matcher, grammar, ranking, rows, emoji, math,
+  url, types) is imported by both apps. The app's implementations are canonical — the web
+  forks and the "port, don't fork" invariant are deleted. The website contains zero engine
+  logic; its demo maps core rows to presentation only.
+- **Decision (release split).** "The release IS a script" becomes "the release is the
+  script + the tag workflow": local script keeps what physics demands (keychain signing,
+  notarization, interactive smoke tests), pushes main, and `gh release create` mints the
+  tag remotely — so the fan-out workflow (tap Cask bump, Notion version, mitchmalone.com
+  deploy hook; each no-oping without its token) fires with the release already published.
+  The release commit now carries `apps/www/src/lib/release.json`; CI fails the release if
+  it disagrees with the tag rather than pushing corrections.
+- **Absorbed from launcharr-web's DECISIONS.md** (dates preserved, file deleted with the
+  repo): 2026-08-10 site consumes generated release.json (now invariant 9 in AGENTS.md);
+  2026-08-09 CTA uses GitHub's button greens, not the design's accent green; 2026-08-09
+  demo logic as tested pure modules (now subsumed by `packages/core`); 2026-08-09 static
+  export, no server (now invariant 7); 2026-08-09 dark is the default theme; 2026-08-09
+  Tailwind v4 utilities over inline styles.
+
 ### 2026-08-10 · Two-repo project layout + the release IS a script
 
 - **Decision (layout).** The product is a parent dir (`~/Developer/mitch/launcharr`, not a

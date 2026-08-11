@@ -1,0 +1,20 @@
+{
+  "name": "@launcharr/core",
+  "private": true,
+  "type": "module",
+  "description": "The shared launcharr engine — grammar, fuzzy matcher, ranking, rows. Pure TypeScript, no I/O.",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "emojilib": "^4.0.3"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vitest": "^4"
+  }
+}
