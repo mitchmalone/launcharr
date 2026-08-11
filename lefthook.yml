@@ -1,21 +1,24 @@
+# Public-layer variant of the jig base lefthook.yml — adds secret scanning.
 # .lefthookrc puts brew's rustup proxies on PATH so the cargo hooks resolve.
 rc: .lefthookrc
 
 pre-commit:
   parallel: true
   commands:
-    prettier:
-      glob: '*.{ts,tsx,css,json,md,html,yml,js}'
-      run: pnpm prettier --write {staged_files}
-      stage_fixed: true
-    eslint:
-      glob: '*.{ts,tsx}'
+    lint:
+      glob: '*.{ts,tsx,js,mjs}'
       run: pnpm eslint --fix {staged_files}
       stage_fixed: true
-    rustfmt:
-      glob: 'src-tauri/**/*.rs'
-      run: cargo fmt --manifest-path src-tauri/Cargo.toml
+    format:
+      glob: '*.{ts,tsx,js,mjs,json,md,css,yml,yaml}'
+      run: pnpm prettier --write {staged_files}
       stage_fixed: true
+    rustfmt:
+      glob: 'apps/desktop/src-tauri/**/*.rs'
+      run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml
+      stage_fixed: true
+    gitleaks:
+      run: gitleaks protect --staged --verbose
 
 commit-msg:
   commands:
@@ -23,13 +26,6 @@ commit-msg:
       run: pnpm commitlint --edit {1}
 
 pre-push:
-  parallel: true
   commands:
-    typecheck:
-      run: pnpm typecheck
-    test:
-      run: pnpm test
-    cargo-test:
-      run: cargo test --quiet --manifest-path src-tauri/Cargo.toml
-    clippy:
-      run: cargo clippy --quiet --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+    verify:
+      run: pnpm verify
