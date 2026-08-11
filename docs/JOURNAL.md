@@ -6,6 +6,15 @@
 
 ---
 
+### 2026-08-11 · launcharr-web's JOURNAL folded in (repo merged as apps/www)
+
+Durable items promoted straight to `LEARNINGS.md` (www section): pnpm 11 `allowBuilds`,
+lucide v1 brand icons, eslint-config-next's `set-state-in-effect` vs the
+`useSyncExternalStore` mounted pattern, Claude Design MCP can't serve binaries. One-off
+context kept here: the `launcharr-web` Vercel project (team ramenamok) had
+launcharr.com + www.launcharr.com aliased before first deploy; `vercel link`/`deploy`
+needed `--scope ramenamok` once.
+
 ### 2026-08-10 · bash + pipefail + `grep -q` silently fails healthy pipelines
 
 `codesign -dvv … | grep -q pattern` under `set -euo pipefail` fails EVEN WHEN the pattern

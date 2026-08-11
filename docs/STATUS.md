@@ -3,7 +3,7 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-10
+> Last updated: 2026-08-11
 
 ## Done
 
@@ -82,6 +82,18 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   signed, `spctl` accepted (`source=Notarized Developer ID`). Full pipeline incl. new
   step 10 (Notion Version row + mitchmalone.com hook). Mitch runs the brew-managed 0.3.1.
   `?`-mode AI spike in progress on `worktree-spike-ask-ai` (see its JOURNAL entries).
+
+- **Jig reconciliation — one monorepo** (2026-08-11): launcharr-web absorbed as `apps/www`
+  (old repo archived), app moved to `apps/desktop`, shared engine extracted to
+  `packages/core` (@launcharr/core — matcher/grammar/ranking/rows/emoji/math/url/types;
+  the web hand-ports and the port-don't-fork invariant are gone). One verify gate
+  (`pnpm verify`), CI (`verify.yml`) + tag-triggered release fan-out (`release.yml`:
+  tap/Notion/deploy-hook, each no-oping without its token). `release.sh` keeps only the
+  local physics (sign/notarize/smoke), pushes main, and `gh release create` mints the tag.
+  AGENTS.md canonical (CLAUDE.md is a pointer), jig standard vendored at
+  `docs/STANDARDS.md`, deviations in `DEVIATIONS.md`. Site state at merge: mock-macOS
+  desktop demo, theme switcher, monochrome accent + CTA pink, release.json-driven install
+  section — live at launcharr.com. Plan: `plans/done/jig-reconciliation.md`.
 
 ## In progress
 

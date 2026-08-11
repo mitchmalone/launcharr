@@ -52,10 +52,12 @@ Build from source (Apple Silicon; requires Rust stable + pnpm):
 git clone git@github.com:mitchmalone/launcharr.git
 cd launcharr
 pnpm install
-pnpm tauri build
-cp -R src-tauri/target/release/bundle/macos/launcharr.app /Applications/
+pnpm --filter @launcharr/desktop tauri build
+cp -R apps/desktop/src-tauri/target/release/bundle/macos/launcharr.app /Applications/
 open /Applications/launcharr.app
 ```
+
+Or via Homebrew: `brew install mitchmalone/launcharr/launcharr`.
 
 First run: the panel appears once with the hint line, a default config is written to
 `~/.config/launcharr/config.json`, and launcharr registers as a login item (toggle in
@@ -63,8 +65,10 @@ settings). Signed releases: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Hacking
 
-`docs/SCRIPTS.md` is the plugin API. The repo docs (`docs/`) carry the full decision log,
-architecture (`CLAUDE.md`), and per-task plans. Performance budgets are requirements, not
+`docs/SCRIPTS.md` is the plugin API. The repo is a pnpm monorepo — `apps/desktop` (the
+app), `apps/www` ([launcharr.com](https://launcharr.com)), `packages/core` (the shared
+matcher/grammar/ranking engine). The repo docs (`docs/`) carry the full decision log,
+architecture (`AGENTS.md`), and per-task plans. Performance budgets are requirements, not
 aspirations — instrumentation logs `[launcharr perf]` lines to stderr and the webview
 console.
 
