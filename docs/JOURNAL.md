@@ -6,6 +6,18 @@
 
 ---
 
+### 2026-08-16 · WKWebView throttles JS timers in never-focused windows — push, don't poll
+
+The bar's `setInterval` polling silently died minutes after launch: WebKit throttles or
+suspends timers in a window that never becomes key, in a background accessory app. Result:
+stale clock, stale front-app, and the focus indicator missing entirely (the CLI data was
+verified perfect the whole time). Every earlier fix attempt looked good in testing because
+tests ran seconds after a relaunch, before throttling kicked in. Architecture fix: the
+webview owns ZERO timers — a Rust thread snapshots and emits `bar-snapshot` at 1 Hz (and
+instantly on trigger-file events); event delivery executes in the page unthrottled; the
+clock rides the same push. `background_throttling: Disabled` set on the bar window as
+belt-and-braces. **Rule: bar/panel webviews are pure listeners; cadence lives in Rust.**
+
 ### 2026-08-16 · Bar performance: sync commands were self-DDoSing the aerospace server
 
 Mitch: workspace clicks took seconds. Cause: `bar_snapshot` was a **sync** Tauri command
