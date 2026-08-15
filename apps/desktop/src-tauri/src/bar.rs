@@ -95,7 +95,14 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
             .map_err(|e| CmdError::Internal(format!("bar frame: {e}")))?;
 
         panel.order_front_regardless();
+
+        let _ = window.with_webview(|platform| {
+            if !crate::bar_constrain::disable_occlusion_detection(platform.inner().cast()) {
+                eprintln!("[launcharr bar] occlusion-detection override unavailable");
+            }
+        });
     }
+    crate::bar_constrain::prevent_app_nap();
     watch(app.clone());
     watch_triggers(app.clone());
     push_loop(app.clone());
@@ -126,8 +133,15 @@ fn push(app: &AppHandle) {
         let Some(window) = app.get_webview_window(&format!("bar-{i}")) else {
             break;
         };
-        let _ = window.eval(&script);
+        if let Err(e) = window.eval(&script) {
+            eprintln!("[launcharr bar] eval push failed on bar-{i}: {e}");
+        }
     }
+}
+
+/// Temporary diagnostic sink for the bar webview (2026-08-16 focus hunt).
+pub fn debug_log(msg: &str) {
+    eprintln!("[bar-js] {msg}");
 }
 
 /// Event-driven refresh: anything touching a file in

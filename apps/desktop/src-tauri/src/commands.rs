@@ -41,6 +41,12 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
+/// Temporary diagnostic sink for the bar webview (2026-08-16 focus hunt).
+#[tauri::command]
+pub fn bar_debug(msg: String) {
+    crate::bar::debug_log(&msg);
+}
+
 /// Bar workspace cell click → focus that aerospace workspace. async: see above.
 #[tauri::command]
 pub async fn bar_switch_workspace(ws: String) -> CmdResult<()> {

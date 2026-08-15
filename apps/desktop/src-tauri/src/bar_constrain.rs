@@ -1,3 +1,5 @@
+//! AppKit/WebKit workarounds for the bar panel — all unsafe lives here.
+//!
 //! Defeats AppKit's menu-bar frame constraining for the bar panel class.
 //!
 //! Below MainMenu level (24), AppKit's `constrainFrameRect:toScreen:` refuses
@@ -25,6 +27,44 @@ unsafe extern "C-unwind" fn constrain_unchanged(
     _screen: *mut AnyObject,
 ) -> NSRect {
     rect
+}
+
+/// WKWebView pauses compositing when it believes its window is occluded, and
+/// aerospace's window shuffling confuses that state for our all-spaces panel:
+/// the DOM keeps updating while the pixels freeze until a click forces a
+/// frame (proven 2026-08-16 via DOM probes). Turn occlusion detection off for
+/// the bar's webview. Private WebKit selector, guarded — a WebKit change makes
+/// this a no-op, not a crash.
+pub fn disable_occlusion_detection(webview: *mut AnyObject) -> bool {
+    if webview.is_null() {
+        return false;
+    }
+    let sel = sel!(_setWindowOcclusionDetectionEnabled:);
+    // SAFETY: pointer comes from tauri's PlatformWebview (a live WKWebView);
+    // respondsToSelector is checked before the private call.
+    unsafe {
+        let responds: bool = objc2::msg_send![&*webview, respondsToSelector: sel];
+        if !responds {
+            return false;
+        }
+        let _: () = objc2::msg_send![&*webview, _setWindowOcclusionDetectionEnabled: false];
+    }
+    true
+}
+
+/// App Nap can throttle frame delivery for a background accessory app. Take a
+/// user-initiated activity assertion (allowing idle system sleep) for the
+/// app's lifetime while the bar exists.
+pub fn prevent_app_nap() {
+    use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
+    let info = NSProcessInfo::processInfo();
+    let reason = NSString::from_str("launcharr bar renders continuously");
+    let token = info.beginActivityWithOptions_reason(
+        NSActivityOptions::UserInitiatedAllowingIdleSystemSleep,
+        &reason,
+    );
+    // Held for the process lifetime — the bar never stops.
+    std::mem::forget(token);
 }
 
 /// Install the override on `class_name` (idempotent — replace, not add).

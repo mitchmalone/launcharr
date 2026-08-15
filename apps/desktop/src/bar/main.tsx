@@ -51,6 +51,14 @@ function useSnapshot(): [
     let live = true
     const absorb = (s: BarSnapshot) => {
       if (!live) return
+      // Temporary diagnostics (2026-08-16 focus hunt). domFocused shows the
+      // PREVIOUS render's DOM — if it tracks pushes, React is applying state
+      // and any visual staleness is a compositing problem.
+      invoke('bar_debug', {
+        msg: `absorb focused=${s.focused} domFocused=${
+          document.querySelector('.bar-ws-focused')?.textContent ?? 'none'
+        } clock=${document.querySelector('.bar-center')?.textContent ?? '?'}`,
+      }).catch(() => {})
       setNow(new Date())
       setSnap((prev) => ({
         ...s,

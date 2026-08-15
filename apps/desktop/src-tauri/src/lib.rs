@@ -86,6 +86,7 @@ pub fn run() {
             commands::hide_panel,
             commands::bar_snapshot,
             commands::bar_switch_workspace,
+            commands::bar_debug,
             commands::resize_panel,
             commands::reindex,
             commands::execute,
