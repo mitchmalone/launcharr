@@ -1,4 +1,4 @@
-/* The bar strip (v0.5 spike). Charcoal, monospace, square — the TUI look. */
+/* The bar strip (v0.5). Themed by lib/themes.ts panel vars; charcoal fallbacks. */
 
 * {
   margin: 0;
@@ -24,36 +24,58 @@ body,
   justify-content: space-between;
   position: relative;
   padding: 0 10px;
-  background: rgba(20, 21, 29, 0.96);
-  border-bottom: 1px solid #34364a;
+  background: var(--bg, rgba(20, 21, 29, 0.96));
+  border-bottom: 1px solid var(--border, #34364a);
   font-family:
     ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, monospace;
   font-size: 12px;
-  color: #dde1f0;
+  color: var(--fg, #dde1f0);
+}
+
+.bar button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .bar-left {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-ws-cluster {
+  display: flex;
+  border: 1px solid var(--border, #34364a);
 }
 
 .bar-ws {
-  min-width: 22px;
+  min-width: 24px;
   text-align: center;
-  padding: 2px 4px;
-  color: #7f86a5;
-  border: 1px solid transparent;
+  padding: 3px 5px;
+  color: var(--dim, #7f86a5);
+}
+
+.bar-ws + .bar-ws {
+  border-left: 1px solid var(--border, #34364a);
 }
 
 .bar-ws-focused {
-  color: #dde1f0;
-  border-color: #a7b0d0;
+  color: var(--fg, #dde1f0);
+  background: var(--selected, rgba(167, 176, 208, 0.14));
+}
+
+.bar-app {
+  color: var(--accent, #9db2ff);
 }
 
 .bar-center {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  color: var(--fg, #dde1f0);
 }
 
 .bar-right {
@@ -62,5 +84,5 @@ body,
 }
 
 .bar-cell {
-  color: #dde1f0;
+  color: var(--fg, #dde1f0);
 }

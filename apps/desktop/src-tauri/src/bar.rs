@@ -93,6 +93,7 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
 pub struct BarSnapshot {
     pub workspaces: Vec<String>,
     pub focused: Option<String>,
+    pub front_app: Option<String>,
     pub battery_pct: Option<u8>,
     pub on_ac: bool,
 }
@@ -113,9 +114,56 @@ pub fn snapshot() -> BarSnapshot {
     BarSnapshot {
         workspaces,
         focused,
+        front_app: front_app(),
         battery_pct,
         on_ac,
     }
+}
+
+/// Focus a workspace (bar click). The name comes from our own snapshot, but
+/// validate anyway — it ends up as a process argument.
+pub fn switch_workspace(ws: &str) -> CmdResult<()> {
+    if ws.is_empty()
+        || !ws
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    {
+        return Err(CmdError::Internal(format!("bad workspace name: {ws:?}")));
+    }
+    aerospace(&["workspace", ws])
+        .map(|_| ())
+        .ok_or_else(|| CmdError::Internal("aerospace workspace switch failed".into()))
+}
+
+/// Frontmost app name via lsappinfo (no Accessibility, no AppKit thread hop).
+fn front_app() -> Option<String> {
+    let asn = Command::new("/usr/bin/lsappinfo")
+        .arg("front")
+        .output()
+        .ok()?;
+    let asn = String::from_utf8_lossy(&asn.stdout).trim().to_owned();
+    if asn.is_empty() {
+        return None;
+    }
+    let info = Command::new("/usr/bin/lsappinfo")
+        .args(["info", "-only", "name", &asn])
+        .output()
+        .ok()?;
+    parse_lsappinfo_name(&String::from_utf8_lossy(&info.stdout))
+}
+
+/// The app name is the first double-quoted token of lsappinfo output.
+fn parse_lsappinfo_name(out: &str) -> Option<String> {
+    let start = out.find('"')? + 1;
+    let end = start + out[start..].find('"')?;
+    let name = &out[start..end];
+    // `-only name` normally yields `"LSDisplayName"="iTerm2"` — take the value
+    // side when both halves are quoted.
+    if name == "LSDisplayName" || name == "name" {
+        let rest = &out[end + 1..];
+        return parse_lsappinfo_name(rest);
+    }
+    (!name.is_empty()).then(|| name.to_owned())
 }
 
 /// The aerospace CLI, wherever Homebrew put it. PATH first for dev shells.
@@ -178,6 +226,26 @@ mod tests {
     #[test]
     fn battery_absent_on_desktops() {
         assert_eq!(parse_battery("Now drawing from 'AC Power'\n"), (None, true));
+    }
+
+    #[test]
+    fn parses_lsappinfo_name_forms() {
+        assert_eq!(
+            parse_lsappinfo_name("\"LSDisplayName\"=\"iTerm2\"\n"),
+            Some("iTerm2".into())
+        );
+        assert_eq!(
+            parse_lsappinfo_name("\"iTerm2\" ASN:0x0-0x9a09a: (in front)\n"),
+            Some("iTerm2".into())
+        );
+        assert_eq!(parse_lsappinfo_name(""), None);
+        assert_eq!(parse_lsappinfo_name("no quotes here"), None);
+    }
+
+    #[test]
+    fn rejects_bad_workspace_names() {
+        assert!(switch_workspace("").is_err());
+        assert!(switch_workspace("1; rm -rf /").is_err());
     }
 
     #[test]

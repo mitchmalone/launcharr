@@ -38,6 +38,12 @@ pub fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
+/// Bar workspace cell click → focus that aerospace workspace.
+#[tauri::command]
+pub fn bar_switch_workspace(ws: String) -> CmdResult<()> {
+    crate::bar::switch_workspace(&ws)
+}
+
 #[tauri::command]
 pub fn resize_panel(app: AppHandle, height: f64) -> CmdResult<()> {
     panel::resize(&app, height)
