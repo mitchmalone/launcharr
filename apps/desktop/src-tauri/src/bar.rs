@@ -103,14 +103,31 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
 }
 
 /// The bar's heartbeat lives in Rust, not the webview: WKWebView throttles JS
-/// timers in never-focused windows, so the webview only *listens*. Snapshot +
-/// emit every second; event delivery executes in the page immediately.
+/// timers in never-focused windows, so the webview only *listens*. Push via
+/// direct eval — the lowest-level path into the page, with no event-system or
+/// capability plumbing that can fail silently (which it did, 2026-08-16).
 fn push_loop(app: AppHandle) {
     std::thread::spawn(move || loop {
-        let snap = snapshot();
-        let _ = tauri::Emitter::emit(&app, "bar-snapshot", &snap);
+        push(&app);
         std::thread::sleep(std::time::Duration::from_secs(1));
     });
+}
+
+fn push(app: &AppHandle) {
+    let snap = snapshot();
+    if snap.focused.is_none() && !snap.workspaces.is_empty() {
+        eprintln!("[launcharr bar] push without focus: {snap:?}");
+    }
+    let Ok(json) = serde_json::to_string(&snap) else {
+        return;
+    };
+    let script = format!("window.__barPush && window.__barPush({json})");
+    for i in 0.. {
+        let Some(window) = app.get_webview_window(&format!("bar-{i}")) else {
+            break;
+        };
+        let _ = window.eval(&script);
+    }
 }
 
 /// Event-driven refresh: anything touching a file in
@@ -144,8 +161,7 @@ fn watch_triggers(app: AppHandle) {
                 .recv_timeout(std::time::Duration::from_millis(30))
                 .is_ok()
             {}
-            let snap = snapshot();
-            let _ = tauri::Emitter::emit(&app, "bar-snapshot", &snap);
+            push(&app);
         }
     });
 }

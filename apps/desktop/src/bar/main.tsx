@@ -15,6 +15,13 @@ interface BarSnapshot {
   onAc: boolean
 }
 
+declare global {
+  interface Window {
+    /** Rust pushes snapshots here via webview eval (see bar.rs push()). */
+    __barPush?: (snap: BarSnapshot) => void
+  }
+}
+
 /** The bar wears the panel theme and follows config edits live. */
 function useBarTheme() {
   useEffect(() => {
@@ -52,12 +59,12 @@ function useSnapshot(): [
         focused: s.focused ?? prev?.focused ?? null,
       }))
     }
-    // One pull for first paint; everything after arrives by push.
+    // One pull for first paint; everything after arrives by Rust eval-push.
     invoke<BarSnapshot>('bar_snapshot').then(absorb).catch(console.error)
-    const un = listen<BarSnapshot>('bar-snapshot', (e) => absorb(e.payload))
+    window.__barPush = absorb
     return () => {
       live = false
-      un.then((f) => f())
+      delete window.__barPush
     }
   }, [])
   const patch = (update: (prev: BarSnapshot) => BarSnapshot) =>
