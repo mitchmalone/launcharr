@@ -109,17 +109,30 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   Plan: `plans/done/v0.5-tui-kit-and-bar-spike.md`.
   **Eyeball checklist:** run the tui gallery (keyboard nav feel).
 - **Bar daily-drivable + enabled** (2026-08-15, same day): clickable workspace cells
-  (`bar_switch_workspace`), front-app cell (lsappinfo), themed via the panel token vars +
-  live `config-changed` re-apply, 1s refresh. `bar.enabled` is now ON in Mitch's config;
-  cutover from Sketchybar pending `brew services stop sketchybar` (agent-blocked; revert
-  is `brew services start sketchybar`).
+  (`bar_switch_workspace`), front-app cell (lsappinfo), themed via the panel token vars.
+  `bar.enabled` is ON in Mitch's config; Sketchybar stopped by Mitch (revert:
+  `brew services start sketchybar`).
+- **Bar hardened + Omarchy-flat, Mitch-verified "perfect"** (2026-08-16): async commands
+  (sync spawns were janking the main thread AND backing up the aerospace server — 6s CLI
+  latency), one aerospace round-trip per tick, event-driven refresh via FSEvents-watched
+  `~/.config/launcharr/triggers/` (aerospace exec-on-workspace-change touches it —
+  dotfiles change, uncommitted there), Rust-pushed snapshots via webview eval (WebKit
+  throttles JS timers in never-focused windows; app.emit never reached the panel
+  webview), Floating level + constrainFrameRect override so the native menu bar
+  hover-slides over the bar at y=0, 15s reframe heartbeat for display changes, and the
+  final boss: the focus indicator that "never worked" was a CSS specificity bug masked
+  by :hover (full hunt in JOURNAL 2026-08-16). Design is Omarchy-flat: sigil, dim
+  numbers, solid light block for the active workspace.
 
 ## In progress
 
-- **v0.5 next slices** (ROADMAP B2–B4): bar layout regions + module placement config +
-  notched/notchless profiles + theming; multi-display enumeration fix (JOURNAL
-  2026-08-15); Aerospace vendored wrap + adopt-or-stop migration; panels + module API +
-  agent bar.
+- **v0.5 next slices** (ROADMAP B2–B4): per-workspace app hints in the cluster;
+  right-side glyph set (wifi/bluetooth/sound — starts the per-module permissions
+  conversation, DECISIONS 2026-08-15); NSWorkspace observer for event-driven front-app
+  changes; multi-display enumeration fix (JOURNAL 2026-08-15); bar placement config +
+  notched/notchless profiles; Aerospace vendored wrap + adopt-or-stop migration;
+  panels + module API + agent bar. Housekeeping: commit the aerospace.toml trigger
+  change in dotfiles; remove the sketchybar trigger config there when settled.
 - **Settings eyeball checklist** (only hands can verify): traffic lights sit right over the
   tab strip; window drags by the strip; recorder captures ⌘⇧S-style chords and Esc cancels;
   edits hot-apply with no Save; hand-editing config.json live-updates the open window.
