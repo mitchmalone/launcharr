@@ -179,14 +179,24 @@ pub struct BarSnapshot {
 }
 
 pub fn snapshot() -> BarSnapshot {
-    let (workspaces, focused) = aerospace(&[
+    let raw = aerospace(&[
         "list-workspaces",
         "--all",
         "--format",
         "%{workspace}%{tab}%{workspace-is-focused}",
-    ])
-    .map(|out| parse_workspace_table(&out))
-    .unwrap_or_default();
+    ]);
+    let (workspaces, mut focused) = raw
+        .as_deref()
+        .map(parse_workspace_table)
+        .unwrap_or_default();
+    if focused.is_none() && !workspaces.is_empty() {
+        // Belt and braces: the table said nothing is focused (mid-switch race,
+        // or a version without %{workspace-is-focused}) — ask directly.
+        focused = aerospace(&["list-workspaces", "--focused"])
+            .map(|out| parse_lines(&out).into_iter().next())
+            .unwrap_or_default();
+        eprintln!("[launcharr bar] focus fallback used; table={raw:?} → focused={focused:?}");
+    }
     let (battery_pct, on_ac) = battery_cached();
     BarSnapshot {
         workspaces,

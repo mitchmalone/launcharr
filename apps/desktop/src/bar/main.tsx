@@ -47,7 +47,15 @@ function useSnapshot(): [
     let live = true
     const tick = () =>
       invoke<BarSnapshot>('bar_snapshot')
-        .then((s) => live && setSnap(s))
+        .then((s) => {
+          if (!live) return
+          setSnap((prev) => ({
+            ...s,
+            // Sticky focus: a snapshot caught mid-switch reports none — keep
+            // showing the last known workspace rather than blinking out.
+            focused: s.focused ?? prev?.focused ?? null,
+          }))
+        })
         .catch(() => {})
     tick()
     const id = setInterval(tick, SNAPSHOT_MS)
@@ -84,6 +92,7 @@ function Bar() {
   return (
     <div className="bar">
       <div className="bar-left">
+        <span className="bar-logo">❯</span>
         {snap && snap.workspaces.length > 0 && (
           <div className="bar-ws-cluster">
             {snap.workspaces.map((ws) => (
