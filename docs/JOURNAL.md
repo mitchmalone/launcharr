@@ -6,6 +6,15 @@
 
 ---
 
+### 2026-08-16 · Display mode changes strand the bar off-screen
+
+Overnight the display's point width changed (2560 → 2056; scaling/dock change) and the
+bar stayed at stale absolute coordinates — parked at y=-111, invisible, while Sketchybar
+(which handles this) still drew. Tauri surfaces no "screens changed" event, so bar.rs now
+re-asserts the frame on a 15s main-thread heartbeat (no-op comparison when nothing moved
+— verified zero churn over 40s idle). A real NSApplicationDidChangeScreenParameters
+observer can replace the heartbeat when the objc2 layer grows in B2.
+
 ### 2026-08-15 · Bar spike gotchas: monitors, panel frames, capabilities
 
 Building the v0.5 bar window (see `plans/active/v0.5-tui-kit-and-bar-spike.md`):

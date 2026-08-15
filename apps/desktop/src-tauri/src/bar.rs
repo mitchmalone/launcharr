@@ -83,7 +83,42 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
 
         panel.order_front_regardless();
     }
+    watch(app.clone());
     Ok(())
+}
+
+/// Display modes change (dock/undock, scaling) and strand the bar at stale
+/// coordinates — observed 2026-08-16 at y=-111, invisibly off-screen. There is
+/// no clean cross-platform "screens changed" event in Tauri, so re-assert the
+/// frame on a slow heartbeat; it's a no-op when nothing moved.
+fn watch(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(15));
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || reframe(&handle));
+    });
+}
+
+fn reframe(app: &AppHandle) {
+    let Ok(Some(monitor)) = app.primary_monitor() else {
+        return;
+    };
+    let Some(window) = app.get_webview_window("bar-0") else {
+        return;
+    };
+    let scale = monitor.scale_factor();
+    let want_pos = *monitor.position();
+    let want_size = PhysicalSize::new(monitor.size().width, (BAR_HEIGHT * scale) as u32);
+    let moved = window
+        .outer_position()
+        .map(|p| p != want_pos)
+        .unwrap_or(true);
+    let resized = window.outer_size().map(|s| s != want_size).unwrap_or(true);
+    if moved || resized {
+        let _ = window.set_size(want_size);
+        let _ = window.set_position(want_pos);
+        eprintln!("[launcharr bar] re-framed after display change");
+    }
 }
 
 /// Everything the bar renders in one poll. All sources are optional-by-design:
