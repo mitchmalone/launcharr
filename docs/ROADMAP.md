@@ -72,9 +72,12 @@ and Aerospace are independently toggleable. Not a distro — bar + launcher + co
 | Signing, notarization, auto-update, public README         | Releasing to the wild                                     |
 | Move matching to Rust                                     | R2 fires: WKWebView can't hold the 16 ms keystroke budget |
 
-## Explicitly not doing (non-goals — load-bearing, PRD §3)
+## Explicitly not doing (non-goals — load-bearing, PRD §3, amended by v0.5)
 
-File search, window management, snippets, web search fallbacks, preferences UI beyond
-essentials, light mode, Windows/Linux, anything requiring Accessibility permissions, any
-network request from launcharr core. Deferred with triggers (DECISIONS): Google Translate,
-public IP, Calendar.
+File search, snippets, light mode, Windows/Linux, **anything distro-shaped**. Still true
+for the **launcher core**: zero network, zero permissions. Amended by DECISIONS
+2026-08-15/16 for v0.5: window management arrives _wrapped_ (Aerospace, which brings its
+own Accessibility grant — launcharr itself still requests nothing), and bar **modules**
+may be credentialed + networked per-module, fail-visible (TRMNL first). The PRD predates
+v0.5 and needs a revision pass — until then DECISIONS 2026-08-15 is the scope source for
+bar/panel questions.
