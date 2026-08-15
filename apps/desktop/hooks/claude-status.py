@@ -23,7 +23,8 @@ STATES = {
     "PostToolUse": "working",
     "PermissionRequest": "attention",
     "Notification": "attention",
-    "Stop": "idle",
+    # done, not idle: a finished turn stays "unread" (blue) until visited.
+    "Stop": "done",
     "SessionEnd": "ended",
 }
 

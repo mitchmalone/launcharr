@@ -35,7 +35,7 @@ const MIXED: AgentSession[] = [
   }),
   session({
     session: 'dddd0000',
-    state: 'idle',
+    state: 'done',
     title: 'Fix the Expo token',
     detail: 'Stop',
     tmux: '',

@@ -171,10 +171,34 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64) -> bool 
     true
 }
 
+/// Jump to a session's pane by session id, marking a `done` session read
+/// (done → idle) on the way — "done (unread)" is a blue cell until visited.
+pub fn jump_session(app: &AppHandle, session_id: &str, terminal: Terminal) -> CmdResult<()> {
+    let target = mark_read(&mut SESSIONS.lock().unwrap(), session_id)
+        .ok_or_else(|| CmdError::Internal("unknown agent session".into()))?;
+    if let Err(e) = save(&state_file(), &list()) {
+        eprintln!("[launcharr agents] state save failed: {e}");
+    }
+    crate::bar::push(app);
+    if target.is_empty() {
+        return Err(CmdError::Internal("session has no tmux pane".into()));
+    }
+    jump(&target, terminal)
+}
+
+/// Visiting a session reads it: done → idle. Returns its pane target.
+fn mark_read(sessions: &mut [AgentSession], session_id: &str) -> Option<String> {
+    let session = sessions.iter_mut().find(|s| s.session == session_id)?;
+    if session.state == "done" {
+        session.state = "idle".into();
+    }
+    Some(session.tmux.clone())
+}
+
 /// Jump to a session's tmux pane and bring the terminal frontmost. Ported from
 /// the retired jump.sh: switch the client to the target's session, select its
 /// window; both are best-effort because pane ids go stale when panes close.
-pub fn jump(target: &str, terminal: Terminal) -> CmdResult<()> {
+fn jump(target: &str, terminal: Terminal) -> CmdResult<()> {
     validate_target(target)?;
     let client_target = target.split(':').next().unwrap_or(target);
     let _ = tmux(&["switch-client", "-t", client_target]);
@@ -337,6 +361,21 @@ mod tests {
         apply(&mut s, event("new", "working"), 100 + STALE_SECS + 1);
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].session, "new");
+    }
+
+    #[test]
+    fn jump_reads_done_sessions() {
+        let mut s = Vec::new();
+        let mut done = event("a", "done");
+        done.tmux = "%3".into();
+        apply(&mut s, done, 100);
+        assert_eq!(mark_read(&mut s, "a"), Some("%3".into()));
+        assert_eq!(s[0].state, "idle");
+        // Non-done states are untouched by a visit.
+        apply(&mut s, event("a", "working"), 200);
+        mark_read(&mut s, "a");
+        assert_eq!(s[0].state, "working");
+        assert_eq!(mark_read(&mut s, "missing"), None);
     }
 
     #[test]

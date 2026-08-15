@@ -83,7 +83,10 @@ body,
 }
 
 /* Agent session cells: same flat glyph language as the rest of the bar.
- * State → color; attention pulses (the bar is not the launcher hot path). */
+ * WIP color set (2026-08-16): blocked red breathing, working accent, done
+ * (unread) blue, idle/unknown green. Hover expands the cell into an inline
+ * readout — the 30px strip can't host a popover, so info lives in the strip.
+ * (The bar is not the launcher hot path; animation is allowed here.) */
 .bar-agents {
   display: flex;
   align-items: center;
@@ -91,34 +94,46 @@ body,
 }
 
 .bar-agent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 16px;
   height: 18px;
   line-height: 18px;
-  text-align: center;
-  color: var(--dim, #7f86a5);
+  justify-content: center;
+  /* idle + unknown */
+  color: #00c853;
 }
 
 .bar .bar-agent-working {
   color: var(--accent, #9db2ff);
 }
 
-.bar .bar-agent-idle {
-  color: var(--dim, #7f86a5);
+.bar .bar-agent-done {
+  color: #00b0ff;
 }
 
 .bar .bar-agent-attention {
-  color: var(--bang, #d29922);
-  animation: bar-agent-pulse 1.2s ease-in-out infinite;
+  color: #ff2d2d;
+  animation: bar-agent-breathe 1.6s ease-in-out infinite;
 }
 
-@keyframes bar-agent-pulse {
+@keyframes bar-agent-breathe {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.3;
   }
+}
+
+.bar-agent-info {
+  color: var(--fg, #dde1f0);
+  max-width: 44ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bar-agent-overflow {

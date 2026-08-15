@@ -48,12 +48,16 @@ pub fn agents_status() -> Vec<crate::agents::AgentSession> {
     crate::agents::list()
 }
 
-/// Jump to an agent's tmux pane and bring the terminal frontmost. async: spawns
-/// tmux and `open`.
+/// Jump to an agent session's tmux pane and bring the terminal frontmost;
+/// visiting marks a `done` session read. async: spawns tmux and `open`.
 #[tauri::command]
-pub async fn agent_jump(target: String, state: State<'_, AppState>) -> CmdResult<()> {
+pub async fn agent_jump(
+    session: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> CmdResult<()> {
     let terminal = state.config.read().unwrap().terminal;
-    crate::agents::jump(&target, terminal)
+    crate::agents::jump_session(&app, &session, terminal)
 }
 
 /// Wifi panel (P0). All async — they spawn subprocesses.

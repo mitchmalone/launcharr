@@ -32,8 +32,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   over), 15s reframe heartbeat, ~19 MB marginal memory (gate passed).
 - **Agent monitoring** (B4 slice, plans/done/agent-monitoring.md): launcharr absorbed
   sketchybar-agent-status — Rust socket monitor (`agents.rs`, old wire protocol
-  unchanged), bar agent cells (●/○/◉ glyphs, attention pulses, click jumps to the tmux
-  pane), `agents ⏎` panel. Claude hooks → in-repo `apps/desktop/hooks/claude-status.py`;
+  unchanged), bar agent cells, `agents ⏎` panel. WIP color semantics (2026-08-16):
+  blocked red breathing, working accent, **done-unread blue** (Stop → `done`, read on
+  jump), idle/unknown green; hover expands a cell into an inline title·state·age readout
+  (30px strip can't host a popover). Claude hooks → in-repo `apps/desktop/hooks/claude-status.py`;
   Go daemon booted out (revert: bootstrap
   `~/Library/LaunchAgents/com.mitchmalone.sketchybar-agent-status.plist` + repoint
   hooks; settings backups at `~/.claude*/settings.json.bak-agent-status`).

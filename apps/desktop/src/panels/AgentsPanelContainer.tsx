@@ -28,9 +28,10 @@ export function AgentsPanelContainer({ onClose }: { onClose: () => void }) {
     return () => clearInterval(id)
   }, [])
 
+  // Always invoke — visiting marks a done session read even when it has no
+  // pane to land in (the backend errors on the missing pane after the read).
   const onJump = (session: AgentSession) => {
-    if (!session.tmux) return
-    invoke('agent_jump', { target: session.tmux })
+    invoke('agent_jump', { session: session.session })
       .then(onClose)
       .catch(console.error)
   }

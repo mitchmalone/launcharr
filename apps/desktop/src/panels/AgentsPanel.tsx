@@ -20,6 +20,7 @@ export interface AgentSession {
 const GLYPHS: Record<string, string> = {
   working: '●',
   attention: '◉',
+  done: '●',
   idle: '○',
 }
 
@@ -57,14 +58,15 @@ export function AgentsPanel({
     onBack: onClose,
   })
 
-  const working = sessions.filter((s) => s.state === 'working').length
-  const attention = sessions.filter((s) => s.state === 'attention').length
+  const count = (state: string) =>
+    sessions.filter((s) => s.state === state).length
   const subtitle =
     sessions.length === 0
       ? 'no live sessions'
       : [
-          working > 0 && `${working} working`,
-          attention > 0 && `${attention} need you`,
+          count('working') > 0 && `${count('working')} working`,
+          count('attention') > 0 && `${count('attention')} blocked`,
+          count('done') > 0 && `${count('done')} unread`,
           `${sessions.length} total`,
         ]
           .filter(Boolean)

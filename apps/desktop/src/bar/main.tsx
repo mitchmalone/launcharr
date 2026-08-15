@@ -37,16 +37,33 @@ const MAX_AGENT_CELLS = 6
 const AGENT_GLYPHS: Record<string, string> = {
   working: '●',
   attention: '◉',
+  done: '●',
   idle: '○',
+}
+
+/** User-facing state names where the wire name reads wrong. */
+const AGENT_STATE_LABELS: Record<string, string> = {
+  attention: 'blocked',
+  done: 'done · unread',
+}
+
+function agentAge(updatedAt: number, now: Date): string {
+  const s = Math.max(0, Math.floor(now.getTime() / 1000) - updatedAt)
+  if (s < 60) return `${s}s`
+  if (s < 3600) return `${Math.round(s / 60)}m`
+  return `${Math.round(s / 3600)}h`
 }
 
 /**
  * Agent session cells, replacing the retired sketchybar emoji widgets: one
- * glyph per session in the bar's own language, click jumps to the tmux pane.
+ * glyph per session in the bar's own language; hover expands the cell into an
+ * inline `title · state · age` readout (the 30px strip can't host a popover);
+ * click jumps to the tmux pane and marks a done session read.
  * Sorted by session id — stable positions beat recency when cells are click
  * targets.
  */
-function AgentCluster({ agents }: { agents: AgentSession[] }) {
+function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
+  const [hovered, setHovered] = useState<string | null>(null)
   if (agents.length === 0) return null
   const ordered = [...agents].sort((a, b) => a.session.localeCompare(b.session))
   const shown = ordered.slice(0, MAX_AGENT_CELLS)
@@ -58,13 +75,19 @@ function AgentCluster({ agents }: { agents: AgentSession[] }) {
           key={a.session}
           type="button"
           className={`bar-agent bar-agent-${a.state}`}
-          title={`${a.agent} · ${a.state}${a.title ? ` — ${a.title}` : ''}`}
+          onMouseEnter={() => setHovered(a.session)}
+          onMouseLeave={() => setHovered(null)}
           onClick={() =>
-            a.tmux &&
-            invoke('agent_jump', { target: a.tmux }).catch(console.error)
+            invoke('agent_jump', { session: a.session }).catch(console.error)
           }
         >
-          {AGENT_GLYPHS[a.state] ?? '◌'}
+          <span>{AGENT_GLYPHS[a.state] ?? '○'}</span>
+          {hovered === a.session && (
+            <span className="bar-agent-info">
+              {a.title || a.agent} · {AGENT_STATE_LABELS[a.state] ?? a.state} ·{' '}
+              {agentAge(a.updatedAt, now)}
+            </span>
+          )}
         </button>
       ))}
       {overflow > 0 && <span className="bar-agent-overflow">+{overflow}</span>}
@@ -186,7 +209,7 @@ function Bar() {
             ))}
           </div>
         )}
-        {snap && <AgentCluster agents={snap.agents} />}
+        {snap && <AgentCluster agents={snap.agents} now={now} />}
         {snap?.frontApp && <span className="bar-app">{snap.frontApp}</span>}
       </div>
       <div className="bar-center">{clock}</div>
