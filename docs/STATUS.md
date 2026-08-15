@@ -107,9 +107,12 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   command. **Memory gate PASSED: bar costs ~19 MB marginal** (shares the WebKit pool;
   numbers + gotchas in the plan file and JOURNAL). Mitch's config left bar-off.
   Plan: `plans/done/v0.5-tui-kit-and-bar-spike.md`.
-  **Eyeball checklist:** run the tui gallery (keyboard nav feel); flip
-  `"bar": {"enabled": true}` in config.json + relaunch to see the bar (expect overlap
-  with Sketchybar while both live).
+  **Eyeball checklist:** run the tui gallery (keyboard nav feel).
+- **Bar daily-drivable + enabled** (2026-08-15, same day): clickable workspace cells
+  (`bar_switch_workspace`), front-app cell (lsappinfo), themed via the panel token vars +
+  live `config-changed` re-apply, 1s refresh. `bar.enabled` is now ON in Mitch's config;
+  cutover from Sketchybar pending `brew services stop sketchybar` (agent-blocked; revert
+  is `brew services start sketchybar`).
 
 ## In progress
 
