@@ -19,7 +19,9 @@ body,
 }
 
 .bar {
-  height: 100%;
+  /* Fixed strip height — the window grows taller than the strip while the
+   * agent dropdown is open (bar_set_dropdown), and the card hangs below. */
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -84,23 +86,31 @@ body,
 
 /* Agent session cells: same flat glyph language as the rest of the bar.
  * WIP color set (2026-08-16): blocked red breathing, working accent, done
- * (unread) blue, idle/unknown green. Hover expands the cell into an inline
- * readout — the 30px strip can't host a popover, so info lives in the strip.
- * (The bar is not the launcher hot path; animation is allowed here.) */
+ * (unread) blue, idle/unknown green. Cells are boxed by tmux session and
+ * ordered by tab; hover opens a dropdown card below the strip (the window
+ * grows — see bar_set_dropdown). Bar isn't the launcher hot path; animation
+ * is allowed here. */
 .bar-agents {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.bar-agent {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.bar-agent-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--dim, #7f86a5);
+}
+
+.bar-agent {
   min-width: 16px;
   height: 18px;
   line-height: 18px;
-  justify-content: center;
+  text-align: center;
   /* idle + unknown */
   color: #00c853;
 }
@@ -128,17 +138,45 @@ body,
   }
 }
 
-.bar-agent-info {
+/* Hover dropdown: hangs below the strip, inside the grown window. */
+.bar-agent-card {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 10;
+  min-width: 300px;
+  max-width: 52ch;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg, rgba(20, 21, 29, 0.96));
+  border: 1px solid var(--dim, #7f86a5);
+}
+
+.bar-agent-card-title {
   color: var(--fg, #dde1f0);
-  max-width: 44ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bar-agent-overflow {
+.bar-agent-card-state {
+  /* idle + unknown; state classes above override. */
+  color: #00c853;
+}
+
+.bar-agent-card-line {
+  color: var(--dim, #7f86a5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-agent-card-hint {
   color: var(--dim, #7f86a5);
   font-size: 10px;
+  margin-top: 2px;
 }
 
 .bar-app {

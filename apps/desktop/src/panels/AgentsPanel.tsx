@@ -15,6 +15,9 @@ export interface AgentSession {
   tmux: string
   /** Unix seconds of the last event. */
   updatedAt: number
+  tmuxSession: string | null
+  tmuxWindow: number | null
+  tmuxWindowName: string | null
 }
 
 const GLYPHS: Record<string, string> = {
@@ -50,9 +53,16 @@ export function AgentsPanel({
   onJump,
   onClose,
 }: AgentsPanelProps) {
-  const nav = useListNav(sessions.length, {
+  // Same order as the bar: tmux session, then tab index; pane-less last.
+  const ordered = [...sessions].sort(
+    (a, b) =>
+      (a.tmuxSession ?? '￿').localeCompare(b.tmuxSession ?? '￿') ||
+      (a.tmuxWindow ?? 0) - (b.tmuxWindow ?? 0) ||
+      a.session.localeCompare(b.session),
+  )
+  const nav = useListNav(ordered.length, {
     onActivate: (i) => {
-      const session = sessions[i]
+      const session = ordered[i]
       if (session) onJump(session)
     },
     onBack: onClose,
@@ -93,12 +103,19 @@ export function AgentsPanel({
         <ListRow dim label="no live agent sessions" sub="idle for now" />
       ) : (
         <div className="tui-scroll">
-          {sessions.map((s, i) => (
+          {ordered.map((s, i) => (
             <ListRow
               key={s.session}
               icon={agentGlyph(s.state)}
               label={s.title || s.session.slice(0, 8)}
-              sub={[s.agent, s.state, s.detail].filter(Boolean).join(' · ')}
+              sub={[
+                s.tmuxSession && `${s.tmuxSession}:${s.tmuxWindow}`,
+                s.agent,
+                s.state,
+                s.detail,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               right={
                 s.tmux
                   ? formatAge(s.updatedAt, nowSecs)

@@ -12,6 +12,9 @@ const session = (over: Partial<AgentSession>): AgentSession => ({
   detail: 'PreToolUse · Bash',
   tmux: '%23',
   updatedAt: NOW - 42,
+  tmuxSession: 'gogogo',
+  tmuxWindow: 2,
+  tmuxWindowName: 'Launcharr',
   ...over,
 })
 
@@ -24,6 +27,8 @@ const MIXED: AgentSession[] = [
     detail: 'PermissionRequest',
     tmux: '%7',
     updatedAt: NOW - 5,
+    tmuxWindow: 1,
+    tmuxWindowName: 'Infisical',
   }),
   session({
     session: 'cccc0000',
@@ -32,6 +37,9 @@ const MIXED: AgentSession[] = [
     detail: 'Stop',
     tmux: '%0',
     updatedAt: NOW - 7200,
+    tmuxSession: 'ops',
+    tmuxWindow: 1,
+    tmuxWindowName: 'ci',
   }),
   session({
     session: 'dddd0000',
@@ -40,6 +48,9 @@ const MIXED: AgentSession[] = [
     detail: 'Stop',
     tmux: '',
     updatedAt: NOW - 600,
+    tmuxSession: null,
+    tmuxWindow: null,
+    tmuxWindowName: null,
   }),
 ]
 

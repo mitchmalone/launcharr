@@ -16,6 +16,29 @@ use crate::error::{CmdError, CmdResult};
 /// Logical bar height, matching the Sketchybar setup it replaces.
 pub const BAR_HEIGHT: f64 = 30.0;
 
+/// Extra logical height while the agent hover card is open — the strip can't
+/// host a popover inside 30px, so the whole window grows downward briefly.
+const DROPDOWN_EXTRA: f64 = 130.0;
+
+/// Whether the hover dropdown is open; the reframe heartbeat must agree with
+/// the hover state or it snaps the window back mid-hover.
+static DROPDOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn wanted_height() -> f64 {
+    if DROPDOWN.load(std::sync::atomic::Ordering::Relaxed) {
+        BAR_HEIGHT + DROPDOWN_EXTRA
+    } else {
+        BAR_HEIGHT
+    }
+}
+
+/// Open/close the hover dropdown by resizing the primary bar window.
+pub fn set_dropdown(app: &AppHandle, open: bool) {
+    DROPDOWN.store(open, std::sync::atomic::Ordering::Relaxed);
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || reframe(&handle));
+}
+
 tauri_panel! {
     panel!(BarPanel {
         config: {
@@ -198,7 +221,7 @@ fn reframe(app: &AppHandle) {
     };
     let scale = monitor.scale_factor();
     let want_pos = *monitor.position();
-    let want_size = PhysicalSize::new(monitor.size().width, (BAR_HEIGHT * scale) as u32);
+    let want_size = PhysicalSize::new(monitor.size().width, (wanted_height() * scale) as u32);
     let moved = window
         .outer_position()
         .map(|p| p != want_pos)

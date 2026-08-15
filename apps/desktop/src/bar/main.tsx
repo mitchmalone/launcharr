@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import type { Config } from '../lib/config'
@@ -16,6 +16,9 @@ interface AgentSession {
   detail: string
   tmux: string
   updatedAt: number
+  tmuxSession: string | null
+  tmuxWindow: number | null
+  tmuxWindowName: string | null
 }
 
 interface BarSnapshot {
@@ -30,9 +33,6 @@ interface BarSnapshot {
   trmnl: { pct: number | null; name: string | null } | null
   agents: AgentSession[]
 }
-
-/** Max agent cells before collapsing the tail into a +N overflow marker. */
-const MAX_AGENT_CELLS = 6
 
 const AGENT_GLYPHS: Record<string, string> = {
   working: '●',
@@ -55,42 +55,123 @@ function agentAge(updatedAt: number, now: Date): string {
 }
 
 /**
+ * tmux-session groups (ordered by name, cells by tab index) plus loose cells
+ * for agents outside tmux — invocation order never decides placement.
+ */
+function groupAgents(agents: AgentSession[]) {
+  const byName = new Map<string, AgentSession[]>()
+  const loose: AgentSession[] = []
+  for (const a of agents) {
+    if (a.tmuxSession) {
+      const list = byName.get(a.tmuxSession) ?? []
+      list.push(a)
+      byName.set(a.tmuxSession, list)
+    } else {
+      loose.push(a)
+    }
+  }
+  for (const list of byName.values()) {
+    list.sort(
+      (x, y) =>
+        (x.tmuxWindow ?? 0) - (y.tmuxWindow ?? 0) ||
+        x.session.localeCompare(y.session),
+    )
+  }
+  loose.sort((x, y) => x.session.localeCompare(y.session))
+  const groups = [...byName.entries()].sort(([a], [b]) => a.localeCompare(b))
+  return { groups, loose }
+}
+
+/**
  * Agent session cells, replacing the retired sketchybar emoji widgets: one
- * glyph per session in the bar's own language; hover expands the cell into an
- * inline `title · state · age` readout (the 30px strip can't host a popover);
- * click jumps to the tmux pane and marks a done session read.
- * Sorted by session id — stable positions beat recency when cells are click
- * targets.
+ * glyph per session, boxed by tmux session and ordered by tab. Hovering opens
+ * a dropdown card — the window itself grows downward via bar_set_dropdown,
+ * since a 30px strip can't host a popover — with the agent's task, state, and
+ * tmux location. Click jumps to the pane and marks a done session read.
  */
 function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
-  const [hovered, setHovered] = useState<string | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const closeTimer = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (closeTimer.current != null) clearTimeout(closeTimer.current)
+    },
+    [],
+  )
   if (agents.length === 0) return null
-  const ordered = [...agents].sort((a, b) => a.session.localeCompare(b.session))
-  const shown = ordered.slice(0, MAX_AGENT_CELLS)
-  const overflow = ordered.length - shown.length
+
+  const cancelClose = () => {
+    if (closeTimer.current != null) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+  const openFor = (id: string) => {
+    cancelClose()
+    if (hoveredId === null) {
+      invoke('bar_set_dropdown', { open: true }).catch(console.error)
+    }
+    setHoveredId(id)
+  }
+  // Delayed close bridges the pixel gap between the strip and the card.
+  const scheduleClose = () => {
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => {
+      setHoveredId(null)
+      invoke('bar_set_dropdown', { open: false }).catch(console.error)
+    }, 200)
+  }
+
+  const { groups, loose } = groupAgents(agents)
+  const hovered = agents.find((a) => a.session === hoveredId) ?? null
+  const cell = (a: AgentSession) => (
+    <button
+      key={a.session}
+      type="button"
+      className={`bar-agent bar-agent-${a.state}`}
+      onMouseEnter={() => openFor(a.session)}
+      onClick={() =>
+        invoke('agent_jump', { session: a.session }).catch(console.error)
+      }
+    >
+      {AGENT_GLYPHS[a.state] ?? '○'}
+    </button>
+  )
+
   return (
-    <div className="bar-agents">
-      {shown.map((a) => (
-        <button
-          key={a.session}
-          type="button"
-          className={`bar-agent bar-agent-${a.state}`}
-          onMouseEnter={() => setHovered(a.session)}
-          onMouseLeave={() => setHovered(null)}
-          onClick={() =>
-            invoke('agent_jump', { session: a.session }).catch(console.error)
-          }
-        >
-          <span>{AGENT_GLYPHS[a.state] ?? '○'}</span>
-          {hovered === a.session && (
-            <span className="bar-agent-info">
-              {a.title || a.agent} · {AGENT_STATE_LABELS[a.state] ?? a.state} ·{' '}
-              {agentAge(a.updatedAt, now)}
-            </span>
-          )}
-        </button>
+    <div
+      className="bar-agents"
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
+    >
+      {groups.map(([name, list]) => (
+        <div key={name} className="bar-agent-group">
+          {list.map(cell)}
+        </div>
       ))}
-      {overflow > 0 && <span className="bar-agent-overflow">+{overflow}</span>}
+      {loose.map(cell)}
+      {hovered && (
+        <div className="bar-agent-card">
+          <div className="bar-agent-card-title">
+            {hovered.title || hovered.agent}
+          </div>
+          <div className={`bar-agent-card-state bar-agent-${hovered.state}`}>
+            {AGENT_GLYPHS[hovered.state] ?? '○'}{' '}
+            {AGENT_STATE_LABELS[hovered.state] ?? hovered.state} ·{' '}
+            {agentAge(hovered.updatedAt, now)} ago
+          </div>
+          {hovered.detail && (
+            <div className="bar-agent-card-line">{hovered.detail}</div>
+          )}
+          <div className="bar-agent-card-line">
+            {hovered.tmuxSession
+              ? `${hovered.tmuxSession} · tab ${hovered.tmuxWindow}` +
+                (hovered.tmuxWindowName ? ` · ${hovered.tmuxWindowName}` : '')
+              : 'no tmux pane'}
+          </div>
+          <div className="bar-agent-card-hint">click cell to jump</div>
+        </div>
+      )}
     </div>
   )
 }

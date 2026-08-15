@@ -41,6 +41,12 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
+/// Open/close the bar's agent hover dropdown (window resize, main thread).
+#[tauri::command]
+pub fn bar_set_dropdown(open: bool, app: AppHandle) {
+    crate::bar::set_dropdown(&app, open);
+}
+
 /// Agents panel: the monitored sessions (DECISIONS 2026-08-16). Sync — reads
 /// an in-memory store, no subprocess.
 #[tauri::command]

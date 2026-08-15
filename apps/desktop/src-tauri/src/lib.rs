@@ -89,6 +89,7 @@ pub fn run() {
             commands::hide_panel,
             commands::bar_snapshot,
             commands::bar_switch_workspace,
+            commands::bar_set_dropdown,
             commands::agents_status,
             commands::agent_jump,
             commands::wifi_status,

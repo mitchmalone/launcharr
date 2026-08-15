@@ -37,6 +37,15 @@ pub struct AgentSession {
     pub tmux: String,
     /// Unix seconds of the last event.
     pub updated_at: u64,
+    /// tmux location, refreshed at read time from `list-panes` (never trusted
+    /// from disk): session name, window (tab) index, window name. All None
+    /// when the pane no longer exists or the agent isn't in tmux.
+    #[serde(default)]
+    pub tmux_session: Option<String>,
+    #[serde(default)]
+    pub tmux_window: Option<u32>,
+    #[serde(default)]
+    pub tmux_window_name: Option<String>,
 }
 
 /// Incoming wire event: an `AgentSession` minus the timestamp, all fields
@@ -59,14 +68,24 @@ struct AgentEvent {
 
 static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
 
-/// Snapshot for the bar and panel: fresh sessions only, newest first.
+/// Snapshot for the bar and panel: fresh sessions only, newest first, each
+/// stamped with its current tmux location so the UI can group by session and
+/// order by tab.
 pub fn list() -> Vec<AgentSession> {
+    let layout = tmux_layout();
     let sessions = SESSIONS.lock().unwrap();
     let now = now_secs();
     let mut fresh: Vec<AgentSession> = sessions
         .iter()
         .filter(|s| now.saturating_sub(s.updated_at) <= STALE_SECS)
         .cloned()
+        .map(|mut s| {
+            let loc = layout.get(&s.tmux);
+            s.tmux_session = loc.map(|l| l.session.clone());
+            s.tmux_window = loc.map(|l| l.window);
+            s.tmux_window_name = loc.map(|l| l.window_name.clone());
+            s
+        })
         .collect();
     fresh.sort_by(|a, b| {
         b.updated_at
@@ -74,6 +93,69 @@ pub fn list() -> Vec<AgentSession> {
             .then(a.session.cmp(&b.session))
     });
     fresh
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PaneLocation {
+    session: String,
+    window: u32,
+    window_name: String,
+}
+
+/// pane id → location from `tmux list-panes -a`. Cached briefly: list() runs
+/// on the 1 Hz bar push and must not pay a process spawn per tick.
+fn tmux_layout() -> std::collections::HashMap<String, PaneLocation> {
+    use std::time::{Duration, Instant};
+    type Layout = std::collections::HashMap<String, PaneLocation>;
+    static CACHE: Mutex<Option<(Instant, Layout)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    if let Some((at, layout)) = cache.as_ref() {
+        if at.elapsed() < Duration::from_secs(2) {
+            return layout.clone();
+        }
+    }
+    let layout = tmux_out(&[
+        "list-panes",
+        "-a",
+        "-F",
+        "#{pane_id}\t#{session_name}\t#{window_index}\t#{window_name}",
+    ])
+    .as_deref()
+    .map(parse_panes)
+    .unwrap_or_default();
+    *cache = Some((Instant::now(), layout.clone()));
+    layout
+}
+
+fn parse_panes(out: &str) -> std::collections::HashMap<String, PaneLocation> {
+    out.lines()
+        .filter_map(|line| {
+            let mut parts = line.split('\t');
+            let pane = parts.next()?.trim();
+            let session = parts.next()?.trim();
+            let window = parts.next()?.trim().parse().ok()?;
+            let window_name = parts.next().unwrap_or_default().trim();
+            (!pane.is_empty() && !session.is_empty()).then(|| {
+                (
+                    pane.to_owned(),
+                    PaneLocation {
+                        session: session.to_owned(),
+                        window,
+                        window_name: strip_status_suffix(window_name).to_owned(),
+                    },
+                )
+            })
+        })
+        .collect()
+}
+
+/// Old tmux integrations rename windows with a trailing status tag
+/// (`Launcharr [🧑‍🍳]`) — drop it, the cell already shows state.
+fn strip_status_suffix(name: &str) -> &str {
+    match name.rsplit_once(" [") {
+        Some((base, rest)) if rest.ends_with(']') => base.trim_end(),
+        _ => name,
+    }
 }
 
 /// Start the listener. Called once at setup regardless of `bar.enabled` — the
@@ -152,6 +234,7 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64) -> bool 
         detail: event.detail,
         tmux: event.tmux,
         updated_at: now,
+        ..Default::default()
     };
     if let Some(i) = previous {
         let old = &sessions[i];
@@ -231,6 +314,17 @@ fn tmux(args: &[&str]) -> Option<()> {
     for bin in ["tmux", "/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"] {
         if let Ok(status) = std::process::Command::new(bin).args(args).status() {
             return status.success().then_some(());
+        }
+    }
+    None
+}
+
+fn tmux_out(args: &[&str]) -> Option<String> {
+    for bin in ["tmux", "/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"] {
+        if let Ok(out) = std::process::Command::new(bin).args(args).output() {
+            if out.status.success() {
+                return Some(String::from_utf8_lossy(&out.stdout).into_owned());
+            }
         }
     }
     None
@@ -364,6 +458,33 @@ mod tests {
     }
 
     #[test]
+    fn parses_tmux_pane_layout() {
+        let out = "%7\tgogogo\t1\tInfisical [😴]\n%23\tgogogo\t2\tLauncharr\nbad line\n";
+        let layout = parse_panes(out);
+        assert_eq!(
+            layout.get("%7"),
+            Some(&PaneLocation {
+                session: "gogogo".into(),
+                window: 1,
+                window_name: "Infisical".into(),
+            })
+        );
+        assert_eq!(layout.get("%23").map(|l| l.window), Some(2));
+        assert_eq!(layout.len(), 2);
+        assert!(parse_panes("").is_empty());
+    }
+
+    #[test]
+    fn strips_window_status_suffix() {
+        assert_eq!(strip_status_suffix("Launcharr [🧑‍🍳]"), "Launcharr");
+        assert_eq!(strip_status_suffix("plain"), "plain");
+        assert_eq!(
+            strip_status_suffix("keeps [brackets] inside"),
+            "keeps [brackets] inside"
+        );
+    }
+
+    #[test]
     fn jump_reads_done_sessions() {
         let mut s = Vec::new();
         let mut done = event("a", "done");
@@ -445,6 +566,7 @@ mod tests {
             detail: "PreToolUse · Bash".into(),
             tmux: "%3".into(),
             updated_at: 42,
+            ..Default::default()
         }];
         save(&path, &sessions).expect("save");
         assert_eq!(load(&path).expect("load"), sessions);
