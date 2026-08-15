@@ -22,4 +22,6 @@ export type Config = {
   theme: string
   /** User-defined themes: name → partial token overrides (see lib/themes.ts). */
   themes: Record<string, Partial<ThemeTokens>>
+  /** The menubar-replacement bar (v0.5). Takes effect on restart. */
+  bar: { enabled: boolean }
 }

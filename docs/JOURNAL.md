@@ -6,6 +6,34 @@
 
 ---
 
+### 2026-08-15 · Bar spike gotchas: monitors, panel frames, capabilities
+
+Building the v0.5 bar window (see `plans/active/v0.5-tui-kit-and-bar-spike.md`):
+
+- **`available_monitors()` returns an empty list** in this accessory app — at setup AND
+  500ms later on the main thread. `primary_monitor()` answers correctly. bar.rs falls
+  back to primary; multi-display enumeration is an open item for B2 (candidates: NSScreen
+  directly via objc2, or enumerate after first window event).
+- **Frame an NSPanel-converted window AFTER `to_panel()`, with a fresh handle.**
+  `set_position`/`set_size` before the conversion are silently dropped, and the
+  pre-conversion `WebviewWindow` handle reports stale geometry afterwards (claimed
+  800×600 while CGWindowList showed the true 2560×30). panel.rs always re-fetched via
+  `get_webview_window` — that's why it never hit this.
+- **New window labels must be added to `capabilities/default.json`** (`bar-*`) or the
+  webview's `invoke()` fails silently inside a `.catch()`.
+- **`load_or_create` used to swallow config parse errors silently** (`unwrap_or_default`)
+  — a typo'd config.json reverted every setting with no trace. It now logs before
+  falling back.
+- Debug observation: launcharr has had a benign offscreen 500×500 layer-0 window in
+  CGWindowList all along (present with bar disabled, pre-dating this work). Unidentified;
+  harmless; noting so the next window-debugging session doesn't chase it.
+- **Memory (the B1 gate, PASSED):** one display, release build, fresh-launch RSS totals
+  across launcharr + its WebKit helpers — bar off: ~187 MB (main 103 + helpers ~84);
+  bar on: ~205 MB stable after 60s (main 96 + helpers ~109, bar's WebContent 35 MB).
+  **Marginal cost of the bar ≈ 19 MB** — the bar rides the app's existing WebKit process
+  pool instead of paying a per-app baseline. Main-process RSS (the metric the 120 MB
+  budget has historically tracked) stays ~96 MB.
+
 ### 2026-08-12 · `brew untap --force` uninstalls the tap's casks — including the app
 
 Migrating to the shared tap: `brew untap mitchmalone/launcharr --force` didn't just remove

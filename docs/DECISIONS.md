@@ -5,6 +5,41 @@
 
 ---
 
+### 2026-08-15 · v0.5 direction: launcharr grows a menubar replacement — own bar, wrapped Aerospace, TUI kit
+
+- **Decision (scope).** The next major version (jumping to 0.5) adds a **menubar
+  replacement** and a **nicely wrapped Aerospace integration** to launcharr. This is
+  launcharr evolving, not a new product and explicitly **not a distro**: menubar
+  replacement + app launcher + config, wearing an Omarchy-inspired TUI-styled look.
+  Anything distro-shaped (managing terminals, editors, dotfiles at large) is a non-goal.
+- **Decision (build vs wrap the bar).** We build our own bar; we do **not** wrap
+  Sketchybar. Rationale from the pressure test: launcharr already owns the hard window
+  layer (tauri-nspanel, status-level non-activating windows, M0 focus discipline); we'd
+  bypass Sketchybar's layout engine anyway (React on a character grid is the product);
+  its popups can't render our rich TUI panels; and our Rust core has to gather all module
+  data either way — the wrapper reduces to serializing our own data into `--set` calls
+  against a vendored GPL binary, plus a permanent visual seam between an AppKit bar and
+  webview popups. **Gate:** a memory spike must show acceptable resident cost for an
+  always-visible webview bar before the bar milestone proceeds past spike stage.
+- **Decision (Aerospace).** Wrapped, never rebuilt — it is irreplaceable behavior, not
+  replaceable rendering. Ship an opinionated generated config, vendor a pinned release
+  binary under launcharr's own directory (not via the user's Homebrew), supervise the
+  process, integrate via CLI + `exec-on-workspace-change`. Aerospace's Unix socket stays
+  off-limits (unofficial/unstable). Users never see Aerospace config; launcharr's config
+  is the only surface. Existing-install coexistence needs an adopt-or-stop migration in
+  the installer (not in this slice).
+- **Decision (modularity).** Install-time and settings-time choice of any combination of:
+  app launcher, menubar replacement, Aerospace integration. Launcher-only launcharr keeps
+  working exactly as today.
+- **Decision (TUI kit).** A complete TUI-like component library (`packages/tui`,
+  Omarchy-inspired: charcoal panels, thin light borders, monospace two-column menus,
+  keyboard-first) becomes the shared UI substrate for the bar, its panels, menus, and
+  future mini-apps. Own components in the webview; never wrap a real terminal for chrome.
+- **Invariants.** Zero-network and zero-permissions **hold for the core and for this
+  slice** (bar spike needs only IOKit battery, the clock, and the Aerospace CLI). They
+  will be renegotiated per-module when a module demands it (wifi SSID → Location Services,
+  calendar → EventKit), as visible opt-ins — recorded then, not now.
+
 ### 2026-08-12 · One shared Homebrew tap for all projects — homebrew-launcharr retired
 
 - **Decision.** launcharr's cask moves into `mitchmalone/homebrew-tap` (beside beeptui's

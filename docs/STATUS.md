@@ -3,7 +3,7 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-11
+> Last updated: 2026-08-15
 
 ## Done
 
@@ -95,8 +95,28 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   desktop demo, theme switcher, monochrome accent + CTA pink, release.json-driven install
   section — live at launcharr.com. Plan: `plans/done/jig-reconciliation.md`.
 
+## Done (latest)
+
+- **v0.5 slice 1 — TUI kit + bar spike** (2026-08-15): direction decided (DECISIONS
+  2026-08-15: own bar, wrapped/vendored Aerospace, modular install, NOT a distro; ROADMAP
+  B0–B4). `packages/tui` shipped: Omarchy-inspired component kit (Panel, rows, hotkeys,
+  Slider/Toggle/Segmented/Meter, Calendar with ISO weeks, TwoPane, prompt, useListNav) —
+  nav logic TDD'd (23 tests), gallery via `pnpm --filter @launcharr/tui gallery`.
+  Bar spike shipped behind `bar.enabled` (default off): status-level non-activating
+  NSPanel strip, workspaces (aerospace CLI) + clock + battery via one `bar_snapshot`
+  command. **Memory gate PASSED: bar costs ~19 MB marginal** (shares the WebKit pool;
+  numbers + gotchas in the plan file and JOURNAL). Mitch's config left bar-off.
+  Plan: `plans/done/v0.5-tui-kit-and-bar-spike.md`.
+  **Eyeball checklist:** run the tui gallery (keyboard nav feel); flip
+  `"bar": {"enabled": true}` in config.json + relaunch to see the bar (expect overlap
+  with Sketchybar while both live).
+
 ## In progress
 
+- **v0.5 next slices** (ROADMAP B2–B4): bar layout regions + module placement config +
+  notched/notchless profiles + theming; multi-display enumeration fix (JOURNAL
+  2026-08-15); Aerospace vendored wrap + adopt-or-stop migration; panels + module API +
+  agent bar.
 - **Settings eyeball checklist** (only hands can verify): traffic lights sit right over the
   tab strip; window drags by the strip; recorder captures ⌘⇧S-style chords and Esc cancels;
   edits hot-apply with no Save; hand-editing config.json live-updates the open window.

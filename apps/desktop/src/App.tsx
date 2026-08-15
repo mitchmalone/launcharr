@@ -57,6 +57,7 @@ const DEFAULT_CONFIG: Config = {
   indexBookmarks: false,
   theme: 'launcharr',
   themes: {},
+  bar: { enabled: false },
 }
 
 export default function App() {

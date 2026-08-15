@@ -1,0 +1,445 @@
+/* @launcharr/tui — Omarchy-inspired terminal chrome.
+ *
+ * Theming: every color resolves through a --tui-* token, falling back to the
+ * app's existing theme tokens (--bg/--surface/--border/--fg/--dim/--accent/
+ * --selected from lib/themes.ts) and finally to the kit's own charcoal
+ * defaults. Square corners everywhere; the only "round" thing is type. */
+
+.tui {
+  --_bg: var(--tui-bg, var(--bg, #14151d));
+  --_surface: var(--tui-surface, var(--surface, #21222e));
+  --_border: var(--tui-border, var(--border, #34364a));
+  --_frame: var(--tui-frame, #a7b0d0);
+  --_fg: var(--tui-fg, var(--fg, #dde1f0));
+  --_dim: var(--tui-dim, var(--dim, #7f86a5));
+  --_accent: var(--tui-accent, var(--accent, #9db2ff));
+  --_selected: var(--tui-selected, var(--selected, rgba(167, 176, 208, 0.12)));
+
+  font-family:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--_fg);
+}
+
+.tui *,
+.tui *::before,
+.tui *::after {
+  box-sizing: border-box;
+}
+
+.tui button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---- Panel ---------------------------------------------------------- */
+
+.tui-panel {
+  background: var(--_bg);
+  border: 1px solid var(--_frame);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 10px;
+  outline: none;
+}
+
+.tui-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 6px 10px;
+  border-bottom: 1px solid var(--_border);
+}
+
+.tui-panel-icon {
+  font-size: 18px;
+  color: var(--_fg);
+}
+
+.tui-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tui-panel-subtitle {
+  color: var(--_dim);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tui-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tui-panel-foot {
+  border-top: 1px solid var(--_border);
+  padding: 8px 6px 0;
+  color: var(--_dim);
+}
+
+/* ---- Section header / divider --------------------------------------- */
+
+.tui-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--_dim);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 6px 2px;
+}
+
+.tui-section-right {
+  color: var(--_fg);
+}
+
+.tui-divider {
+  border-top: 1px solid var(--_border);
+  margin: 4px 0;
+}
+
+/* ---- Rows ------------------------------------------------------------ */
+
+.tui-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+}
+
+.tui-row-selected {
+  background: var(--_selected);
+}
+
+.tui-row-dim {
+  color: var(--_dim);
+}
+
+.tui-row-clickable {
+  cursor: pointer;
+}
+
+.tui-row-icon {
+  width: 1.4em;
+  text-align: center;
+  color: var(--_dim);
+  flex-shrink: 0;
+}
+
+.tui-row-selected .tui-row-icon {
+  color: var(--_accent);
+}
+
+.tui-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tui-row-sub {
+  display: block;
+  color: var(--_dim);
+  font-size: 11px;
+}
+
+.tui-row-right {
+  color: var(--_dim);
+  flex-shrink: 0;
+}
+
+/* ---- Hotkey rows ----------------------------------------------------- */
+
+.tui-hotkey {
+  gap: 24px;
+}
+
+.tui-hotkey-keys {
+  flex: 1;
+  letter-spacing: 0.06em;
+}
+
+.tui-row-selected .tui-hotkey-keys {
+  color: var(--_accent);
+}
+
+.tui-hotkey-action {
+  flex: 1;
+}
+
+.tui-row-selected .tui-hotkey-action {
+  color: var(--_accent);
+}
+
+.tui-hotkey-arrow {
+  color: var(--_dim);
+  margin-right: 4px;
+}
+
+/* ---- Key hints ------------------------------------------------------- */
+
+.tui-keyhints {
+  display: flex;
+  gap: 6px;
+  color: var(--_dim);
+  padding: 4px 6px;
+}
+
+.tui-keyhint + .tui-keyhint::before {
+  content: '· ';
+}
+
+.tui-keyhint-keys {
+  color: var(--_fg);
+}
+
+/* ---- Two-pane -------------------------------------------------------- */
+
+.tui-twopane {
+  display: grid;
+  gap: 0 18px;
+  min-height: 0;
+  flex: 1;
+}
+
+.tui-twopane-left,
+.tui-twopane-right {
+  min-width: 0;
+  overflow: auto;
+}
+
+.tui-twopane-rule {
+  background: var(--_border);
+}
+
+/* ---- Prompt ---------------------------------------------------------- */
+
+.tui-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 12px;
+}
+
+.tui-prompt-sigil {
+  color: var(--_accent);
+}
+
+.tui-prompt-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--_fg);
+  font: inherit;
+  font-size: 15px;
+  caret-color: var(--_accent);
+}
+
+.tui-prompt-input::placeholder {
+  color: var(--_dim);
+}
+
+/* ---- Toggle ---------------------------------------------------------- */
+
+.tui-toggle {
+  width: 46px;
+  height: 22px;
+  background: var(--_surface);
+  border: 1px solid var(--_border);
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.tui-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 16px;
+  background: var(--_dim);
+  transition: none;
+}
+
+.tui-toggle-on .tui-toggle-knob {
+  left: auto;
+  right: 2px;
+  background: var(--_fg);
+}
+
+/* ---- Slider ---------------------------------------------------------- */
+
+.tui-slider {
+  padding: 8px 0;
+  outline: none;
+  touch-action: none;
+}
+
+.tui-slider:focus-visible .tui-slider-knob {
+  background: var(--_accent);
+}
+
+.tui-slider-track {
+  position: relative;
+  height: 4px;
+  background: var(--_border);
+}
+
+.tui-slider-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--_fg);
+}
+
+.tui-slider-knob {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  background: var(--_fg);
+  border-radius: 50%;
+}
+
+/* ---- Segmented control ----------------------------------------------- */
+
+.tui-segmented {
+  display: flex;
+  gap: 10px;
+}
+
+.tui-segment {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--_border);
+  color: var(--_fg);
+  text-align: center;
+}
+
+.tui-segment-active {
+  background: var(--_selected);
+  border-color: var(--_frame);
+}
+
+/* ---- Meter ----------------------------------------------------------- */
+
+.tui-meter {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 6px;
+  color: var(--_dim);
+}
+
+.tui-meter-emphasis {
+  color: var(--_fg);
+  font-weight: 700;
+}
+
+.tui-meter-label {
+  min-width: 4ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tui-meter-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: var(--_border);
+}
+
+.tui-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--_fg);
+}
+
+.tui-meter-right {
+  min-width: 6ch;
+  text-align: right;
+  color: var(--_fg);
+  flex-shrink: 0;
+}
+
+/* ---- Calendar -------------------------------------------------------- */
+
+.tui-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tui-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px 0;
+  text-align: center;
+}
+
+.tui-cal-dow {
+  color: var(--_dim);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 6px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.tui-cal-week {
+  color: var(--_dim);
+  padding: 8px 0;
+  border-right: 1px solid var(--_border);
+  margin-right: 8px;
+  font-size: 12px;
+}
+
+.tui-cal-day {
+  padding: 8px 0;
+  border: 1px solid transparent;
+}
+
+.tui-cal-out {
+  color: var(--_dim);
+  opacity: 0.55;
+}
+
+.tui-cal-selected {
+  border-color: var(--_frame);
+}
+
+.tui-cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--_dim);
+  padding: 4px 6px;
+}
+
+.tui-cal-title {
+  letter-spacing: 0.2em;
+  font-size: 12px;
+}
+
+.tui-cal-step {
+  color: var(--_dim);
+  padding: 2px 8px;
+}
+
+.tui-cal-step:hover {
+  color: var(--_fg);
+}

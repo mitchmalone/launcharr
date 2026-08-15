@@ -36,6 +36,26 @@ README/RELEASING. Ship blocked only on signing (Mitch's Apple Developer ID).
 Record: `plans/done/v1.2-release-core.md`. Deferred by choice: file search (mdfind route
 documented), dx pack (tmux/projects/ssh/ports — see 2026-08-09 brainstorm in git history).
 
+## v0.5 — the bar (decided 2026-08-15, DECISIONS entry)
+
+launcharr grows a menubar replacement and wrapped Aerospace integration; launcher, bar,
+and Aerospace are independently toggleable. Not a distro — bar + launcher + config only.
+
+- **B0 — TUI kit.** `packages/tui`: Omarchy-inspired component library (panels, menus,
+  hotkey rows, sliders, calendar, two-pane) with keyboard-nav logic TDD'd; gallery for
+  eyeballing. _Exit: every 0.5 surface can be composed from the kit._
+- **B1 — Bar spike (gate).** Status-level window per display: workspaces + clock +
+  battery, default-off. _Exit: measured resident memory is acceptable or the bar
+  approach gets revisited with data._
+- **B2 — Bar core.** Layout regions (left/center/right), module placement config,
+  notched vs notchless placement profiles, theming via existing theme system.
+  _Exit: Mitch turns off Sketchybar._
+- **B3 — Aerospace wrap.** Vendored pinned binary, generated opinionated config,
+  process supervision, adopt-or-stop migration. _Exit: fresh Mac gets working tiling
+  without ever seeing an aerospace.toml._
+- **B4 — Panels + modules.** Rich TUI panels on bar items; module API (data-driven,
+  any-language emitters); agent bar module. _Exit: sketchybar-agent-status retired._
+
 ## v2 horizon (recorded now, built later — PRD §10)
 
 | Item                                                      | Trigger                                                   |

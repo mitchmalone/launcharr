@@ -32,6 +32,12 @@ pub fn hide_panel(app: AppHandle) {
     panel::hide(&app);
 }
 
+/// One poll of everything the bar renders (v0.5 spike; DECISIONS 2026-08-15).
+#[tauri::command]
+pub fn bar_snapshot() -> crate::bar::BarSnapshot {
+    crate::bar::snapshot()
+}
+
 #[tauri::command]
 pub fn resize_panel(app: AppHandle, height: f64) -> CmdResult<()> {
     panel::resize(&app, height)

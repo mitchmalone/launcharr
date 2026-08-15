@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
+mod bar;
 mod bookmarks;
 mod clipboard;
 mod commands;
@@ -82,6 +83,7 @@ pub fn run() {
             commands::read_config,
             commands::open_path,
             commands::hide_panel,
+            commands::bar_snapshot,
             commands::resize_panel,
             commands::reindex,
             commands::execute,
@@ -122,6 +124,20 @@ pub fn run() {
             });
 
             panel::init(app.handle())?;
+            if cfg.bar.enabled {
+                // Deferred like the first-run hint: monitor enumeration and
+                // panel ordering want a live event loop, not mid-setup state.
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let inner = handle.clone();
+                    let _ = handle.run_on_main_thread(move || {
+                        if let Err(e) = bar::init(&inner) {
+                            eprintln!("[launcharr bar] init failed: {e:?}");
+                        }
+                    });
+                });
+            }
             tray::init(app.handle())?;
             shortcut::sync(app.handle(), &cfg);
             indexer::start(app.handle().clone());

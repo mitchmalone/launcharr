@@ -27,6 +27,13 @@ pub struct Link {
     pub browser: Option<String>,
 }
 
+/// v0.5 bar (spike): off by default so the launcher-only install is untouched.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct BarConfig {
+    pub enabled: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Config {
@@ -56,6 +63,8 @@ pub struct Config {
     pub theme: String,
     /// User-defined themes: name → token overrides. Opaque to Rust; just persisted.
     pub themes: std::collections::HashMap<String, serde_json::Value>,
+    /// The menubar-replacement bar (v0.5). Takes effect on restart.
+    pub bar: BarConfig,
 }
 
 impl Default for Config {
@@ -73,6 +82,7 @@ impl Default for Config {
             index_bookmarks: false,
             theme: "launcharr".into(),
             themes: std::collections::HashMap::new(),
+            bar: BarConfig::default(),
         }
     }
 }
@@ -124,8 +134,13 @@ pub fn load_or_create() -> CmdResult<(Config, bool)> {
         return Ok((default, true));
     }
     let raw = fs::read_to_string(&path)?;
-    // A broken hand-edit must not brick the launcher: fall back to defaults.
-    Ok((serde_json::from_str(&raw).unwrap_or_default(), false))
+    // A broken hand-edit must not brick the launcher: fall back to defaults —
+    // but say so, or a typo silently reverts every setting (found 2026-08-15).
+    let parsed = serde_json::from_str(&raw).unwrap_or_else(|e| {
+        eprintln!("[launcharr] config.json unreadable, using defaults: {e}");
+        Config::default()
+    });
+    Ok((parsed, false))
 }
 
 /// Watch ~/.config/launcharr for edits; reload, re-register the hotkey, notify the frontend.
