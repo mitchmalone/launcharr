@@ -443,3 +443,14 @@
 .tui-cal-step:hover {
   color: var(--_fg);
 }
+
+/* ---- Scroll region --------------------------------------------------- */
+
+/* A body sub-region that scrolls while siblings (pinned rows, headers)
+ * stay put. Give it the remaining space; rows inside keep themselves
+ * visible via ListRow's scrollIntoView. */
+.tui-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

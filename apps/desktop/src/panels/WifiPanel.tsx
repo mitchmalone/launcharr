@@ -41,9 +41,15 @@ export function WifiPanel({
   onTogglePower,
   onClose,
 }: WifiPanelProps) {
-  const nav = useListNav(networks.length, {
+  // Active network pinned first (outside the scroll region), the rest scroll.
+  const current =
+    status?.ssid && networks.includes(status.ssid) ? status.ssid : null
+  const ordered = current
+    ? [current, ...networks.filter((n) => n !== current)]
+    : networks
+  const nav = useListNav(ordered.length, {
     onActivate: (i) => {
-      const ssid = networks[i]
+      const ssid = ordered[i]
       if (ssid && !busy) onConnect(ssid)
     },
     onBack: onClose,
@@ -82,38 +88,38 @@ export function WifiPanel({
         />
       }
     >
-      {status?.power && (
-        <>
-          <SectionHeader label="Connection" />
-          <ListRow dim label="IP address" right={status.ip ?? '—'} />
-          <ListRow dim label="Router" right={status.router ?? '—'} />
-          <ListRow dim label="DNS" right={status.dns ?? '—'} />
-        </>
-      )}
       {error && <ListRow icon="✕" label={error} right="" dim />}
+      {current && (
+        <ListRow
+          icon="◠"
+          label={current}
+          selected={nav.index === 0}
+          right={busy === current ? 'connecting…' : 'connected'}
+          onHover={() => nav.setIndex(0)}
+        />
+      )}
       <SectionHeader label="Known networks" />
       {status !== null && !status.power ? (
         <ListRow dim label="Wi-Fi is off" sub="press p to power on" />
-      ) : networks.length === 0 ? (
+      ) : ordered.length === 0 ? (
         <ListRow dim label={status ? 'no known networks' : 'loading…'} />
       ) : (
-        networks.map((ssid, i) => (
-          <ListRow
-            key={ssid}
-            icon="◠"
-            label={ssid}
-            selected={i === nav.index}
-            right={
-              busy === ssid
-                ? 'connecting…'
-                : status?.ssid === ssid
-                  ? 'connected'
-                  : undefined
-            }
-            onClick={() => !busy && onConnect(ssid)}
-            onHover={() => nav.setIndex(i)}
-          />
-        ))
+        <div className="tui-scroll">
+          {ordered.slice(current ? 1 : 0).map((ssid, i) => {
+            const index = i + (current ? 1 : 0)
+            return (
+              <ListRow
+                key={ssid}
+                icon="◠"
+                label={ssid}
+                selected={index === nav.index}
+                right={busy === ssid ? 'connecting…' : undefined}
+                onClick={() => !busy && onConnect(ssid)}
+                onHover={() => nav.setIndex(index)}
+              />
+            )
+          })}
+        </div>
       )}
       <ListRow
         dim

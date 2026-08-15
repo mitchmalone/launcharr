@@ -68,16 +68,20 @@ export const wifiPanelStories = defineStories('WifiPanel (app)', [
   },
   {
     name: 'long list overflow',
+    notes:
+      'Active network stays pinned above the fold; only the rest scroll, and keyboard selection scrolls into view.',
     render: () => (
-      <WifiPanel
-        {...base}
-        status={CONNECTED}
-        networks={[
-          ...NETWORKS,
-          'A network with an unreasonably long name that should ellipsize instead of wrapping the row',
-          ...Array.from({ length: 8 }, (_, i) => `Guest-${i + 1}`),
-        ]}
-      />
+      <div style={{ height: 420, display: 'flex' }}>
+        <WifiPanel
+          {...base}
+          status={CONNECTED}
+          networks={[
+            ...NETWORKS,
+            'A network with an unreasonably long name that should ellipsize instead of wrapping the row',
+            ...Array.from({ length: 8 }, (_, i) => `Guest-${i + 1}`),
+          ]}
+        />
+      </div>
     ),
   },
 ])

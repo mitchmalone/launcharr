@@ -21,11 +21,13 @@ import type {
 import '@launcharr/tui/styles.css'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { Config } from './lib/config'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
+import { DnsPanelContainer } from './panels/DnsPanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
@@ -33,8 +35,26 @@ const INPUT_HEIGHT = 54
 const ROW_HEIGHT = 40
 const BORDER = 2
 const SCRIPT_DEBOUNCE_MS = 120
-/** Full-panel modes (wifi, later sysinfo/settings) get a fixed tall window. */
+/** Full-panel modes get a fixed tall window. */
 const PANEL_MODE_HEIGHT = 480
+
+/** The panel registry: trigger word → row copy + container. Adding a tenant
+ * is one entry here plus its component (see docs/plans/done/panel-framework). */
+const PANELS: Record<
+  string,
+  { title: string; hint: string; component: React.FC<{ onClose: () => void }> }
+> = {
+  wifi: {
+    title: 'Wi-Fi',
+    hint: 'networks & power ▸',
+    component: WifiPanelContainer,
+  },
+  dns: {
+    title: 'DNS',
+    hint: 'network info ▸',
+    component: DnsPanelContainer,
+  },
+}
 
 const KNOWN_BROWSERS = [
   'Safari',
@@ -100,7 +120,7 @@ export default function App() {
     () =>
       new Set([
         'clip',
-        'wifi',
+        ...Object.keys(PANELS),
         ...scripts.map((s) => s.trigger),
         ...quicklinks.map((l) => l.trigger as string),
       ]),
@@ -152,7 +172,7 @@ export default function App() {
   // Script mode queries the script on a debounce; stale rows stay up meanwhile.
   const isScript = useCallback(
     (t: string) =>
-      t !== 'clip' && t !== 'wifi' && scripts.some((s) => s.trigger === t),
+      t !== 'clip' && !(t in PANELS) && scripts.some((s) => s.trigger === t),
     [scripts],
   )
   const scriptTrigger = parsed.mode === 'trigger' && isScript(parsed.trigger)
@@ -181,8 +201,8 @@ export default function App() {
         return launchRows(parsed.query, index, frecency, config.searchFallback)
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
-        if (parsed.trigger === 'wifi')
-          return panelRows('wifi', 'Wi-Fi', 'networks & status ▸')
+        const panel = PANELS[parsed.trigger]
+        if (panel) return panelRows(parsed.trigger, panel.title, panel.hint)
         if (isScript(parsed.trigger)) return scriptRows(scriptItems)
         const link = quicklinks.find((l) => l.trigger === parsed.trigger)
         return link ? quicklinkRows(link, parsed.args) : []
@@ -374,7 +394,10 @@ export default function App() {
           <span className="sigil">{config.sigil}</span>
           <span className="breadcrumb">{panelMode}</span>
         </div>
-        {panelMode === 'wifi' && <WifiPanelContainer onClose={closePanel} />}
+        {(() => {
+          const Active = PANELS[panelMode]?.component
+          return Active ? <Active onClose={closePanel} /> : null
+        })()}
       </div>
     )
   }
