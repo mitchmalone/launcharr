@@ -50,6 +50,11 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
             .skip_taskbar(true)
             .accept_first_mouse(true)
             .visible(false)
+            // Never-focused webview in a background accessory app: WebKit
+            // throttles its JS timers to a crawl (bar went stale/blank,
+            // 2026-08-16). Updates are Rust-pushed below, but keep WebKit
+            // honest for anything timer-driven that remains.
+            .background_throttling(tauri::utils::config::BackgroundThrottlingPolicy::Disabled)
             .build()
             .map_err(|e| CmdError::Internal(format!("bar window: {e}")))?;
 
@@ -93,7 +98,19 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     }
     watch(app.clone());
     watch_triggers(app.clone());
+    push_loop(app.clone());
     Ok(())
+}
+
+/// The bar's heartbeat lives in Rust, not the webview: WKWebView throttles JS
+/// timers in never-focused windows, so the webview only *listens*. Snapshot +
+/// emit every second; event delivery executes in the page immediately.
+fn push_loop(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        let snap = snapshot();
+        let _ = tauri::Emitter::emit(&app, "bar-snapshot", &snap);
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    });
 }
 
 /// Event-driven refresh: anything touching a file in
@@ -122,12 +139,13 @@ fn watch_triggers(app: AppHandle) {
             return;
         }
         while rx.recv().is_ok() {
-            // Coalesce bursts, then tell every bar webview to re-poll.
+            // Coalesce bursts, then push a fresh snapshot immediately.
             while rx
                 .recv_timeout(std::time::Duration::from_millis(30))
                 .is_ok()
             {}
-            let _ = tauri::Emitter::emit(&app, "bar-refresh", ());
+            let snap = snapshot();
+            let _ = tauri::Emitter::emit(&app, "bar-snapshot", &snap);
         }
     });
 }

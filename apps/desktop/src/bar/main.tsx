@@ -15,17 +15,6 @@ interface BarSnapshot {
   onAc: boolean
 }
 
-const SNAPSHOT_MS = 1000
-
-function useClock(): Date {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
-
 /** The bar wears the panel theme and follows config edits live. */
 function useBarTheme() {
   useEffect(() => {
@@ -38,44 +27,46 @@ function useBarTheme() {
   }, [])
 }
 
+/**
+ * The webview is a pure listener — no JS timers. WKWebView throttles timers in
+ * never-focused windows (the bar went stale/blank); Rust pushes a snapshot
+ * every second and on trigger events, and event delivery isn't throttled.
+ * The clock rides the same 1 Hz push.
+ */
 function useSnapshot(): [
   BarSnapshot | null,
+  Date,
   (update: (prev: BarSnapshot) => BarSnapshot) => void,
 ] {
   const [snap, setSnap] = useState<BarSnapshot | null>(null)
+  const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     let live = true
-    const tick = () =>
-      invoke<BarSnapshot>('bar_snapshot')
-        .then((s) => {
-          if (!live) return
-          setSnap((prev) => ({
-            ...s,
-            // Sticky focus: a snapshot caught mid-switch reports none — keep
-            // showing the last known workspace rather than blinking out.
-            focused: s.focused ?? prev?.focused ?? null,
-          }))
-        })
-        .catch(() => {})
-    tick()
-    const id = setInterval(tick, SNAPSHOT_MS)
-    // Push path: aerospace (or any script) touches ~/.config/launcharr/
-    // triggers/ and the backend emits this — polling is just the fallback.
-    const un = listen('bar-refresh', tick)
+    const absorb = (s: BarSnapshot) => {
+      if (!live) return
+      setNow(new Date())
+      setSnap((prev) => ({
+        ...s,
+        // Sticky focus: a snapshot caught mid-switch reports none — keep
+        // showing the last known workspace rather than blinking out.
+        focused: s.focused ?? prev?.focused ?? null,
+      }))
+    }
+    // One pull for first paint; everything after arrives by push.
+    invoke<BarSnapshot>('bar_snapshot').then(absorb).catch(console.error)
+    const un = listen<BarSnapshot>('bar-snapshot', (e) => absorb(e.payload))
     return () => {
       live = false
-      clearInterval(id)
       un.then((f) => f())
     }
   }, [])
   const patch = (update: (prev: BarSnapshot) => BarSnapshot) =>
     setSnap((prev) => (prev ? update(prev) : prev))
-  return [snap, patch]
+  return [snap, now, patch]
 }
 
 function Bar() {
-  const now = useClock()
-  const [snap, patch] = useSnapshot()
+  const [snap, now, patch] = useSnapshot()
   useBarTheme()
 
   const switchWorkspace = (ws: string) => {
