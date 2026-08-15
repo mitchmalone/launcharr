@@ -92,7 +92,14 @@ export function ListRow({
     .filter(Boolean)
     .join(' ')
   return (
-    <div className={cls} onClick={onClick} onMouseMove={onHover}>
+    <div
+      className={cls}
+      onClick={onClick}
+      onMouseMove={onHover}
+      // Keyboard selection must never leave the visible clip — the highlight
+      // "vanishing" below the fold was the wifi panel's first field bug.
+      ref={selected ? (el) => el?.scrollIntoView({ block: 'nearest' }) : null}
+    >
       {icon && <span className="tui-row-icon">{icon}</span>}
       <span className="tui-row-label">
         {label}

@@ -36,9 +36,12 @@ pub fn status() -> WifiStatus {
         ip: run("/usr/sbin/ipconfig", &["getifaddr", &iface])
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty()),
-        router: run("/usr/sbin/route", &["-n", "get", "default"])
-            .as_deref()
-            .and_then(parse_router),
+        // DHCP option 3 straight from ipconfig — `route` lives in /sbin (not
+        // /usr/sbin, found 2026-08-16) and points at utun when Tailscale owns
+        // the default route anyway.
+        router: run("/usr/sbin/ipconfig", &["getoption", &iface, "router"])
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty()),
         dns: run("/usr/sbin/scutil", &["--dns"])
             .as_deref()
             .and_then(parse_first_nameserver),
@@ -94,14 +97,6 @@ fn parse_power(out: &str) -> bool {
     out.trim_end().ends_with(": On")
 }
 
-/// `route -n get default` → `    gateway: 192.168.0.1`
-fn parse_router(out: &str) -> Option<String> {
-    out.lines()
-        .map(str::trim)
-        .find_map(|l| l.strip_prefix("gateway: "))
-        .map(str::to_owned)
-}
-
 /// `scutil --dns` → first `nameserver[0] : 1.1.1.1`
 fn parse_first_nameserver(out: &str) -> Option<String> {
     out.lines()
@@ -143,13 +138,6 @@ mod tests {
     fn parses_power() {
         assert!(parse_power("Wi-Fi Power (en0): On\n"));
         assert!(!parse_power("Wi-Fi Power (en0): Off\n"));
-    }
-
-    #[test]
-    fn parses_router() {
-        let out = "   route to: default\ndestination: default\n    gateway: 192.168.0.1\n  interface: en0\n";
-        assert_eq!(parse_router(out), Some("192.168.0.1".into()));
-        assert_eq!(parse_router("no default route\n"), None);
     }
 
     #[test]

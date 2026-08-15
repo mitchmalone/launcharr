@@ -13,20 +13,28 @@ import {
   TwoPane,
 } from './primitives'
 
-function NavigableList() {
-  const items = ['Package', 'Web App', 'TUI', 'Style', 'Service']
+function NavigableList({
+  count = 5,
+  height,
+}: {
+  count?: number
+  height?: number
+}) {
+  const items = Array.from({ length: count }, (_, i) => `Item ${i + 1}`)
   const nav = useListNav(items.length)
   return (
-    <Panel title="Keyboard list" onKeyDown={nav.onKeyDown}>
-      {items.map((item, i) => (
-        <ListRow
-          key={item}
-          label={item}
-          selected={i === nav.index}
-          onHover={() => nav.setIndex(i)}
-        />
-      ))}
-    </Panel>
+    <div style={height ? { height, display: 'flex' } : undefined}>
+      <Panel title="Keyboard list" onKeyDown={nav.onKeyDown}>
+        {items.map((item, i) => (
+          <ListRow
+            key={item}
+            label={item}
+            selected={i === nav.index}
+            onHover={() => nav.setIndex(i)}
+          />
+        ))}
+      </Panel>
+    </div>
   )
 }
 
@@ -113,6 +121,13 @@ export const panelStories = defineStories('Panel', [
     name: 'keyboard list (live)',
     keys: '↑↓ move · home/end jump',
     render: () => <NavigableList />,
+  },
+  {
+    name: 'clipped list scrolls selection into view',
+    notes:
+      "Wifi panel field bug 2026-08-16: selection walked below the fold and the highlight 'vanished'. The selected row must always be visible.",
+    keys: '↑↓ move — selection must never leave the clip',
+    render: () => <NavigableList count={30} height={240} />,
   },
   {
     name: 'empty body',
