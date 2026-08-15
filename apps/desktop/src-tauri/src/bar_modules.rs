@@ -54,7 +54,7 @@ pub fn start() {
     });
 }
 
-fn run(bin: &str, args: &[&str]) -> Option<String> {
+pub(crate) fn run(bin: &str, args: &[&str]) -> Option<String> {
     let out = Command::new(bin).args(args).output().ok()?;
     out.status
         .success()
@@ -69,11 +69,15 @@ fn run(bin: &str, args: &[&str]) -> Option<String> {
 // WiFiAgent plist heuristic (prefer `WIFI_HOME_SSID`, else a sole entry) is
 // the last. Online-ness comes from LinkStatusActive.
 
-fn read_wifi() -> WifiState {
-    let Some(iface) = run("/usr/sbin/networksetup", &["-listallhardwareports"])
+/// Wi-Fi device name (e.g. "en0"); shared with the wifi panel (wifi.rs).
+pub(crate) fn wifi_iface() -> Option<String> {
+    run("/usr/sbin/networksetup", &["-listallhardwareports"])
         .as_deref()
         .and_then(parse_wifi_iface)
-    else {
+}
+
+pub(crate) fn read_wifi() -> WifiState {
+    let Some(iface) = wifi_iface() else {
         return WifiState::default();
     };
     let summary = run("/usr/sbin/ipconfig", &["getsummary", &iface]).unwrap_or_default();

@@ -41,6 +41,27 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
+/// Wifi panel (P0). All async — they spawn subprocesses.
+#[tauri::command]
+pub async fn wifi_status() -> crate::wifi::WifiStatus {
+    crate::wifi::status()
+}
+
+#[tauri::command]
+pub async fn wifi_known_networks() -> Vec<String> {
+    crate::wifi::known_networks()
+}
+
+#[tauri::command]
+pub async fn wifi_connect(ssid: String) -> CmdResult<()> {
+    crate::wifi::connect(&ssid)
+}
+
+#[tauri::command]
+pub async fn wifi_set_power(on: bool) -> CmdResult<()> {
+    crate::wifi::set_power(on)
+}
+
 /// Bar workspace cell click → focus that aerospace workspace. async: see above.
 #[tauri::command]
 pub async fn bar_switch_workspace(ws: String) -> CmdResult<()> {

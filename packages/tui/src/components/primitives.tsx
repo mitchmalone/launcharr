@@ -8,6 +8,7 @@ export function Panel({
   footer,
   className = '',
   onKeyDown,
+  autoFocus = false,
   children,
 }: {
   title?: ReactNode
@@ -16,6 +17,8 @@ export function Panel({
   footer?: ReactNode
   className?: string
   onKeyDown?: (event: KeyboardEvent) => void
+  /** Take keyboard focus on mount — for panels that own the keyboard. */
+  autoFocus?: boolean
   children: ReactNode
 }) {
   return (
@@ -23,6 +26,7 @@ export function Panel({
       className={`tui tui-panel ${className}`}
       tabIndex={onKeyDown ? 0 : undefined}
       onKeyDown={onKeyDown}
+      ref={autoFocus ? (el) => el?.focus() : undefined}
     >
       {(title || icon) && (
         <header className="tui-panel-head">

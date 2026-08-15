@@ -134,6 +134,19 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   Plan: `plans/done/bar-simple-modules.md`. **Eyeball:** wifi label, TRMNL absent,
   battery colors when unplugged below 50/20%.
 
+- **W0 tui workbench + P0 panel framework/wifi shipped** (2026-08-16): story-driven
+  workbench replaces the gallery (`pnpm --filter @launcharr/tui workbench` — state
+  stories incl. "selected, not hovered" for everything; theme + viewport switching;
+  theme tokens now live in @launcharr/tui, desktop shims). Panel framework: `wifi ⏎`
+  in the summon prompt opens a keyboard-driven TUI panel (breadcrumb prompt, Esc pops
+  panel → prompt → dismiss); wifi panel shows connection stats + known networks,
+  Enter connects, `p` toggles power, scan row greyed pending Location Services.
+  Four new wifi commands (DECISIONS 2026-08-16). Plans:
+  `plans/done/tui-workbench.md`, `plans/done/panel-framework-and-wifi.md`.
+  **Mitch's checklist:** summon → `wifi ⏎` → arrow through networks → connect one →
+  Esc → Esc → focus restored (try over a full-screen app too); `p` for power; then
+  the workbench for the WifiPanel state stories.
+
 ## In progress
 
 - **v0.5 next slices** (ROADMAP B2–B4): per-workspace app hints in the cluster;

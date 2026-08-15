@@ -31,6 +31,7 @@ mod shortcut;
 mod system_commands;
 mod terminal;
 mod tray;
+mod wifi;
 
 /// `--extract-icons <dir>` child-process entry (see icons.rs for why this exists).
 pub fn extract_icons_cli(icon_dir: &std::path::Path) {
@@ -87,6 +88,10 @@ pub fn run() {
             commands::hide_panel,
             commands::bar_snapshot,
             commands::bar_switch_workspace,
+            commands::wifi_status,
+            commands::wifi_known_networks,
+            commands::wifi_connect,
+            commands::wifi_set_power,
             commands::resize_panel,
             commands::reindex,
             commands::execute,

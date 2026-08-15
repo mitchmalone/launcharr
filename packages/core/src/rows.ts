@@ -35,6 +35,7 @@ export type RowEnter =
   | { kind: 'reveal'; path: string }
   | { kind: 'delete-clip'; id: number }
   | { kind: 'script-alt-action'; index: number }
+  | { kind: 'open-panel'; panel: string }
 
 /** ⌥⏎ per item kind: apps reveal in Finder, links copy their URL. */
 function itemAlt(item: IndexItem): Row['alt'] {
@@ -296,4 +297,19 @@ export function clipRows(args: string, clips: Clip[]): Row[] {
 export function clipTitle(content: string): string {
   const line = content.trim().split('\n')[0] ?? ''
   return line.length > 70 ? `${line.slice(0, 70)}…` : line
+}
+
+/** Trigger words that open a full TUI panel (`wifi ⏎`): one row, Enter opens. */
+export function panelRows(panel: string, title: string, hint: string): Row[] {
+  return [
+    {
+      key: `panel-${panel}`,
+      title,
+      hint,
+      positions: [],
+      icon: null,
+      glyph: '▤',
+      enter: { kind: 'open-panel', panel },
+    },
+  ]
 }

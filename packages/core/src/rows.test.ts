@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { draftRows, launchRows, quicklinkRows, searchEngineLabel } from './rows'
+import {
+  draftRows,
+  launchRows,
+  panelRows,
+  quicklinkRows,
+  searchEngineLabel,
+} from './rows'
 import type { IndexItem, Link } from './types'
 
 const GOOGLE = 'https://www.google.com/search?q={query}'
@@ -136,5 +142,14 @@ describe('add-quicklink rows', () => {
     ])
     expect(rows[0]!.enter).toEqual({ kind: 'pick-browser', browser: null })
     expect(rows[2]!.enter).toEqual({ kind: 'pick-browser', browser: 'Arc' })
+  })
+})
+
+describe('panelRows', () => {
+  it('one row that opens the named panel on Enter', () => {
+    const rows = panelRows('wifi', 'Wi-Fi', 'networks & status ▸')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.title).toBe('Wi-Fi')
+    expect(rows[0]!.enter).toEqual({ kind: 'open-panel', panel: 'wifi' })
   })
 })

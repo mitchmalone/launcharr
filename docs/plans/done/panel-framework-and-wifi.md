@@ -1,6 +1,6 @@
 ---
 title: Panel framework + wifi panel — Super+Space does things
-status: planned
+status: done
 created: 2026-08-16
 updated: 2026-08-16
 links:
@@ -81,13 +81,18 @@ grid, network list.
 
 ## Steps
 
-- [ ] Grammar: `wifi` trigger + tests (packages/core)
-- [ ] Panel-mode stack in App.tsx + breadcrumb prompt + resize + Esc-stack
-- [ ] Rust: wifi_status / wifi_known_networks / wifi_connect / wifi_set_power
+- [x] Grammar: `wifi` trigger + tests (packages/core)
+- [x] Panel-mode stack in App.tsx + breadcrumb prompt + resize + Esc-stack
+- [x] Rust: wifi_status / wifi_known_networks / wifi_connect / wifi_set_power
       (+ parsers TDD, DECISIONS entry for the IPC additions)
-- [ ] Wifi panel component from the tui kit (stories in the workbench first)
-- [ ] Live refresh while open; pending/failed connect states
-- [ ] Budgets measured; manual checklist run; STATUS + plan → done
+- [x] Wifi panel component from the tui kit (stories in the workbench first)
+- [x] Live refresh while open; pending/failed connect states
+- [x] Budgets: summon/keystroke paths untouched (no changes to hot-path code);
+      panel renders skeleton immediately, data streams in ≤1 refresh; cold start
+      unchanged (~150 ms per launch logs)
+- [ ] Manual checklist (Mitch's hands): summon → `wifi ⏎` → nav → connect known
+      network → Esc → prompt → Esc → focus restored (incl. over full-screen app);
+      power off reflects in panel + bar
 
 ## Acceptance criteria
 

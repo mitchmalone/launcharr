@@ -5,6 +5,23 @@
 
 ---
 
+### 2026-08-16 · Panel framework: trigger words open TUI panels; four wifi commands
+
+- **Decision (framework).** Trigger words can now open full keyboard-driven TUI panels
+  inside the launcher window (`wifi ⏎`): a `panelMode` state renders a tui-kit panel in
+  place of the results list, the prompt collapses to a breadcrumb, Esc pops panel →
+  prompt → dismiss. Panels are presentational components (workbench-storied, no tauri
+  imports) plus a thin container owning invokes. JS timers are permitted in panel
+  containers — panels exist only in the key window, which WebKit doesn't throttle
+  (contrast: the bar, JOURNAL 2026-08-16).
+- **Decision (IPC).** Four commands join the surface for the wifi panel: `wifi_status`,
+  `wifi_known_networks`, `wifi_connect`, `wifi_set_power` — thin async wrappers over
+  networksetup/ipconfig/route/scutil with tested parsers (wifi.rs). Permission-free by
+  scope; network scanning (Location Services) deliberately excluded — trigger recorded
+  in the plan.
+- **Why.** Super+Space grows from launcher to control surface (P0/P1 on the ROADMAP);
+  wifi first because it exercises list + live data + real actions + failure states.
+
 ### 2026-08-16 · First bar-module network carve-out: TRMNL device battery
 
 - **Decision.** The TRMNL bar module polls `https://trmnl.com/api/devices` every 5

@@ -7,6 +7,7 @@ import {
   draftRows,
   emojiRows,
   launchRows,
+  panelRows,
   quicklinkRows,
   scriptRows,
 } from '@launcharr/core/rows'
@@ -17,6 +18,7 @@ import type {
   ScriptInfo,
   ScriptItem,
 } from '@launcharr/core/types'
+import '@launcharr/tui/styles.css'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -24,12 +26,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Config } from './lib/config'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
+import { WifiPanelContainer } from './panels/WifiPanelContainer'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
 const INPUT_HEIGHT = 54
 const ROW_HEIGHT = 40
 const BORDER = 2
 const SCRIPT_DEBOUNCE_MS = 120
+/** Full-panel modes (wifi, later sysinfo/settings) get a fixed tall window. */
+const PANEL_MODE_HEIGHT = 480
 
 const KNOWN_BROWSERS = [
   'Safari',
@@ -66,6 +71,7 @@ export default function App() {
   const [index, setIndex] = useState<IndexItem[]>([])
   const [frecency, setFrecency] = useState<FrecencyMap>({})
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
+  const [panelMode, setPanelMode] = useState<string | null>(null)
   useEffect(
     () => applyTheme(config.theme, config.themes, 'panel'),
     [config.theme, config.themes],
@@ -94,6 +100,7 @@ export default function App() {
     () =>
       new Set([
         'clip',
+        'wifi',
         ...scripts.map((s) => s.trigger),
         ...quicklinks.map((l) => l.trigger as string),
       ]),
@@ -127,6 +134,7 @@ export default function App() {
         setSelected(0)
         setScriptItems([])
         setDraft(null)
+        setPanelMode(null)
         refetchFrecency()
         refetchClips()
         inputRef.current?.focus()
@@ -143,7 +151,8 @@ export default function App() {
 
   // Script mode queries the script on a debounce; stale rows stay up meanwhile.
   const isScript = useCallback(
-    (t: string) => t !== 'clip' && scripts.some((s) => s.trigger === t),
+    (t: string) =>
+      t !== 'clip' && t !== 'wifi' && scripts.some((s) => s.trigger === t),
     [scripts],
   )
   const scriptTrigger = parsed.mode === 'trigger' && isScript(parsed.trigger)
@@ -172,6 +181,8 @@ export default function App() {
         return launchRows(parsed.query, index, frecency, config.searchFallback)
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
+        if (parsed.trigger === 'wifi')
+          return panelRows('wifi', 'Wi-Fi', 'networks & status ▸')
         if (isScript(parsed.trigger)) return scriptRows(scriptItems)
         const link = quicklinks.find((l) => l.trigger === parsed.trigger)
         return link ? quicklinkRows(link, parsed.args) : []
@@ -198,9 +209,11 @@ export default function App() {
   const rowCount =
     parsed.mode === 'bang' ? 1 : rows.length > 0 ? rows.length : raw ? 1 : 0
   useEffect(() => {
-    const height = INPUT_HEIGHT + rowCount * ROW_HEIGHT + BORDER
+    const height = panelMode
+      ? PANEL_MODE_HEIGHT
+      : INPUT_HEIGHT + rowCount * ROW_HEIGHT + BORDER
     invoke('resize_panel', { height }).catch(console.error)
-  }, [rowCount])
+  }, [rowCount, panelMode])
 
   // Runs after the commit that rendered the new results — the §7 keystroke budget.
   useEffect(() => {
@@ -237,6 +250,11 @@ export default function App() {
           break
         case 'clear-clips':
           invoke('clear_clips').then(refetchClips).catch(console.error)
+          break
+        case 'open-panel':
+          setPanelMode(enter.panel)
+          setRaw('')
+          setSelected(0)
           break
         case 'add-quicklink':
           setDraft({ url: enter.url, name: '', step: 'name' })
@@ -331,6 +349,13 @@ export default function App() {
     [rows, parsed, clampedSelection, enterRow, draft],
   )
 
+  const closePanel = useCallback(() => {
+    setPanelMode(null)
+    setRaw('')
+    // Hand the keyboard back to the prompt.
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }, [])
+
   const sigil = draft
     ? '+'
     : parsed.mode === 'bang'
@@ -341,6 +366,18 @@ export default function App() {
       ? 'name this quicklink…'
       : 'choose a browser (↑↓ then ⏎)'
     : 'Search for apps and commands…'
+
+  if (panelMode) {
+    return (
+      <div className="panel panel-mode">
+        <div className="input-row">
+          <span className="sigil">{config.sigil}</span>
+          <span className="breadcrumb">{panelMode}</span>
+        </div>
+        {panelMode === 'wifi' && <WifiPanelContainer onClose={closePanel} />}
+      </div>
+    )
+  }
 
   return (
     <div className={`panel ${parsed.mode}`}>

@@ -162,3 +162,24 @@ body {
   color: var(--dim);
   font-style: italic;
 }
+
+/* ---- Panel mode (wifi etc.): a full TUI panel inside the launcher window. */
+
+.panel-mode {
+  display: flex;
+  flex-direction: column;
+}
+
+.breadcrumb {
+  color: var(--fg);
+  font-size: 16px;
+}
+
+/* The inner tui panel borrows the launcher chrome — no double border. */
+.panel-mode .tui-panel {
+  border: none;
+  background: transparent;
+  flex: 1;
+  min-height: 0;
+  outline: none;
+}
