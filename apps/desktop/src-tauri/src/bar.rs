@@ -103,6 +103,7 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         });
     }
     crate::bar_constrain::prevent_app_nap();
+    crate::bar_modules::start();
     watch(app.clone());
     watch_triggers(app.clone());
     push_loop(app.clone());
@@ -219,6 +220,9 @@ pub struct BarSnapshot {
     pub front_app: Option<String>,
     pub battery_pct: Option<u8>,
     pub on_ac: bool,
+    pub charging: bool,
+    pub wifi: crate::bar_modules::WifiState,
+    pub trmnl: Option<crate::bar_modules::TrmnlState>,
 }
 
 pub fn snapshot() -> BarSnapshot {
@@ -240,13 +244,16 @@ pub fn snapshot() -> BarSnapshot {
             .unwrap_or_default();
         eprintln!("[launcharr bar] focus fallback used; table={raw:?} → focused={focused:?}");
     }
-    let (battery_pct, on_ac) = battery_cached();
+    let (battery_pct, on_ac, charging) = battery_cached();
     BarSnapshot {
         workspaces,
         focused,
         front_app: front_app(),
         battery_pct,
         on_ac,
+        charging,
+        wifi: crate::bar_modules::wifi(),
+        trmnl: crate::bar_modules::trmnl(),
     }
 }
 
@@ -268,10 +275,10 @@ fn parse_workspace_table(out: &str) -> (Vec<String>, Option<String>) {
 }
 
 /// Battery changes on the scale of minutes; don't pay a pmset spawn per tick.
-fn battery_cached() -> (Option<u8>, bool) {
+fn battery_cached() -> (Option<u8>, bool, bool) {
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
-    type Reading = (Option<u8>, bool);
+    type Reading = (Option<u8>, bool, bool);
     static CACHE: Mutex<Option<(Instant, Reading)>> = Mutex::new(None);
     let mut cache = CACHE.lock().unwrap();
     if let Some((at, value)) = *cache {
@@ -284,7 +291,7 @@ fn battery_cached() -> (Option<u8>, bool) {
         .output()
         .ok()
         .map(|out| parse_battery(&String::from_utf8_lossy(&out.stdout)))
-        .unwrap_or((None, false));
+        .unwrap_or((None, false, false));
     *cache = Some((Instant::now(), value));
     value
 }
@@ -360,8 +367,9 @@ fn parse_lines(out: &str) -> Vec<String> {
 }
 
 /// Parse `pmset -g batt`: percentage from the first `NN%` token, AC from the
-/// "Now drawing from 'AC Power'" header.
-fn parse_battery(out: &str) -> (Option<u8>, bool) {
+/// "Now drawing from 'AC Power'" header, charging from the state field
+/// ("discharging" must not count).
+fn parse_battery(out: &str) -> (Option<u8>, bool, bool) {
     let pct = out.split('%').next().and_then(|before| {
         let digits: String = before
             .chars()
@@ -373,7 +381,8 @@ fn parse_battery(out: &str) -> (Option<u8>, bool) {
             .collect();
         digits.parse().ok()
     });
-    (pct, out.contains("AC Power"))
+    let charging = out.contains("; charging") || out.contains("; finishing charge");
+    (pct, out.contains("AC Power"), charging)
 }
 
 #[cfg(test)]
@@ -383,18 +392,27 @@ mod tests {
     #[test]
     fn parses_battery_discharging() {
         let out = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=5308515)\t89%; discharging; 4:32 remaining present: true\n";
-        assert_eq!(parse_battery(out), (Some(89), false));
+        assert_eq!(parse_battery(out), (Some(89), false, false));
     }
 
     #[test]
     fn parses_battery_on_ac() {
         let out = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=5308515)\t100%; charged; 0:00 remaining present: true\n";
-        assert_eq!(parse_battery(out), (Some(100), true));
+        assert_eq!(parse_battery(out), (Some(100), true, false));
+    }
+
+    #[test]
+    fn parses_battery_charging() {
+        let out = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=5308515)\t64%; charging; 1:10 remaining present: true\n";
+        assert_eq!(parse_battery(out), (Some(64), true, true));
     }
 
     #[test]
     fn battery_absent_on_desktops() {
-        assert_eq!(parse_battery("Now drawing from 'AC Power'\n"), (None, true));
+        assert_eq!(
+            parse_battery("Now drawing from 'AC Power'\n"),
+            (None, true, false)
+        );
     }
 
     #[test]

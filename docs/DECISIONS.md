@@ -5,6 +5,20 @@
 
 ---
 
+### 2026-08-16 · First bar-module network carve-out: TRMNL device battery
+
+- **Decision.** The TRMNL bar module polls `https://trmnl.com/api/devices` every 5
+  minutes with the user's own API token — the first exercise of the per-module network
+  renegotiation reserved in the 2026-08-15 entry. Scope is tight: the module is inert
+  without a token (resolved via `TRMNL_API_KEY` or the age/secret decrypt helper the
+  Sketchybar module used); no token → no cell, no request. Token present but API down →
+  visible error state, never silent. Launcher core and every other bar module remain
+  zero-network.
+- **Why.** Parity with the retired Sketchybar setup; the module only exists because the
+  user provisioned a credential for exactly this purpose — that provisioning is the
+  consent. Vercel/GitHub/uptime modules (deliberately saved for later) will follow the
+  same shape: credentialed, cadenced, fail-visible.
+
 ### 2026-08-15 · v0.5 direction: launcharr grows a menubar replacement — own bar, wrapped Aerospace, TUI kit
 
 - **Decision (scope).** The next major version (jumping to 0.5) adds a **menubar

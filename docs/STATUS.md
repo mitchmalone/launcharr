@@ -124,6 +124,16 @@ mitchmalone/launcharr/launcharr` verified end-to-end), launcharr.com flipped to
   by :hover (full hunt in JOURNAL 2026-08-16). Design is Omarchy-flat: sigil, dim
   numbers, solid light block for the active workspace.
 
+- **Simple bar modules shipped** (2026-08-16): wifi (Sketchybar SSID chain ported —
+  ipconfig getsummary → networksetup → WiFiAgent heuristic, `WIFI_HOME_SSID` env;
+  red Offline), TRMNL device battery (decrypt-helper token, fail-soft: hidden without
+  token — note: token currently unresolvable via age helper AND infisical `secret`;
+  module lights up when the secret chain heals), battery charging/low-color states +
+  desktop AC case, Sketchybar clock format. `bar_modules.rs` refresh threads (20s/300s)
+  keep HTTP off the 1 Hz push loop. Network carve-out: DECISIONS 2026-08-16.
+  Plan: `plans/done/bar-simple-modules.md`. **Eyeball:** wifi label, TRMNL absent,
+  battery colors when unplugged below 50/20%.
+
 ## In progress
 
 - **v0.5 next slices** (ROADMAP B2–B4): per-workspace app hints in the cluster;

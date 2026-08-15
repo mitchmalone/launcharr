@@ -13,6 +13,10 @@ interface BarSnapshot {
   frontApp: string | null
   batteryPct: number | null
   onAc: boolean
+  charging: boolean
+  wifi: { online: boolean; ssid: string | null }
+  /** null → no TRMNL token, cell hidden; pct null → API error state. */
+  trmnl: { pct: number | null; name: string | null } | null
 }
 
 declare global {
@@ -82,10 +86,34 @@ function Bar() {
     invoke('bar_switch_workspace', { ws }).catch(console.error)
   }
 
-  const clock = `${now.toLocaleDateString('en', { weekday: 'long' })} ${now
-    .getHours()
+  // Sketchybar parity: "Sat 16 Aug 07:45".
+  const clock = `${now
+    .toLocaleDateString('en-AU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })
+    .replace(',', '')} ${now.getHours().toString().padStart(2, '0')}:${now
+    .getMinutes()
     .toString()
-    .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    .padStart(2, '0')}`
+
+  const batteryClass = snap?.charging
+    ? 'bar-cell'
+    : snap?.batteryPct != null && snap.batteryPct < 20 && !snap.onAc
+      ? 'bar-cell bar-danger'
+      : snap?.batteryPct != null && snap.batteryPct < 50 && !snap.onAc
+        ? 'bar-cell bar-warn'
+        : 'bar-cell'
+
+  const trmnlClass =
+    snap?.trmnl?.pct == null
+      ? 'bar-cell bar-danger'
+      : snap.trmnl.pct < 20
+        ? 'bar-cell bar-danger'
+        : snap.trmnl.pct <= 40
+          ? 'bar-cell bar-warn'
+          : 'bar-cell'
 
   return (
     <div className="bar">
@@ -109,10 +137,27 @@ function Bar() {
       </div>
       <div className="bar-center">{clock}</div>
       <div className="bar-right">
-        {snap?.batteryPct != null && (
-          <span className="bar-cell">
-            {snap.onAc ? '↯' : '▮'} {snap.batteryPct}%
+        {snap && (
+          <span
+            className={`bar-cell ${snap.wifi.online ? '' : 'bar-danger'}`}
+            title={snap.wifi.ssid ?? undefined}
+          >
+            {snap.wifi.online
+              ? `◠ ${snap.wifi.ssid ?? 'SSID hidden'}`
+              : '◠ Offline'}
           </span>
+        )}
+        {snap?.trmnl && (
+          <span className={trmnlClass} title={snap.trmnl.name ?? 'TRMNL'}>
+            ▣ {snap.trmnl.pct != null ? `${snap.trmnl.pct}%` : '--'}
+          </span>
+        )}
+        {snap?.batteryPct != null ? (
+          <span className={batteryClass}>
+            {snap.charging || snap.onAc ? '↯' : '▮'} {snap.batteryPct}%
+          </span>
+        ) : (
+          snap?.onAc && <span className="bar-cell">↯ AC</span>
         )}
       </div>
     </div>
