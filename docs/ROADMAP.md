@@ -55,6 +55,15 @@ and Aerospace are independently toggleable. Not a distro — bar + launcher + co
   without ever seeing an aerospace.toml._
 - **B4 — Panels + modules.** Rich TUI panels on bar items; module API (data-driven,
   any-language emitters); agent bar module. _Exit: sketchybar-agent-status retired._
+- **P0 — Panel framework + wifi** (plan: `plans/active/panel-framework-and-wifi.md`).
+  Super+Space trigger words open keyboard-driven tui panels in the launcher window;
+  wifi (permission-free scope) proves the frame. _Exit: `wifi ⏎` → connect to a known
+  network, mouse untouched._
+- **P1 — Panel tenants.** System info, then settings migrated off the native window;
+  drill-down panel menu once 2–3 tenants exist. _Exit: settings window retired._
+- **W0 — tui workbench** (plan: `plans/active/tui-workbench.md`). Story-driven state
+  coverage for the kit across app + web surfaces, no Storybook dep. _Exit: every kit
+  component has state stories incl. "selected, not hovered"._
 
 ## v2 horizon (recorded now, built later — PRD §10)
 
