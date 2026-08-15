@@ -47,6 +47,9 @@ importers:
       '@launcharr/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@launcharr/tui':
+        specifier: workspace:*
+        version: link:../../packages/tui
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1

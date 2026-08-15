@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// Dev-only gallery for eyeballing the kit: `pnpm --filter @launcharr/tui gallery`.
+// Dev-only workbench for state-testing the kit: `pnpm --filter @launcharr/tui workbench`.
 export default defineConfig({
-  root: 'gallery',
+  root: 'workbench',
   plugins: [react()],
   test: {
     root: '.',

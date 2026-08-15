@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gallery": "vite --open"
+    "workbench": "vite --open"
   },
   "peerDependencies": {
     "react": "^19.1.0"

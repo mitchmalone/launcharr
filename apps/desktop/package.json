@@ -16,7 +16,8 @@
     "@tauri-apps/api": "^2",
     "lucide-react": "^1.30.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "@launcharr/tui": "workspace:*"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

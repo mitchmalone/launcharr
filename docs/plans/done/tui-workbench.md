@@ -1,6 +1,6 @@
 ---
 title: tui workbench — story-driven component testing across app and web
-status: planned
+status: done
 created: 2026-08-16
 updated: 2026-08-16
 links:
@@ -64,20 +64,20 @@ recorded here as the trigger.
 
 ## Steps
 
-- [ ] Story types + glob loader + workbench shell (sidebar, theme switch, viewports)
-- [ ] Stories for primitives (Panel, ListRow, HotkeyRow, KeyHints, TextPrompt,
+- [x] Story types + glob loader + workbench shell (sidebar, theme switch, viewports)
+- [x] Stories for primitives (Panel, ListRow, HotkeyRow, KeyHints, TextPrompt,
       TwoPane, SectionHeader, Divider) — all states
-- [ ] Stories for controls (Slider, Toggle, SegmentedControl, MeterRow) + Calendar
-- [ ] Composition stories migrated from the gallery; delete gallery/
-- [ ] Theme tokens ownership decision (kit vs app) recorded in DECISIONS if moved
-- [ ] `pnpm verify` green; STATUS updated
+- [x] Stories for controls (Slider, Toggle, SegmentedControl, MeterRow) + Calendar
+- [x] Composition stories migrated from the gallery; delete gallery/
+- [x] Theme tokens ownership decision (kit vs app) recorded in DECISIONS if moved
+- [x] `pnpm verify` green; STATUS updated
 
 ## Acceptance criteria
 
-- [ ] Every `@launcharr/tui` export has ≥4 state stories, keyboard hints included
-- [ ] Workbench runs via one filter command; theme + viewport switching live
-- [ ] A "selected, not hovered" story exists for every selectable component
-- [ ] No new runtime dependencies in `@launcharr/tui`
+- [x] Every `@launcharr/tui` export has ≥4 state stories, keyboard hints included
+- [x] Workbench runs via one filter command; theme + viewport switching live
+- [x] A "selected, not hovered" story exists for every selectable component
+- [x] No new runtime dependencies in `@launcharr/tui`
 
 ## Out of scope
 
