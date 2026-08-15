@@ -38,9 +38,11 @@ function useBarTheme() {
   }, [])
 }
 
-function useSnapshot(): [BarSnapshot | null, () => void] {
+function useSnapshot(): [
+  BarSnapshot | null,
+  (update: (prev: BarSnapshot) => BarSnapshot) => void,
+] {
   const [snap, setSnap] = useState<BarSnapshot | null>(null)
-  const [nonce, setNonce] = useState(0)
   useEffect(() => {
     let live = true
     const tick = () =>
@@ -49,21 +51,29 @@ function useSnapshot(): [BarSnapshot | null, () => void] {
         .catch(() => {})
     tick()
     const id = setInterval(tick, SNAPSHOT_MS)
+    // Push path: aerospace (or any script) touches ~/.config/launcharr/
+    // triggers/ and the backend emits this — polling is just the fallback.
+    const un = listen('bar-refresh', tick)
     return () => {
       live = false
       clearInterval(id)
+      un.then((f) => f())
     }
-  }, [nonce])
-  return [snap, () => setNonce((n) => n + 1)]
+  }, [])
+  const patch = (update: (prev: BarSnapshot) => BarSnapshot) =>
+    setSnap((prev) => (prev ? update(prev) : prev))
+  return [snap, patch]
 }
 
 function Bar() {
   const now = useClock()
-  const [snap, refresh] = useSnapshot()
+  const [snap, patch] = useSnapshot()
   useBarTheme()
 
   const switchWorkspace = (ws: string) => {
-    invoke('bar_switch_workspace', { ws }).then(refresh).catch(console.error)
+    // Optimistic: highlight now, aerospace catches up off the main thread.
+    patch((prev) => ({ ...prev, focused: ws }))
+    invoke('bar_switch_workspace', { ws }).catch(console.error)
   }
 
   const clock = `${now.toLocaleDateString('en', { weekday: 'long' })} ${now

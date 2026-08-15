@@ -6,6 +6,37 @@
 
 ---
 
+### 2026-08-16 · Bar performance: sync commands were self-DDoSing the aerospace server
+
+Mitch: workspace clicks took seconds. Cause: `bar_snapshot` was a **sync** Tauri command
+— it ran on the main thread, spawning 5 subprocesses per 1s tick, serially. The queued
+aerospace CLI calls backed up aerospace's server: `list-workspaces` measured **6.0s**
+wall (0.01s CPU) while the bar polled, **14ms** once it stopped. Fixes: commands are
+`async` (worker pool — any command that spawns processes must be), one aerospace call
+per tick via `--format '%{workspace}%{tab}%{workspace-is-focused}'`, battery cached 30s,
+optimistic focused-workspace update on click. Rule of thumb recorded: **never spawn a
+subprocess in a sync Tauri command.**
+
+### 2026-08-16 · Menubar slide-over needs Floating level + a constrainFrameRect override
+
+To make the auto-hidden native menu bar slide OVER the bar (Sketchybar behavior), the
+bar must sit below MainMenu (24) — PanelLevel::Floating (4). But below 24, AppKit's
+`constrainFrameRect:toScreen:` pushes windows out of the menu-bar reserve (bar landed at
+y=38, and set_position could not force it back). Sketchybar's own trick, ported:
+`bar_constrain.rs` installs a `constrainFrameRect:` override returning the rect
+unchanged onto the macro-generated BarPanel class via `class_replaceMethod`. Result:
+level 4, y=0, menubar hover-slides over.
+
+### 2026-08-16 · Event-driven bar refresh via a triggers directory
+
+Polling caps update latency at the poll interval (Mitch noticed ~hundreds of ms vs
+Sketchybar's instant). Now `~/.config/launcharr/triggers/` is FSEvents-watched; any
+change emits `bar-refresh` and the bar re-snapshots immediately. aerospace.toml's
+`exec-on-workspace-change` touches `triggers/workspace` (dotfiles updated, uncommitted).
+Doubles as a hackable poke-the-bar surface for scripts. Front-app changes without a
+workspace switch still ride the 1s poll — candidate: NSWorkspace
+didActivateApplicationNotification observer.
+
 ### 2026-08-16 · Display mode changes strand the bar off-screen
 
 Overnight the display's point width changed (2560 → 2056; scaling/dock change) and the

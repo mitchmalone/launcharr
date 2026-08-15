@@ -52,30 +52,43 @@ body,
 }
 
 .bar-ws {
-  min-width: 24px;
+  min-width: 26px;
   text-align: center;
   padding: 3px 5px;
   color: var(--dim, #7f86a5);
+  transition: none;
 }
 
 .bar-ws + .bar-ws {
   border-left: 1px solid var(--border, #34364a);
 }
 
-.bar-ws-focused {
+.bar-ws:hover {
   color: var(--fg, #dde1f0);
-  background: var(--selected, rgba(167, 176, 208, 0.14));
+}
+
+/* Active workspace: a solid accent block — readable at a glance, no squinting. */
+.bar-ws-focused,
+.bar-ws-focused:hover {
+  color: var(--bg, #14151d);
+  background: var(--accent, #9db2ff);
+  font-weight: 700;
 }
 
 .bar-app {
-  color: var(--accent, #9db2ff);
+  color: var(--fg, #dde1f0);
+}
+
+.bar-app::before {
+  content: '❯ ';
+  color: var(--sigil, var(--accent, #9db2ff));
 }
 
 .bar-center {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  color: var(--fg, #dde1f0);
+  color: var(--dim, #7f86a5);
 }
 
 .bar-right {

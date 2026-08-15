@@ -33,14 +33,17 @@ pub fn hide_panel(app: AppHandle) {
 }
 
 /// One poll of everything the bar renders (v0.5 spike; DECISIONS 2026-08-15).
+/// async: spawns subprocesses — MUST stay off the main thread or every spawn
+/// janks the whole app (found 2026-08-16: sync polling made clicks take
+/// seconds and backed up the aerospace server).
 #[tauri::command]
-pub fn bar_snapshot() -> crate::bar::BarSnapshot {
+pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
-/// Bar workspace cell click → focus that aerospace workspace.
+/// Bar workspace cell click → focus that aerospace workspace. async: see above.
 #[tauri::command]
-pub fn bar_switch_workspace(ws: String) -> CmdResult<()> {
+pub async fn bar_switch_workspace(ws: String) -> CmdResult<()> {
     crate::bar::switch_workspace(&ws)
 }
 

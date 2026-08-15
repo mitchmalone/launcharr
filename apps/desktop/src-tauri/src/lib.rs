@@ -12,6 +12,7 @@ use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
 mod bar;
+mod bar_constrain;
 mod bookmarks;
 mod clipboard;
 mod commands;

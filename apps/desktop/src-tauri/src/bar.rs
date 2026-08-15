@@ -56,7 +56,15 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         let panel = window
             .to_panel::<BarPanel>()
             .map_err(|e| CmdError::Internal(format!("bar to_panel: {e}")))?;
-        panel.set_level(PanelLevel::Status.value());
+        // Floating (4): above tiled windows, below MainMenu (24) so the native
+        // auto-hidden menu bar slides OVER the bar, Sketchybar-style. At this
+        // level AppKit constrains frames out of the menu-bar reserve — the
+        // bar_constrain override (installed below, once the class exists)
+        // makes y=0 legal again.
+        panel.set_level(PanelLevel::Floating.value());
+        if !crate::bar_constrain::install(c"BarPanel") {
+            eprintln!("[launcharr bar] constrain override failed; bar may sit low");
+        }
         panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
         panel.set_collection_behavior(
             CollectionBehavior::new()
@@ -84,7 +92,44 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         panel.order_front_regardless();
     }
     watch(app.clone());
+    watch_triggers(app.clone());
     Ok(())
+}
+
+/// Event-driven refresh: anything touching a file in
+/// `~/.config/launcharr/triggers/` makes the bar re-snapshot immediately.
+/// Aerospace's `exec-on-workspace-change` points here — polling is only the
+/// fallback, so workspace switches show up in tens of ms, not up to a second.
+/// It's also a hackable surface: any script can poke the bar.
+fn watch_triggers(app: AppHandle) {
+    let dir = crate::config::config_dir().join("triggers");
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        eprintln!("[launcharr bar] triggers dir failed: {e}");
+        return;
+    }
+    std::thread::spawn(move || {
+        use notify::{RecursiveMode, Watcher};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut watcher = match notify::recommended_watcher(tx) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("[launcharr bar] trigger watcher failed: {e}");
+                return;
+            }
+        };
+        if let Err(e) = watcher.watch(&dir, RecursiveMode::NonRecursive) {
+            eprintln!("[launcharr bar] trigger watch failed: {e}");
+            return;
+        }
+        while rx.recv().is_ok() {
+            // Coalesce bursts, then tell every bar webview to re-poll.
+            while rx
+                .recv_timeout(std::time::Duration::from_millis(30))
+                .is_ok()
+            {}
+            let _ = tauri::Emitter::emit(&app, "bar-refresh", ());
+        }
+    });
 }
 
 /// Display modes change (dock/undock, scaling) and strand the bar at stale
@@ -134,18 +179,15 @@ pub struct BarSnapshot {
 }
 
 pub fn snapshot() -> BarSnapshot {
-    let workspaces = aerospace(&["list-workspaces", "--all"])
-        .map(|out| parse_lines(&out))
-        .unwrap_or_default();
-    let focused = aerospace(&["list-workspaces", "--focused"])
-        .map(|out| parse_lines(&out).into_iter().next())
-        .unwrap_or_default();
-    let (battery_pct, on_ac) = Command::new("/usr/bin/pmset")
-        .args(["-g", "batt"])
-        .output()
-        .ok()
-        .map(|out| parse_battery(&String::from_utf8_lossy(&out.stdout)))
-        .unwrap_or((None, false));
+    let (workspaces, focused) = aerospace(&[
+        "list-workspaces",
+        "--all",
+        "--format",
+        "%{workspace}%{tab}%{workspace-is-focused}",
+    ])
+    .map(|out| parse_workspace_table(&out))
+    .unwrap_or_default();
+    let (battery_pct, on_ac) = battery_cached();
     BarSnapshot {
         workspaces,
         focused,
@@ -153,6 +195,45 @@ pub fn snapshot() -> BarSnapshot {
         battery_pct,
         on_ac,
     }
+}
+
+/// One aerospace round-trip for names + focus: lines of `name\ttrue|false`.
+fn parse_workspace_table(out: &str) -> (Vec<String>, Option<String>) {
+    let mut names = Vec::new();
+    let mut focused = None;
+    for line in parse_lines(out) {
+        let (name, is_focused) = match line.split_once('\t') {
+            Some((n, f)) => (n.trim().to_owned(), f.trim() == "true"),
+            None => (line, false),
+        };
+        if is_focused {
+            focused = Some(name.clone());
+        }
+        names.push(name);
+    }
+    (names, focused)
+}
+
+/// Battery changes on the scale of minutes; don't pay a pmset spawn per tick.
+fn battery_cached() -> (Option<u8>, bool) {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    type Reading = (Option<u8>, bool);
+    static CACHE: Mutex<Option<(Instant, Reading)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    if let Some((at, value)) = *cache {
+        if at.elapsed() < Duration::from_secs(30) {
+            return value;
+        }
+    }
+    let value = Command::new("/usr/bin/pmset")
+        .args(["-g", "batt"])
+        .output()
+        .ok()
+        .map(|out| parse_battery(&String::from_utf8_lossy(&out.stdout)))
+        .unwrap_or((None, false));
+    *cache = Some((Instant::now(), value));
+    value
 }
 
 /// Focus a workspace (bar click). The name comes from our own snapshot, but
@@ -261,6 +342,24 @@ mod tests {
     #[test]
     fn battery_absent_on_desktops() {
         assert_eq!(parse_battery("Now drawing from 'AC Power'\n"), (None, true));
+    }
+
+    #[test]
+    fn parses_workspace_table() {
+        let out = "1\tfalse\n2\ttrue\n3\tfalse\n";
+        assert_eq!(
+            parse_workspace_table(out),
+            (
+                vec!["1".into(), "2".into(), "3".into()],
+                Some("2".to_owned())
+            )
+        );
+        // Old aerospace without --format support still yields plain names.
+        assert_eq!(
+            parse_workspace_table("1\n2\n"),
+            (vec!["1".into(), "2".into()], None)
+        );
+        assert_eq!(parse_workspace_table(""), (vec![], None));
     }
 
     #[test]
