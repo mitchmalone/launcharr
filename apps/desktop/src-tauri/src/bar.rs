@@ -139,11 +139,6 @@ fn push(app: &AppHandle) {
     }
 }
 
-/// Temporary diagnostic sink for the bar webview (2026-08-16 focus hunt).
-pub fn debug_log(msg: &str) {
-    eprintln!("[bar-js] {msg}");
-}
-
 /// Event-driven refresh: anything touching a file in
 /// `~/.config/launcharr/triggers/` makes the bar re-snapshot immediately.
 /// Aerospace's `exec-on-workspace-change` points here — polling is only the

@@ -72,9 +72,11 @@ body,
   color: var(--fg, #dde1f0);
 }
 
-/* Active workspace: a solid light block, Omarchy-style. */
-.bar-ws-focused,
-.bar-ws-focused:hover {
+/* Active workspace: a solid light block, Omarchy-style. Scoped under .bar so
+ * it outranks the `.bar button` reset (0,1,1) — unscoped (0,1,0) it loses and
+ * the indicator only ever painted under :hover (found the hard way, 2026-08-16). */
+.bar .bar-ws-focused,
+.bar .bar-ws-focused:hover {
   background: var(--fg, #dde1f0);
   color: var(--bg, #14151d);
   font-weight: 700;

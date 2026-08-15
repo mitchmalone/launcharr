@@ -6,6 +6,21 @@
 
 ---
 
+### 2026-08-16 · The vanishing focus indicator was CSS specificity — hover masked it for hours
+
+The active-workspace indicator "not working" survived three real plumbing fixes because
+the visible bug was `.bar button { background: none }` (0,1,1) silently beating
+`.bar-ws-focused { background: … }` (0,1,0) — the block NEVER painted except while
+hovered, where `.bar-ws-focused:hover` (0,2,0) outranks the reset. Clicking a cell
+parks the mouse on it → "clicks work, hotkeys don't," and "hotkey back to 4 shows it
+again" because the mouse still sat on cell 4. Diagnosed by instrumenting every layer
+(Rust snapshots ✓, eval delivery ✓, absorb ✓, DOM class ✓) until only CSS remained.
+Lessons: (1) element-qualified resets like `.bar button` out-rank single-class state
+selectors — scope state rules under the root (`.bar .bar-ws-focused`); (2) when
+"clicks work but keys don't," suspect :hover masking before plumbing; (3) instrument
+layer by layer and trust each ✓ — the bug lives in the first unverified layer. The
+timer-throttling and emit-delivery fixes below were real and stay.
+
 ### 2026-08-16 · WKWebView throttles JS timers in never-focused windows — push, don't poll
 
 The bar's `setInterval` polling silently died minutes after launch: WebKit throttles or
