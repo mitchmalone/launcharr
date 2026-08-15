@@ -30,6 +30,13 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   aerospace exec-on-workspace-change touches it; **dotfiles change uncommitted**),
   async commands only, Floating level + constrainFrameRect override (menu bar slides
   over), 15s reframe heartbeat, ~19 MB marginal memory (gate passed).
+- **Agent monitoring** (B4 slice, plans/done/agent-monitoring.md): launcharr absorbed
+  sketchybar-agent-status — Rust socket monitor (`agents.rs`, old wire protocol
+  unchanged), bar agent cells (●/○/◉ glyphs, attention pulses, click jumps to the tmux
+  pane), `agents ⏎` panel. Claude hooks → in-repo `apps/desktop/hooks/claude-status.py`;
+  Go daemon booted out (revert: bootstrap
+  `~/Library/LaunchAgents/com.mitchmalone.sketchybar-agent-status.plist` + repoint
+  hooks; settings backups at `~/.claude*/settings.json.bak-agent-status`).
 - **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the
   launcher window — `PANELS` registry in App.tsx, breadcrumb prompt, Esc-stack, panels
   are storied presentational components + thin invoke containers. Tenants: **`wifi ⏎`**
@@ -44,7 +51,8 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 - Bar: per-workspace app hints; right-side glyph set (bluetooth/sound — opens the
   per-module permissions conversation); NSWorkspace observer for event-driven front-app;
   multi-display fix (JOURNAL 2026-08-15); placement config + notched profiles.
-- Aerospace vendored wrap + adopt-or-stop migration (B3); module API + agent bar (B4).
+- Aerospace vendored wrap + adopt-or-stop migration (B3); module API (B4 — agent bar
+  shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
   sketchybar config there when confident; TRMNL secret chain (age helper and infisical
@@ -54,4 +62,6 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 
 - Panel focus checklist (only hands): summon → `wifi ⏎` → connect → Esc → Esc → focus
   restored exactly, incl. over a full-screen app.
+- Agent monitoring hands-check: attention pulse visual; bar-cell click / `agents ⏎`
+  Enter lands in the right tmux pane (plans/done/agent-monitoring.md field notes).
 - Anything off in daily use → JOURNAL it, next session fixes.

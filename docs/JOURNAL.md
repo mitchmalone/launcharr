@@ -6,6 +6,17 @@
 
 ---
 
+### 2026-08-16 · Concurrent socket handlers tore agents.json on the first live test
+
+The agents monitor spawns a handler thread per socket connection, and Claude hook events
+arrive in bursts (PostToolUse + PreToolUse land together). Two threads doing plain
+`fs::write` to `agents.json` interleaved and left "valid JSON + trailing garbage" — caught
+minutes after shipping because the very first live read choked. Fix: saves are serialized
+behind a static mutex and go write-temp-then-rename, so readers only ever see a complete
+document. `load()` additionally treats unparseable state as empty rather than erroring —
+a status cache is never worth a startup failure. Regression test hammers 4 writer threads
+against a reader.
+
 ### 2026-08-16 · The vanishing focus indicator was CSS specificity — hover masked it for hours
 
 The active-workspace indicator "not working" survived three real plumbing fixes because

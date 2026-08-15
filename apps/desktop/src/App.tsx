@@ -27,6 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Config } from './lib/config'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
+import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
 import { DnsPanelContainer } from './panels/DnsPanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
 
@@ -44,6 +45,11 @@ const PANELS: Record<
   string,
   { title: string; hint: string; component: React.FC<{ onClose: () => void }> }
 > = {
+  agents: {
+    title: 'Agents',
+    hint: 'coding agent sessions ▸',
+    component: AgentsPanelContainer,
+  },
   wifi: {
     title: 'Wi-Fi',
     hint: 'networks & power ▸',

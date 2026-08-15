@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
+mod agents;
 mod bar;
 mod bar_constrain;
 mod bar_modules;
@@ -88,6 +89,8 @@ pub fn run() {
             commands::hide_panel,
             commands::bar_snapshot,
             commands::bar_switch_workspace,
+            commands::agents_status,
+            commands::agent_jump,
             commands::wifi_status,
             commands::wifi_known_networks,
             commands::wifi_connect,
@@ -146,6 +149,7 @@ pub fn run() {
                     });
                 });
             }
+            agents::start(app.handle().clone());
             tray::init(app.handle())?;
             shortcut::sync(app.handle(), &cfg);
             indexer::start(app.handle().clone());

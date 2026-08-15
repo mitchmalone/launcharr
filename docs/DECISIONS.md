@@ -5,6 +5,24 @@
 
 ---
 
+### 2026-08-16 · Agent monitoring absorbed: launcharr owns the agent-status socket
+
+- **Decision.** launcharr replaces `sketchybar-agent-status` (Go daemon + sketchybar
+  widgets). A Rust listener owns a unix socket at
+  `${XDG_STATE_HOME:-~/.local/state}/launcharr/agents.sock` speaking that project's
+  newline-JSON event protocol unchanged (`{session, agent, state, title, detail, tmux}`;
+  `ended` deletes, blank fields inherit). Claude Code hooks emit via an in-repo adapter
+  (`apps/desktop/hooks/claude-status.sh`); the Go launchd daemon is booted out (revert
+  path in plans/agent-monitoring.md). Sessions idle >12 h are pruned — the old daemon
+  accumulated forever.
+- **Decision (IPC).** Two commands join the surface: `agents_status` (panel list) and
+  `agent_jump` (tmux switch-client/select-window + `open -a` the configured terminal).
+  The bar itself needs no new command — agents ride the existing pushed snapshot.
+- **Why.** The bar replaced every other sketchybar module already; agent status was the
+  last holdout, and its socket→state→push shape is exactly the bar's architecture. Keeping
+  the wire protocol means any future adapter (Codex etc., B4) is just another emitter.
+  The socket is local IPC, not network — invariant 2 holds.
+
 ### 2026-08-16 · Panel framework: trigger words open TUI panels; four wifi commands
 
 - **Decision (framework).** Trigger words can now open full keyboard-driven TUI panels

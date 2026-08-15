@@ -7,6 +7,17 @@ import type { Config } from '../lib/config'
 import { applyTheme } from '../lib/themes'
 import './bar.css'
 
+/** Mirrors AgentSession in agents.rs. */
+interface AgentSession {
+  session: string
+  agent: string
+  state: string
+  title: string
+  detail: string
+  tmux: string
+  updatedAt: number
+}
+
 interface BarSnapshot {
   workspaces: string[]
   focused: string | null
@@ -17,6 +28,48 @@ interface BarSnapshot {
   wifi: { online: boolean; ssid: string | null }
   /** null → no TRMNL token, cell hidden; pct null → API error state. */
   trmnl: { pct: number | null; name: string | null } | null
+  agents: AgentSession[]
+}
+
+/** Max agent cells before collapsing the tail into a +N overflow marker. */
+const MAX_AGENT_CELLS = 6
+
+const AGENT_GLYPHS: Record<string, string> = {
+  working: '●',
+  attention: '◉',
+  idle: '○',
+}
+
+/**
+ * Agent session cells, replacing the retired sketchybar emoji widgets: one
+ * glyph per session in the bar's own language, click jumps to the tmux pane.
+ * Sorted by session id — stable positions beat recency when cells are click
+ * targets.
+ */
+function AgentCluster({ agents }: { agents: AgentSession[] }) {
+  if (agents.length === 0) return null
+  const ordered = [...agents].sort((a, b) => a.session.localeCompare(b.session))
+  const shown = ordered.slice(0, MAX_AGENT_CELLS)
+  const overflow = ordered.length - shown.length
+  return (
+    <div className="bar-agents">
+      {shown.map((a) => (
+        <button
+          key={a.session}
+          type="button"
+          className={`bar-agent bar-agent-${a.state}`}
+          title={`${a.agent} · ${a.state}${a.title ? ` — ${a.title}` : ''}`}
+          onClick={() =>
+            a.tmux &&
+            invoke('agent_jump', { target: a.tmux }).catch(console.error)
+          }
+        >
+          {AGENT_GLYPHS[a.state] ?? '◌'}
+        </button>
+      ))}
+      {overflow > 0 && <span className="bar-agent-overflow">+{overflow}</span>}
+    </div>
+  )
 }
 
 declare global {
@@ -133,6 +186,7 @@ function Bar() {
             ))}
           </div>
         )}
+        {snap && <AgentCluster agents={snap.agents} />}
         {snap?.frontApp && <span className="bar-app">{snap.frontApp}</span>}
       </div>
       <div className="bar-center">{clock}</div>

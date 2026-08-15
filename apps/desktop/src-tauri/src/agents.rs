@@ -1,0 +1,415 @@
+//! Agent session monitoring (plans/agent-monitoring.md): launcharr absorbs the
+//! sketchybar-agent-status daemon. A unix-socket listener speaks that project's
+//! newline-JSON event protocol unchanged — Claude Code hooks (and any future
+//! adapter) emit `{session, agent, state, title, detail, tmux}` lines; the
+//! store folds them into per-session state for the bar and the `agents` panel.
+//! Local IPC only — the socket is a filesystem object, not a network listener
+//! (invariant 2 holds).
+
+use std::io::BufRead;
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+use tauri::AppHandle;
+
+use crate::config::Terminal;
+use crate::error::{CmdError, CmdResult};
+
+/// Sessions untouched for this long are pruned — the old daemon kept every
+/// idle session forever and the bar filled with week-old ghosts.
+const STALE_SECS: u64 = 12 * 3600;
+
+/// One live agent session. Mirrored as `AgentSession` in the frontend.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSession {
+    pub session: String,
+    pub agent: String,
+    /// Free-form state string from the adapter: working | idle | attention | …
+    /// Unknown states render with a fallback glyph, never break.
+    pub state: String,
+    pub title: String,
+    pub detail: String,
+    /// tmux pane id (`%12`) or target; empty when the agent isn't in tmux.
+    pub tmux: String,
+    /// Unix seconds of the last event.
+    pub updated_at: u64,
+}
+
+/// Incoming wire event: an `AgentSession` minus the timestamp, all fields
+/// optional-by-default so partial emitters degrade instead of erroring.
+#[derive(Debug, Clone, Default, Deserialize)]
+struct AgentEvent {
+    #[serde(default)]
+    session: String,
+    #[serde(default)]
+    agent: String,
+    #[serde(default)]
+    state: String,
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    detail: String,
+    #[serde(default)]
+    tmux: String,
+}
+
+static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
+
+/// Snapshot for the bar and panel: fresh sessions only, newest first.
+pub fn list() -> Vec<AgentSession> {
+    let sessions = SESSIONS.lock().unwrap();
+    let now = now_secs();
+    let mut fresh: Vec<AgentSession> = sessions
+        .iter()
+        .filter(|s| now.saturating_sub(s.updated_at) <= STALE_SECS)
+        .cloned()
+        .collect();
+    fresh.sort_by(|a, b| {
+        b.updated_at
+            .cmp(&a.updated_at)
+            .then(a.session.cmp(&b.session))
+    });
+    fresh
+}
+
+/// Start the listener. Called once at setup regardless of `bar.enabled` — the
+/// `agents` panel wants the data even on a bar-less install.
+pub fn start(app: AppHandle) {
+    std::thread::spawn(move || {
+        if let Ok(saved) = load(&state_file()) {
+            *SESSIONS.lock().unwrap() = saved;
+        }
+        let path = socket_path();
+        if let Some(dir) = path.parent() {
+            if let Err(e) = std::fs::create_dir_all(dir) {
+                eprintln!("[launcharr agents] state dir failed: {e}");
+                return;
+            }
+        }
+        // A previous instance's socket file blocks bind; it's ours to replace.
+        let _ = std::fs::remove_file(&path);
+        let listener = match UnixListener::bind(&path) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("[launcharr agents] socket bind failed: {e}");
+                return;
+            }
+        };
+        if let Err(e) = restrict_permissions(&path) {
+            eprintln!("[launcharr agents] socket chmod failed: {e}");
+        }
+        for stream in listener.incoming() {
+            let Ok(stream) = stream else { continue };
+            let app = app.clone();
+            std::thread::spawn(move || handle(stream, &app));
+        }
+    });
+}
+
+fn handle(stream: UnixStream, app: &AppHandle) {
+    let reader = std::io::BufReader::new(stream);
+    for line in reader.lines() {
+        let Ok(line) = line else { break };
+        let Ok(event) = serde_json::from_str::<AgentEvent>(&line) else {
+            continue;
+        };
+        let applied = {
+            let mut sessions = SESSIONS.lock().unwrap();
+            apply(&mut sessions, event, now_secs())
+        };
+        if applied {
+            if let Err(e) = save(&state_file(), &list()) {
+                eprintln!("[launcharr agents] state save failed: {e}");
+            }
+            // The bar re-snapshots immediately — state flips beat the 1 Hz tick.
+            crate::bar::push(app);
+        }
+    }
+}
+
+/// Fold one event into the session list. Semantics ported from the retired Go
+/// store: `ended` deletes; blank title/detail/tmux inherit the previous value;
+/// everything else upserts. Stale sessions are dropped on the way through.
+fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64) -> bool {
+    if event.session.is_empty() || event.agent.is_empty() {
+        return false;
+    }
+    sessions.retain(|s| now.saturating_sub(s.updated_at) <= STALE_SECS);
+    if event.state == "ended" {
+        sessions.retain(|s| s.session != event.session);
+        return true;
+    }
+    let previous = sessions.iter().position(|s| s.session == event.session);
+    let mut next = AgentSession {
+        session: event.session,
+        agent: event.agent,
+        state: event.state,
+        title: event.title,
+        detail: event.detail,
+        tmux: event.tmux,
+        updated_at: now,
+    };
+    if let Some(i) = previous {
+        let old = &sessions[i];
+        if next.title.is_empty() {
+            next.title = old.title.clone();
+        }
+        if next.detail.is_empty() {
+            next.detail = old.detail.clone();
+        }
+        if next.tmux.is_empty() {
+            next.tmux = old.tmux.clone();
+        }
+        sessions[i] = next;
+    } else {
+        sessions.push(next);
+    }
+    true
+}
+
+/// Jump to a session's tmux pane and bring the terminal frontmost. Ported from
+/// the retired jump.sh: switch the client to the target's session, select its
+/// window; both are best-effort because pane ids go stale when panes close.
+pub fn jump(target: &str, terminal: Terminal) -> CmdResult<()> {
+    validate_target(target)?;
+    let client_target = target.split(':').next().unwrap_or(target);
+    let _ = tmux(&["switch-client", "-t", client_target]);
+    let _ = tmux(&["select-window", "-t", target]);
+    let app = match crate::terminal::effective_terminal(terminal) {
+        Terminal::ITerm2 => "iTerm",
+        Terminal::TerminalApp => "Terminal",
+    };
+    let ok = std::process::Command::new("/usr/bin/open")
+        .args(["-a", app])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    ok.then_some(())
+        .ok_or_else(|| CmdError::Internal(format!("could not activate {app}")))
+}
+
+/// Targets come from our own store, but they end up as process arguments —
+/// allow only tmux's id/name alphabet.
+fn validate_target(target: &str) -> CmdResult<()> {
+    let ok = !target.is_empty()
+        && target
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '%' | ':' | '.' | '_' | '-' | '@'));
+    ok.then_some(())
+        .ok_or_else(|| CmdError::Internal(format!("bad tmux target: {target:?}")))
+}
+
+fn tmux(args: &[&str]) -> Option<()> {
+    for bin in ["tmux", "/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"] {
+        if let Ok(status) = std::process::Command::new(bin).args(args).status() {
+            return status.success().then_some(());
+        }
+    }
+    None
+}
+
+// ---- Persistence ------------------------------------------------------------
+
+fn state_dir() -> PathBuf {
+    std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".local/state"))
+        .join("launcharr")
+}
+
+/// The socket adapters emit to. Documented in the hook script and plan.
+pub fn socket_path() -> PathBuf {
+    state_dir().join("agents.sock")
+}
+
+fn state_file() -> PathBuf {
+    state_dir().join("agents.json")
+}
+
+/// Serialized + atomic: every connection gets its own handler thread, and hook
+/// events arrive in bursts — naive concurrent `fs::write`s tore the file in
+/// the first live test (JOURNAL 2026-08-16). Write-to-temp + rename under a
+/// lock; readers only ever see a complete document.
+fn save(path: &std::path::Path, sessions: &[AgentSession]) -> std::io::Result<()> {
+    static SAVING: Mutex<()> = Mutex::new(());
+    let _guard = SAVING.lock().unwrap();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let json = serde_json::to_vec(sessions).map_err(std::io::Error::other)?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json)?;
+    std::fs::rename(&tmp, path)
+}
+
+fn load(path: &std::path::Path) -> std::io::Result<Vec<AgentSession>> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(serde_json::from_slice(&bytes).unwrap_or_default()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(e),
+    }
+}
+
+fn restrict_permissions(path: &std::path::Path) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn event(session: &str, state: &str) -> AgentEvent {
+        AgentEvent {
+            session: session.into(),
+            agent: "claude".into(),
+            state: state.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn upserts_and_times_stamps() {
+        let mut s = Vec::new();
+        assert!(apply(&mut s, event("a", "working"), 100));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].state, "working");
+        assert_eq!(s[0].updated_at, 100);
+        assert!(apply(&mut s, event("a", "idle"), 200));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].state, "idle");
+        assert_eq!(s[0].updated_at, 200);
+    }
+
+    #[test]
+    fn rejects_anonymous_events() {
+        let mut s = Vec::new();
+        assert!(!apply(&mut s, AgentEvent::default(), 100));
+        let mut no_agent = event("a", "working");
+        no_agent.agent = String::new();
+        assert!(!apply(&mut s, no_agent, 100));
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn blank_fields_inherit_previous_values() {
+        let mut s = Vec::new();
+        let mut first = event("a", "working");
+        first.title = "Fix auth".into();
+        first.tmux = "%3".into();
+        apply(&mut s, first, 100);
+        apply(&mut s, event("a", "idle"), 200);
+        assert_eq!(s[0].title, "Fix auth");
+        assert_eq!(s[0].tmux, "%3");
+        let mut retitled = event("a", "working");
+        retitled.title = "New task".into();
+        apply(&mut s, retitled, 300);
+        assert_eq!(s[0].title, "New task");
+        assert_eq!(s[0].tmux, "%3");
+    }
+
+    #[test]
+    fn ended_deletes_the_session() {
+        let mut s = Vec::new();
+        apply(&mut s, event("a", "working"), 100);
+        apply(&mut s, event("b", "working"), 100);
+        assert!(apply(&mut s, event("a", "ended"), 200));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].session, "b");
+    }
+
+    #[test]
+    fn stale_sessions_are_pruned_on_apply() {
+        let mut s = Vec::new();
+        apply(&mut s, event("old", "idle"), 100);
+        apply(&mut s, event("new", "working"), 100 + STALE_SECS + 1);
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].session, "new");
+    }
+
+    #[test]
+    fn validates_tmux_targets() {
+        assert!(validate_target("%23").is_ok());
+        assert!(validate_target("work:1.0").is_ok());
+        assert!(validate_target("").is_err());
+        assert!(validate_target("x; rm -rf /").is_err());
+    }
+
+    #[test]
+    fn wire_events_tolerate_missing_fields() {
+        let e: AgentEvent = serde_json::from_str(r#"{"session":"a","agent":"claude"}"#)
+            .expect("partial event parses");
+        assert_eq!(e.session, "a");
+        assert_eq!(e.state, "");
+        assert!(serde_json::from_str::<AgentEvent>("not json").is_err());
+    }
+
+    #[test]
+    fn concurrent_saves_never_tear_the_file() {
+        let dir =
+            std::env::temp_dir().join(format!("launcharr-agents-race-{}", std::process::id()));
+        let path = dir.join("agents.json");
+        let make = |n: usize| {
+            (0..n)
+                .map(|i| AgentSession {
+                    session: format!("s{i}"),
+                    agent: "claude".into(),
+                    title: "x".repeat(50 * (n + 1)),
+                    ..Default::default()
+                })
+                .collect::<Vec<_>>()
+        };
+        save(&path, &make(1)).expect("seed save");
+        let writers: Vec<_> = (0..4)
+            .map(|t| {
+                let path = path.clone();
+                let sessions = make(t + 1);
+                std::thread::spawn(move || {
+                    for _ in 0..50 {
+                        save(&path, &sessions).expect("save");
+                    }
+                })
+            })
+            .collect();
+        for _ in 0..200 {
+            let bytes = std::fs::read(&path).expect("read");
+            serde_json::from_slice::<Vec<AgentSession>>(&bytes).expect("file is never torn");
+        }
+        for w in writers {
+            w.join().expect("writer thread");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn state_roundtrips_through_disk() {
+        let dir =
+            std::env::temp_dir().join(format!("launcharr-agents-test-{}", std::process::id()));
+        let path = dir.join("agents.json");
+        let sessions = vec![AgentSession {
+            session: "a".into(),
+            agent: "claude".into(),
+            state: "working".into(),
+            title: "Fix auth".into(),
+            detail: "PreToolUse · Bash".into(),
+            tmux: "%3".into(),
+            updated_at: 42,
+        }];
+        save(&path, &sessions).expect("save");
+        assert_eq!(load(&path).expect("load"), sessions);
+        assert_eq!(load(&dir.join("missing.json")).expect("missing ok"), vec![]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

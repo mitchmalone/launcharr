@@ -121,7 +121,8 @@ fn push_loop(app: AppHandle) {
     });
 }
 
-fn push(app: &AppHandle) {
+/// Also poked by agents.rs so state flips beat the 1 Hz tick.
+pub(crate) fn push(app: &AppHandle) {
     let snap = snapshot();
     if snap.focused.is_none() && !snap.workspaces.is_empty() {
         eprintln!("[launcharr bar] push without focus: {snap:?}");
@@ -223,6 +224,7 @@ pub struct BarSnapshot {
     pub charging: bool,
     pub wifi: crate::bar_modules::WifiState,
     pub trmnl: Option<crate::bar_modules::TrmnlState>,
+    pub agents: Vec<crate::agents::AgentSession>,
 }
 
 pub fn snapshot() -> BarSnapshot {
@@ -254,6 +256,7 @@ pub fn snapshot() -> BarSnapshot {
         charging,
         wifi: crate::bar_modules::wifi(),
         trmnl: crate::bar_modules::trmnl(),
+        agents: crate::agents::list(),
     }
 }
 

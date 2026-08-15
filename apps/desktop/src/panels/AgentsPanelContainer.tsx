@@ -1,0 +1,46 @@
+import { invoke } from '@tauri-apps/api/core'
+import { useEffect, useState } from 'react'
+
+import { type AgentSession, AgentsPanel } from './AgentsPanel'
+
+const REFRESH_MS = 1000
+
+/**
+ * Wires AgentsPanel to agents_status/agent_jump. A JS interval is safe here —
+ * panels only exist inside the key launcher window, which WebKit never
+ * background-throttles (contrast: the bar, JOURNAL 2026-08-16).
+ */
+export function AgentsPanelContainer({ onClose }: { onClose: () => void }) {
+  const [sessions, setSessions] = useState<AgentSession[]>([])
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
+
+  useEffect(() => {
+    const refresh = () => {
+      invoke<AgentSession[]>('agents_status')
+        .then((s) => {
+          setSessions(s)
+          setNow(Math.floor(Date.now() / 1000))
+        })
+        .catch(console.error)
+    }
+    refresh()
+    const id = setInterval(refresh, REFRESH_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  const onJump = (session: AgentSession) => {
+    if (!session.tmux) return
+    invoke('agent_jump', { target: session.tmux })
+      .then(onClose)
+      .catch(console.error)
+  }
+
+  return (
+    <AgentsPanel
+      sessions={sessions}
+      nowSecs={now}
+      onJump={onJump}
+      onClose={onClose}
+    />
+  )
+}

@@ -52,8 +52,11 @@ and Aerospace are independently toggleable. Not a distro — bar + launcher + co
 - **B3 — Aerospace wrap.** Vendored pinned binary, generated opinionated config,
   process supervision, adopt-or-stop migration. _Exit: fresh Mac gets working tiling
   without ever seeing an aerospace.toml._
-- **B4 — Panels + modules.** Rich TUI panels on bar items; module API (data-driven,
-  any-language emitters); agent bar module. _Exit: sketchybar-agent-status retired._
+- **B4 — Panels + modules.** 🔄 Agent bar module + `agents ⏎` panel live (2026-08-16,
+  plans/done/agent-monitoring.md): Rust socket monitor speaks the old wire protocol,
+  Claude hooks repointed, Go daemon booted out. Remaining: general module API
+  (data-driven, any-language emitters); rich TUI panels on bar items.
+  _Exit (sketchybar-agent-status retired) met; module API pending._
 - **P0 — Panel framework + wifi.** ✅ (2026-08-16, plan in plans/done/) `wifi ⏎` and
   `dns ⏎` live; PANELS registry makes tenants one-entry cheap. _Exit met: connect to a
   known network, mouse untouched._

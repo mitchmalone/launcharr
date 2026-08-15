@@ -41,6 +41,21 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
+/// Agents panel: the monitored sessions (DECISIONS 2026-08-16). Sync — reads
+/// an in-memory store, no subprocess.
+#[tauri::command]
+pub fn agents_status() -> Vec<crate::agents::AgentSession> {
+    crate::agents::list()
+}
+
+/// Jump to an agent's tmux pane and bring the terminal frontmost. async: spawns
+/// tmux and `open`.
+#[tauri::command]
+pub async fn agent_jump(target: String, state: State<'_, AppState>) -> CmdResult<()> {
+    let terminal = state.config.read().unwrap().terminal;
+    crate::agents::jump(&target, terminal)
+}
+
 /// Wifi panel (P0). All async — they spawn subprocesses.
 #[tauri::command]
 pub async fn wifi_status() -> crate::wifi::WifiStatus {
