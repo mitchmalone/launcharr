@@ -24,11 +24,13 @@ import { listen } from '@tauri-apps/api/event'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { parseAskLine } from './lib/ask'
 import {
   type Config,
   DEFAULT_AGENTS_CONFIG,
   DEFAULT_BAR_MODULES,
 } from './lib/config'
+import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
@@ -109,6 +111,20 @@ function panelEnabled(id: string, config: Config): boolean {
   return true
 }
 
+function renderSpans(spans: Span[]) {
+  return spans.map((s, i) =>
+    s.code ? (
+      <code key={i}>{s.text}</code>
+    ) : s.bold ? (
+      <strong key={i}>{s.text}</strong>
+    ) : s.italic ? (
+      <em key={i}>{s.text}</em>
+    ) : (
+      <span key={i}>{s.text}</span>
+    ),
+  )
+}
+
 export default function App() {
   const [raw, setRaw] = useState('')
   const [selected, setSelected] = useState(0)
@@ -150,7 +166,24 @@ export default function App() {
       ]),
     [scripts, quicklinks, config],
   )
-  const parsed = useMemo(() => parseInput(raw, triggers), [raw, triggers])
+  // Agent mode (`?`) is settings-gated: when off, a leading ? is just a query.
+  const parsed = useMemo(() => {
+    const p = parseInput(raw, triggers)
+    return p.mode === 'ask' && !config.agents.askMode
+      ? { mode: 'launch' as const, query: raw }
+      : p
+  }, [raw, triggers, config])
+
+  // ? mode: streamed transcript, busy flag, whether a session can --continue.
+  const [askText, setAskText] = useState('')
+  const [askBusy, setAskBusy] = useState(false)
+  const askStarted = useRef(false)
+  const askGotDelta = useRef(false)
+  const askSurfaceRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = askSurfaceRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [askText])
 
   const refetchIndex = useCallback(() => {
     invoke<IndexItem[]>('get_index').then(setIndex).catch(console.error)
@@ -179,6 +212,9 @@ export default function App() {
         setScriptItems([])
         setDraft(null)
         setPanelMode(null)
+        setAskText('')
+        setAskBusy(false)
+        askStarted.current = false
         refetchFrecency()
         refetchClips()
         inputRef.current?.focus()
@@ -187,6 +223,18 @@ export default function App() {
       listen('icons-updated', refetchIndex),
       listen('scripts-updated', refetchScripts),
       listen<Config>('config-changed', (e) => setConfig(e.payload)),
+      listen<string>('ask-chunk', (e) => {
+        const ev = parseAskLine(e.payload)
+        if (ev.delta) {
+          askGotDelta.current = true
+          setAskText((t) => t + ev.delta)
+        } else if (ev.final && !askGotDelta.current) {
+          setAskText((t) => t + ev.final)
+        } else if (ev.error) {
+          setAskText((t) => `${t}\n⚠ ${ev.error}`)
+        }
+      }),
+      listen<boolean>('ask-done', () => setAskBusy(false)),
     ]
     return () => {
       for (const p of unlisteners) p.then((un) => un())
@@ -236,6 +284,7 @@ export default function App() {
       case 'emoji':
         return emojiRows(parsed.query)
       case 'bang':
+      case 'ask':
         return []
     }
   }, [
@@ -252,8 +301,19 @@ export default function App() {
     browsers,
   ])
 
+  const askActive = parsed.mode === 'ask' && (askText.length > 0 || askBusy)
   const rowCount =
-    parsed.mode === 'bang' ? 1 : rows.length > 0 ? rows.length : raw ? 1 : 0
+    parsed.mode === 'ask'
+      ? askActive
+        ? 8
+        : 1
+      : parsed.mode === 'bang'
+        ? 1
+        : rows.length > 0
+          ? rows.length
+          : raw
+            ? 1
+            : 0
   useEffect(() => {
     const height = panelMode
       ? PANEL_MODE_HEIGHT
@@ -362,6 +422,13 @@ export default function App() {
           setDraft(null)
           setRaw('')
           setSelected(0)
+        } else if (parsed.mode === 'ask' && (askText || askBusy)) {
+          // Esc ends the conversation first; a second Esc dismisses.
+          setAskText('')
+          setAskBusy(false)
+          askStarted.current = false
+          setRaw('')
+          setSelected(0)
         } else {
           invoke('hide_panel').catch(console.error)
         }
@@ -379,7 +446,23 @@ export default function App() {
 
       if (e.key === 'Enter') {
         e.preventDefault()
-        if (parsed.mode === 'bang') {
+        if (parsed.mode === 'ask') {
+          const prompt = parsed.prompt.trim()
+          if (!prompt || askBusy) return
+          askGotDelta.current = false
+          setAskText((t) => `${t ? `${t}\n\n` : ''}❯ ${prompt}\n\n`)
+          setAskBusy(true)
+          invoke('ask', {
+            prompt,
+            continueConversation: askStarted.current,
+          }).catch((err) => {
+            setAskText((t) => `${t}⚠ ${String(err)}`)
+            setAskBusy(false)
+          })
+          askStarted.current = true
+          // Keep the prefix: the conversation stays open for follow-ups.
+          setRaw('?')
+        } else if (parsed.mode === 'bang') {
           invoke('run_bang', { command: parsed.command }).catch(console.error)
         } else {
           const row = rows[clampedSelection]
@@ -392,7 +475,7 @@ export default function App() {
         }
       }
     },
-    [rows, parsed, clampedSelection, enterRow, draft],
+    [rows, parsed, clampedSelection, enterRow, draft, askText, askBusy],
   )
 
   const closePanel = useCallback(() => {
@@ -404,9 +487,11 @@ export default function App() {
 
   const sigil = draft
     ? '+'
-    : parsed.mode === 'bang'
-      ? config.bangSigil
-      : config.sigil
+    : parsed.mode === 'ask'
+      ? '?'
+      : parsed.mode === 'bang'
+        ? config.bangSigil
+        : config.sigil
   const placeholder = draft
     ? draft.step === 'name'
       ? 'name this quicklink…'
@@ -456,7 +541,58 @@ export default function App() {
         />
       </div>
 
-      {parsed.mode === 'bang' ? (
+      {askActive ? (
+        <div className="ask-surface" ref={askSurfaceRef}>
+          <div className="ask-text">
+            {parseMarkdownLite(askText).map((block, i) => {
+              switch (block.kind) {
+                case 'code':
+                  return (
+                    <pre key={i} className="md-code">
+                      {block.text}
+                    </pre>
+                  )
+                case 'heading':
+                  return (
+                    <div key={i} className={`md-h md-h${block.level}`}>
+                      {renderSpans(block.spans)}
+                    </div>
+                  )
+                case 'bullet':
+                  return (
+                    <div
+                      key={i}
+                      className="md-li"
+                      style={{ paddingLeft: 14 + block.indent * 14 }}
+                    >
+                      • {renderSpans(block.spans)}
+                    </div>
+                  )
+                case 'numbered':
+                  return (
+                    <div key={i} className="md-li" style={{ paddingLeft: 14 }}>
+                      {block.marker}. {renderSpans(block.spans)}
+                    </div>
+                  )
+                case 'para':
+                  return (
+                    <div key={i} className="md-p">
+                      {renderSpans(block.spans)}
+                    </div>
+                  )
+              }
+            })}
+            {askBusy ? <span className="md-cursor">▊</span> : null}
+          </div>
+        </div>
+      ) : parsed.mode === 'ask' ? (
+        <div className="row bang-row">
+          <span className="bang-action">ask claude ▸</span>
+          <span className="bang-command">
+            {parsed.prompt || 'type a question, Enter to send'}
+          </span>
+        </div>
+      ) : parsed.mode === 'bang' ? (
         <div className="row bang-row">
           <span className="bang-action">run in {config.terminal} ▸</span>
           <span className="bang-command">{parsed.command || 'new window'}</span>

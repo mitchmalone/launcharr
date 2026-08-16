@@ -147,6 +147,17 @@ pipefail surfaces it. Reproducible in /bin/bash 3.2, invisible in zsh (which is 
 manual verification passed). Rule for release.sh: capture command output to a variable
 first, grep the variable — never pipe into early-exiting consumers under pipefail.
 
+### 2026-08-10 · Spawned CLIs inherit launcharr's TCC identity — cage them
+
+(From the spike-ask-ai branch, ported to main 2026-08-16.) The `?`-mode spike spawned
+`claude -p` and macOS started prompting for network drives and Music access _as
+launcharr_: child processes bill all file access to the responsible app, and the CLI's
+project-discovery scan ran from an inherited cwd (`/`). Any spawned-CLI feature must
+(1) pin `current_dir` to an empty dir we own (Application Support/ask-home) and
+(2) disallow filesystem/exec tools (`--disallowedTools Bash,Read,...`) — `?` is Q&A,
+not an agent in the launcher. This is what "zero granted permissions" costs when
+spawning other people's binaries.
+
 ### 2026-08-10 · Two signing gotchas from the first real release run
 
 (1) `codesign -dv` does NOT print the certificate chain — grepping it for "Developer ID"

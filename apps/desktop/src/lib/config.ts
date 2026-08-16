@@ -43,6 +43,8 @@ export type AgentsConfig = {
   pruneHours: number
   /** The `usage ⏎` token monitor. */
   usage: boolean
+  /** Agent mode: `?` converses with the user's own claude CLI. */
+  askMode: boolean
   /** Consent capabilities: launcharr may read the CLI's stored credentials
    * for account-limit fetches; the code owns source selection + fallback. */
   claudeCreds: boolean
@@ -70,6 +72,7 @@ export const DEFAULT_AGENTS_CONFIG: AgentsConfig = {
   showIdle: true,
   pruneHours: 12,
   usage: false,
+  askMode: false,
   claudeCreds: false,
   codexCreds: false,
 }

@@ -12,6 +12,7 @@ use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
 mod agents;
+mod ask;
 mod bar;
 mod bar_constrain;
 mod bar_modules;
@@ -93,6 +94,7 @@ pub fn run() {
             commands::bar_set_dropdown,
             commands::agents_status,
             commands::usage_status,
+            ask::ask,
             commands::agent_jump,
             commands::wifi_status,
             commands::wifi_known_networks,

@@ -92,6 +92,25 @@ describe('parseInput', () => {
     expect(parseInput(':', TRIGGERS)).toEqual({ mode: 'emoji', query: '' })
   })
 
+  it('question mark enters ask mode, leading space tolerated', () => {
+    expect(parseInput('?why is the sky blue', TRIGGERS)).toEqual({
+      mode: 'ask',
+      prompt: 'why is the sky blue',
+    })
+    expect(parseInput('? why is the sky blue', TRIGGERS)).toEqual({
+      mode: 'ask',
+      prompt: 'why is the sky blue',
+    })
+    expect(parseInput('?', TRIGGERS)).toEqual({ mode: 'ask', prompt: '' })
+  })
+
+  it('a question mark later in the input stays launch mode', () => {
+    expect(parseInput('what?', TRIGGERS)).toEqual({
+      mode: 'launch',
+      query: 'what?',
+    })
+  })
+
   it('a colon later in the input stays launch mode', () => {
     expect(parseInput('localhost:3000', TRIGGERS)).toEqual({
       mode: 'launch',

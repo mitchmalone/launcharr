@@ -8,13 +8,15 @@ export type ParsedInput =
   | { mode: 'launch'; query: string }
   | { mode: 'bang'; command: string }
   | { mode: 'emoji'; query: string }
+  | { mode: 'ask'; prompt: string }
   | { mode: 'trigger'; trigger: string; args: string }
 
-type PrefixMode = 'bang' | 'emoji'
+type PrefixMode = 'bang' | 'emoji' | 'ask'
 
 const PREFIX_MODES: Record<string, PrefixMode> = {
   '!': 'bang',
   ':': 'emoji',
+  '?': 'ask',
 }
 
 export function parseInput(
@@ -28,6 +30,10 @@ export function parseInput(
   }
   if (mode === 'emoji') {
     return { mode: 'emoji', query: raw.slice(1) }
+  }
+  if (mode === 'ask') {
+    // Agent mode: the prompt is everything after `?`, leading space tolerated.
+    return { mode: 'ask', prompt: raw.slice(1).replace(/^ /, '') }
   }
 
   // First-token trigger: the trigger word followed by end-of-input or a space. A trigger

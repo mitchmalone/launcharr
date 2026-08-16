@@ -183,3 +183,64 @@ body {
   min-height: 0;
   outline: none;
 }
+/* --- ? mode (spike): streamed answer surface. --- */
+
+.ask-surface {
+  height: 320px; /* 8 rows worth — matches resize_panel's rowCount */
+  overflow-y: auto;
+  padding: 10px 16px 14px;
+}
+
+.ask-text {
+  margin: 0;
+  word-break: break-word;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--fg);
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.md-p {
+  min-height: 0.7em; /* blank lines keep paragraph rhythm */
+  margin: 0 0 2px;
+  white-space: pre-wrap;
+}
+
+.md-h {
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.md-h1 {
+  font-size: 15px;
+}
+
+.md-li {
+  margin: 0 0 2px;
+  white-space: pre-wrap;
+}
+
+.md-code {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 12.5px;
+}
+
+.ask-text code {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--accent);
+}
+
+.md-cursor {
+  color: var(--accent);
+}

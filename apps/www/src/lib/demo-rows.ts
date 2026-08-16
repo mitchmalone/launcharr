@@ -78,7 +78,8 @@ function toDemoRow(row: CoreRow): DemoRow {
 
 export function computeDemoRows(raw: string, frecency: FrecencyMap): DemoRow[] {
   const parsed = parseInput(raw, TRIGGERS)
-  if (parsed.mode === 'bang') return []
+  // The site demo has no terminal or claude CLI behind it.
+  if (parsed.mode === 'bang' || parsed.mode === 'ask') return []
   if (parsed.mode === 'emoji') return emojiRows(parsed.query).map(toDemoRow)
   if (parsed.mode === 'trigger') {
     const link = QUICKLINKS.find((l) => l.trigger === parsed.trigger)

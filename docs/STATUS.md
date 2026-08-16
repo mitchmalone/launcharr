@@ -50,7 +50,13 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   **Settings → Agents**,
   which also gates local monitoring (prune window, show-idle). **Settings → Menubar**:
   bar on/off hot-applied + widget order (`bar.modules`, clock = center anchor).
-- **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the
+- **`?` agent mode** (ported 2026-08-16 from the spike-ask-ai branch, adapted to the
+  monorepo + prefix grammar): type `?` + a question → streamed conversation with the
+  user's own `claude` CLI (caged child: empty cwd, no fs/exec tools — JOURNAL
+  2026-08-10), markdown-lite rendering, `--continue` follow-ups, Esc ends. Gated by
+  `agents.askMode` ("Enable agent mode", Settings → Agents, off by default). The spike's
+  keystroke-switched input modes were deliberately NOT ported — main's prefix grammar
+  won (invariant 4); branch kept for reference.
   launcher window — `PANELS` registry in App.tsx, breadcrumb prompt, Esc-stack, panels
   are storied presentational components + thin invoke containers. Tenants: **`wifi ⏎`**
   (active network pinned, known networks scroll + Enter-connects, `p` power, scan row

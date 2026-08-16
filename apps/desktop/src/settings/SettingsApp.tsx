@@ -427,6 +427,24 @@ function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
         )}
       </Row>
       <hr />
+      <Row label="Agent mode">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={agents.askMode}
+            onChange={(e) => setAgents({ askMode: e.target.checked })}
+          />
+          Enable agent mode
+        </label>
+        <p className="hint">
+          Activates the <code>?</code> command: type <code>?</code> plus a
+          question in the launcher to converse with your own <code>claude</code>{' '}
+          CLI — your subscription, your credentials. The spawned CLI is caged
+          (empty working dir, no file or shell tools); Enter sends, follow-ups
+          keep context, Esc ends the conversation.
+        </p>
+      </Row>
+      <hr />
       <Row label="Usage">
         <label className="check">
           <input
