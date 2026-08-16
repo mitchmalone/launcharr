@@ -2,7 +2,7 @@
 title: awake — keep-alive sessions
 status: active # planned | active | done — only the slice actually in flight is `active`
 created: 2026-08-16
-updated: 2026-08-16
+updated: 2026-08-17
 links:
   - ../done/battery-hover-card.md # battery readings + hover card this reuses
   - ../done/agent-monitoring.md # agent state that drives the "while agents work" trigger

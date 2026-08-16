@@ -6,6 +6,23 @@
 
 ---
 
+### 2026-08-17 · `.bar-card-line` defaults to agent green
+
+`.bar-card-line`'s base color is the agent-idle green (`#00c853`) with a comment saying
+"state classes above override" — true for the agent card, a trap for every new hover card:
+plain lines come out green. The awake card scopes an override
+(`.bar-awake-card .bar-card-line { color: var(--fg) }`); the next card will need the same,
+or the base wants flipping to `--fg` with the agent card opting into green.
+
+### 2026-08-16 · pmset assertions: process lines are stable enough to parse
+
+`pmset -g assertions` "Listed by owning process" rows parse fail-soft
+(`pid N(name): [0x…] HH:MM:SS Type named: "…"`); the hours field grows past 24 rather than
+wrapping (Amphetamine showed `81:43:11` live), continuation/detail lines don't match the
+`pid ` prefix, and coreaudiod holds assertions on other apps' behalf under its own name.
+Sleep-preventing types worth listing: PreventUserIdleSystemSleep/DisplaySleep,
+PreventSystemSleep, NoIdleSleep/NoDisplaySleepAssertion — `UserIsActive` is noise.
+
 ### 2026-08-16 · A React Server Component can't import the `@launcharr/tui` barrel
 
 `apps/www` builds fine importing kit _components_ (they're in `'use client'` files), but
