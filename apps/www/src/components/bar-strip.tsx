@@ -1,101 +1,80 @@
-import { BUILTIN_THEMES } from '@launcharr/tui/themes'
-import { BatteryMedium, Wifi } from 'lucide-react'
+'use client'
 
-import { AGENT_STATES } from '@/lib/demo-data'
+import {
+  Bar,
+  BarAgents,
+  BarBatteryCell,
+  BarClock,
+  BarFrontApp,
+  BarTrmnlCell,
+  BarWifiCell,
+  BarWorkspaces,
+} from '@launcharr/tui'
+import { useMemo, useState } from 'react'
+
+import { useWebBarHover } from '@/components/demo/bar-hover'
+import { demoSnapshot } from '@/lib/demo-data'
+
+import { BarThemeScope } from './bar-theme-scope'
 
 /**
- * A still of the bar for the explainer section — deliberately fixed to the
- * default theme, the way a screenshot would be. Colours come from the kit's
- * `launcharr` tokens and the `.bar-*` rules in apps/desktop/src/bar/bar.css,
- * never hand-typed hex.
- *
- * Note `.bar-app` and `.bar-cell` are --fg, not --dim: the dim tone read too
- * dark against the strip (2026-08-16).
+ * A still of the bar for the explainer section — the real components from
+ * `@launcharr/tui`, frozen at a fixed clock so it reads like a screenshot.
+ * The website owns no bar markup (AGENTS invariant 10).
  */
-const T = BUILTIN_THEMES.launcharr!
-
 export function BarStrip() {
+  // Fixed instant, chosen once: this is a still, not a live strip.
+  const [now] = useState(() => new Date(2026, 7, 16, 9, 41))
+  const snap = useMemo(
+    () => demoSnapshot(Math.floor(now.getTime() / 1000), '2'),
+    [now],
+  )
+  const hover = useWebBarHover()
+
   return (
-    <div className="overflow-hidden rounded-[10px] border border-(--hair)">
-      <div
-        className="relative flex h-[34px] items-center justify-between px-3.5 font-mono text-xs tracking-[0.03em]"
-        style={{ background: T.glass, color: T.fg }}
-      >
-        <div className="flex items-center gap-3.5">
-          <span className="font-bold" style={{ color: T.sigil }}>
-            ❯
-          </span>
-          <div className="flex items-center gap-1.5">
-            {['1', '2', '3', '4'].map((w) => {
-              const active = w === '2'
-              return (
-                <span
-                  key={w}
-                  className="px-1 text-center"
-                  style={{
-                    minWidth: 20,
-                    height: 18,
-                    lineHeight: '18px',
-                    background: active ? T.fg : undefined,
-                    color: active ? T.bg : T.dim,
-                    fontWeight: active ? 700 : 400,
-                  }}
-                >
-                  {w}
-                </span>
-              )
-            })}
-          </div>
-          <div
-            className="flex h-[22px] items-center gap-1 px-[5px]"
-            style={{ border: `1px solid ${T.dim}` }}
-          >
-            <span
-              className="text-center"
-              style={{
-                minWidth: 16,
-                height: 18,
-                lineHeight: '18px',
-                color: T.accent,
-              }}
-            >
-              {AGENT_STATES.working.glyph}
-            </span>
-            <span
-              className="text-center"
-              style={{
-                minWidth: 16,
-                height: 18,
-                lineHeight: '18px',
-                color: AGENT_STATES.attention.color,
-                animation: 'bar-agent-breathe 1.6s ease-in-out infinite',
-              }}
-            >
-              {AGENT_STATES.attention.glyph}
-            </span>
-          </div>
-          {/* .bar-app — fg */}
-          <span style={{ color: T.fg }}>Ghostty</span>
-        </div>
-        <div
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{ color: T.fg }}
-        >
-          Sat 16 Aug 09:41
-        </div>
-        {/* .bar-cell — fg, not dim */}
-        <div className="flex items-center gap-3.5" style={{ color: T.fg }}>
-          <span className="inline-flex items-center gap-[5px]">
-            <Wifi size={14} strokeWidth={2.2} aria-hidden />
-            Blackbeard 5G
-          </span>
-          <span>▣ 87%</span>
-          <span className="inline-flex items-center gap-[5px]">
-            <BatteryMedium size={14} strokeWidth={2.2} aria-hidden />
-            64%
-          </span>
-        </div>
-      </div>
-    </div>
+    <BarThemeScope className="overflow-hidden rounded-[10px] border border-(--hair)">
+      <Bar
+        left={[
+          <BarWorkspaces
+            key="workspaces"
+            workspaces={snap.workspaces}
+            focused={snap.focused}
+            onSwitch={() => {}}
+          />,
+          <BarAgents
+            key="agents"
+            agents={snap.agents}
+            now={now}
+            hover={hover}
+          />,
+          snap.frontApp ? (
+            <BarFrontApp key="frontApp" name={snap.frontApp} />
+          ) : null,
+        ]}
+        center={<BarClock key="clock">Sat 16 Aug 09:41</BarClock>}
+        right={[
+          <BarWifiCell
+            key="wifi"
+            online={snap.wifi.online}
+            ssid={snap.wifi.ssid}
+          />,
+          snap.trmnl ? (
+            <BarTrmnlCell
+              key="trmnl"
+              pct={snap.trmnl.pct}
+              name={snap.trmnl.name}
+            />
+          ) : null,
+          <BarBatteryCell
+            key="battery"
+            pct={snap.batteryPct}
+            onAc={snap.onAc}
+            charging={snap.charging}
+            detail={null}
+            hover={hover}
+          />,
+        ]}
+      />
+    </BarThemeScope>
   )
 }

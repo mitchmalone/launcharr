@@ -3,6 +3,8 @@
    mocks (DECISIONS 2026-08-16). Its colors resolve through --tui-* tokens that
    the demo sets per theme; without them they'd fall back to the *page* tokens. */
 @import '@launcharr/tui/styles.css';
+/* The bar's chrome — the same stylesheet the desktop bar window loads. */
+@import '@launcharr/tui/bar.css';
 
 /* Dark is the default theme; light overrides via next-themes' data-theme attr. */
 :root {

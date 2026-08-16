@@ -1,7 +1,7 @@
 'use client'
 
 import { parseInput } from '@launcharr/core/grammar'
-import { BUILTIN_THEMES, themeNames } from '@launcharr/tui'
+import { BUILTIN_THEMES, themeNames, themeVars } from '@launcharr/tui'
 import { useEffect, useRef, useState } from 'react'
 
 import { type PanelId, askAnswer } from '@/lib/demo-data'
@@ -151,8 +151,10 @@ export function Demo() {
     }
   }
 
-  /* The kit resolves its chrome through --tui-*; without explicit values it
-     would inherit the *page* tokens of the same name. --d-* drive the mock bar. */
+  /* Two token sets, one source. The panel kit resolves through --tui-*; the
+     bar's stylesheet resolves through the unprefixed panel names, which on this
+     page would otherwise hit the *site* palette. `themeVars` is the kit's own
+     mapping, so neither is a second copy. */
   const scopeVars = {
     '--tui-bg': theme.glass,
     '--tui-surface': theme.surface,
@@ -162,15 +164,8 @@ export function Demo() {
     '--tui-dim': theme.dim,
     '--tui-accent': theme.accent,
     '--tui-selected': theme.selected,
-    /* --d-* mirror the panel tokens the bar styles against (bar.css reads
-       --bg/--fg/--dim/--accent; we namespace so the page's own same-named
-       tokens can't leak in). */
-    '--d-bg': theme.glass,
-    '--d-border': theme.border,
-    '--d-fg': theme.fg,
-    '--d-dim': theme.dim,
-    '--d-accent': theme.accent,
-    '--d-sigil': theme.sigil,
+    ...themeVars(theme, 'panel'),
+    '--danger': theme.danger,
   } as React.CSSProperties
 
   const panelBody = () => {

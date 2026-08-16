@@ -2,17 +2,22 @@
   "name": "@launcharr/tui",
   "private": true,
   "type": "module",
-  "description": "The launcharr TUI kit — Omarchy-inspired terminal-styled React components: panels, menus, hotkey rows, controls, calendar. Pure presentation + pure nav logic.",
-  "//exports": "./themes is deliberate, don't fold it back into '.': server components (apps/www) must be able to import the pure token data without pulling the React barrel, which re-exports hook-using components.",
+  "description": "The launcharr TUI kit — Omarchy-inspired terminal-styled React components: panels, menus, hotkey rows, controls, calendar, and the menubar bar. Pure presentation + pure nav logic.",
+  "//exports": "Entry points below '.' exist so React Server Components (apps/www) can import pure modules without pulling the React barrel, which re-exports hook-using components. Don't fold './themes' or './bar' back into '.'.",
   "exports": {
     ".": "./src/index.ts",
     "./themes": "./src/themes.ts",
+    "./bar": "./src/bar/format.ts",
+    "./bar.css": "./src/bar/bar.css",
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "workbench": "vite --open"
+  },
+  "dependencies": {
+    "lucide-react": "^1.30.0"
   },
   "peerDependencies": {
     "react": "^19.1.0"

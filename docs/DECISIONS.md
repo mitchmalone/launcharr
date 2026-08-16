@@ -5,6 +5,38 @@
 
 ---
 
+### 2026-08-16 · Invariant 10 hardened: imported, never ported — and the bar moves to the kit
+
+- **Decision.** Mitch's call: **the website may never hold a second copy of any launcharr
+  UI.** Invariant 10's original wording allowed "ported from the app source with the source
+  named in a comment" — that escape hatch is closed. Every pixel `apps/www` renders of the
+  app is imported from a shared package; if a surface lives only in `apps/desktop`, it gets
+  extracted into a package _first_, then imported. Copying is not a shortcut to be
+  justified; it is the failure.
+- **Why.** The comment-and-port compromise was tested within hours and lost: the ported bar
+  shipped four wrong facts (entry below). The deeper reason is scale — every new surface
+  doubles the copies, and each one drifts silently. A rule that permits copying with
+  paperwork is a rule that gets worse as the app grows.
+- **Consequence, done same day.** The bar's presentational layer moved into
+  `packages/tui/src/bar/` — `bar.css` from `.bar` down, the strip/workspace/agent/battery
+  components, the pure formatters, and the data types. `apps/desktop/src/bar/main.tsx` is
+  now a container (Rust snapshots in, `invoke` out) and `apps/www` imports the same
+  components. Plan: `plans/done/bar-extraction.md`.
+- **What deliberately did NOT move.** Zone resolution (`normalizeBarZones`/`notchedZones`
+  encode config semantics including legacy migration — they belong beside `Config`),
+  `window.__notched`, every `invoke`, and the bar _window's_ own CSS resets: a web page
+  importing `height: 100%; overflow: hidden` on `<body>` would break. `BarModule`/`BarZones`
+  _types_ did move, so there is one definition.
+- **Hover stayed split, on purpose.** The app polls the cursor from Rust because WebKit
+  won't deliver hover to a never-active accessory window; a browser has real pointer events.
+  The kit defines `BarHoverApi` and each consumer owns its feed. A hook with an injected
+  feed would be abstraction nobody needs yet.
+- **Lucide became a kit dependency** rather than icons-as-props, and the battery icon-tier
+  logic moved with it — otherwise both consumers would re-derive which glyph a percentage
+  gets, which is the duplication being deleted.
+- **Also.** `./bar` joins `./themes` as an entry point, for the same reason: server
+  components must reach pure modules without pulling the React barrel.
+
 ### 2026-08-16 · Invariant 10: the site demos the real thing, never a replica
 
 - **Decision.** Anything in `apps/www` depicting the app is **imported** from the shipping

@@ -106,7 +106,12 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   `blocked` used as a state key when the wire name is `attention`. Fixed, and the lesson is
   now **AGENTS invariant 10** (the site demos the real thing, never a replica —
   DECISIONS 2026-08-16). `packages/tui` also gained a `./themes` entry point: server
-  components can't import the barrel (JOURNAL 2026-08-16).
+  components can't import the barrel (JOURNAL 2026-08-16). **The bar chrome now lives in
+  `packages/tui/src/bar/`** (plans/done/bar-extraction.md): Mitch made "no second copy of any
+  launcharr UI" a hard rule, invariant 10 lost its port-with-a-comment escape hatch, and
+  `bar/main.tsx` became a thin container while `apps/www` imports the same components. The
+  kit owns the strip, cells, cards, `bar.css` and the pure formatters; the app keeps every
+  `invoke`, `window.__notched`, zone resolution and its window chrome.
 
 ## In progress / next (ROADMAP B2–B4, P1)
 
@@ -118,10 +123,6 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   together); placement config (notched profiles shipped, plans/done/bar-zones-and-arranger.md).
 - Aerospace vendored wrap + adopt-or-stop migration (B3); module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
-- **Bar chrome → `packages/tui`** (awaiting Mitch's call): `apps/www` is now a second
-  consumer of a visual language that lives only in `apps/desktop/src/bar/`, so the
-  website's port is debt under invariant 10. Architecture move on files another stream is
-  usually live in — coordinate before starting.
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
   sketchybar config there when confident; TRMNL secret chain (age helper and infisical

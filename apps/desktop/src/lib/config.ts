@@ -1,4 +1,5 @@
 import type { Link } from '@launcharr/core/types'
+import type { BarModule, BarZones } from '@launcharr/tui'
 
 import type { ThemeTokens } from './themes'
 
@@ -38,12 +39,11 @@ export type BarConfig = {
   notchedLayout?: BarZones | null
 }
 
-export type BarModule = { id: string; enabled: boolean }
-export type BarZones = {
-  left: BarModule[]
-  center: BarModule[]
-  right: BarModule[]
-}
+/* Shape lives in the kit — the bar renders from it in both the app and on
+ * launcharr.com, so there is one definition (invariant 10). The *semantics*
+ * below (normalization, notch derivation, legacy migration) are config
+ * concerns and stay here. */
+export type { BarModule, BarZones } from '@launcharr/tui'
 
 export type ZoneName = 'left' | 'center' | 'right'
 export const ZONE_NAMES: ZoneName[] = ['left', 'center', 'right']
