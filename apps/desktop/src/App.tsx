@@ -166,13 +166,26 @@ export default function App() {
       ]),
     [scripts, quicklinks, config],
   )
-  // Agent mode (`?`) is settings-gated: when off, a leading ? is just a query.
+  // Modes are keystroke-switched state: the prefix key (`!` `?` `:`) flips the
+  // mode and is consumed — it never appears in the input. Esc (or Backspace on
+  // an empty prompt) returns to launch; pasted `!cmd`-style text still parses
+  // via the grammar. Agent mode is settings-gated.
+  const [inputMode, setInputMode] = useState<
+    'launch' | 'bang' | 'emoji' | 'ask'
+  >('launch')
   const parsed = useMemo(() => {
+    if (inputMode === 'bang') return { mode: 'bang' as const, command: raw }
+    if (inputMode === 'emoji') return { mode: 'emoji' as const, query: raw }
+    if (inputMode === 'ask') return { mode: 'ask' as const, prompt: raw }
     const p = parseInput(raw, triggers)
     return p.mode === 'ask' && !config.agents.askMode
       ? { mode: 'launch' as const, query: raw }
       : p
-  }, [raw, triggers, config])
+  }, [inputMode, raw, triggers, config])
+  // Turning agent mode off in settings mid-conversation exits the mode.
+  useEffect(() => {
+    if (inputMode === 'ask' && !config.agents.askMode) setInputMode('launch')
+  }, [inputMode, config.agents.askMode])
 
   // ? mode: streamed transcript, busy flag, whether a session can --continue.
   const [askText, setAskText] = useState('')
@@ -212,6 +225,7 @@ export default function App() {
         setScriptItems([])
         setDraft(null)
         setPanelMode(null)
+        setInputMode('launch')
         setAskText('')
         setAskBusy(false)
         askStarted.current = false
@@ -415,6 +429,31 @@ export default function App() {
         }
       }
 
+      // Mode switching is a keystroke, from any mode: the prefix char is
+      // consumed, never typed. Hopping modes ends an ask conversation.
+      if (
+        raw === '' &&
+        !draft &&
+        (e.key === '?' || e.key === '!' || e.key === ':')
+      ) {
+        const next = e.key === '?' ? 'ask' : e.key === '!' ? 'bang' : 'emoji'
+        if (next === 'ask' && !config.agents.askMode) {
+          // Agent mode off: `?` is an ordinary character.
+        } else if (next !== inputMode) {
+          e.preventDefault()
+          if (inputMode === 'ask') {
+            setAskText('')
+            setAskBusy(false)
+            askStarted.current = false
+          }
+          setInputMode(next)
+          return
+        } else {
+          e.preventDefault()
+          return
+        }
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault()
         // In the quicklink form, Esc backs out to the launcher; a second Esc dismisses.
@@ -422,16 +461,33 @@ export default function App() {
           setDraft(null)
           setRaw('')
           setSelected(0)
-        } else if (parsed.mode === 'ask' && (askText || askBusy)) {
-          // Esc ends the conversation first; a second Esc dismisses.
-          setAskText('')
-          setAskBusy(false)
-          askStarted.current = false
+        } else if (inputMode !== 'launch') {
+          // Esc returns to launch mode (ending any conversation); a second
+          // Esc dismisses.
+          if (inputMode === 'ask') {
+            setAskText('')
+            setAskBusy(false)
+            askStarted.current = false
+          }
+          setInputMode('launch')
           setRaw('')
           setSelected(0)
         } else {
           invoke('hide_panel').catch(console.error)
         }
+        return
+      }
+      // Backspace on an empty prompt backs out of the mode, like deleting the
+      // sigil — except mid-conversation, where the transcript stays (Esc ends).
+      if (
+        e.key === 'Backspace' &&
+        raw === '' &&
+        inputMode !== 'launch' &&
+        !draft
+      ) {
+        e.preventDefault()
+        if (inputMode === 'ask' && (askText || askBusy)) return
+        setInputMode('launch')
         return
       }
       if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) return move(1)
@@ -460,8 +516,8 @@ export default function App() {
             setAskBusy(false)
           })
           askStarted.current = true
-          // Keep the prefix: the conversation stays open for follow-ups.
-          setRaw('?')
+          // The mode persists; the prompt clears for the follow-up.
+          setRaw('')
         } else if (parsed.mode === 'bang') {
           invoke('run_bang', { command: parsed.command }).catch(console.error)
         } else {
@@ -475,7 +531,18 @@ export default function App() {
         }
       }
     },
-    [rows, parsed, clampedSelection, enterRow, draft, askText, askBusy],
+    [
+      rows,
+      parsed,
+      clampedSelection,
+      enterRow,
+      draft,
+      askText,
+      askBusy,
+      inputMode,
+      raw,
+      config,
+    ],
   )
 
   const closePanel = useCallback(() => {
@@ -489,9 +556,11 @@ export default function App() {
     ? '+'
     : parsed.mode === 'ask'
       ? '?'
-      : parsed.mode === 'bang'
-        ? config.bangSigil
-        : config.sigil
+      : parsed.mode === 'emoji'
+        ? ':'
+        : parsed.mode === 'bang'
+          ? config.bangSigil
+          : config.sigil
   const placeholder = draft
     ? draft.step === 'name'
       ? 'name this quicklink…'

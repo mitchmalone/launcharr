@@ -92,8 +92,10 @@ pub struct AgentsConfig {
     pub prune_hours: u32,
     /// The `usage ⏎` token monitor (local journal aggregation).
     pub usage: bool,
-    /// Agent mode: `?` converses with the user's own `claude` CLI (ask.rs).
+    /// Agent mode: `?` converses with the user's own agent CLI (ask.rs).
     pub ask_mode: bool,
+    /// Which CLI answers `?`: "claude" or "codex".
+    pub ask_provider: String,
     /// May read Claude Code's stored credentials (keychain, then the
     /// credentials file) to fetch account limits. The keychain read goes via
     /// /usr/bin/security, so macOS shows its own consent prompt on first use.
@@ -110,6 +112,7 @@ impl Default for AgentsConfig {
             prune_hours: 12,
             usage: false,
             ask_mode: false,
+            ask_provider: "claude".into(),
             claude_creds: false,
             codex_creds: false,
         }

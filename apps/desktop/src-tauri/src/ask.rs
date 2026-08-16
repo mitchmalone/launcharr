@@ -17,43 +17,60 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::{CmdError, CmdResult};
 
-static CLAUDE_PATH: Mutex<Option<String>> = Mutex::new(None);
+static CLI_PATHS: Mutex<Option<std::collections::HashMap<String, String>>> = Mutex::new(None);
 
-/// GUI apps get launchd's anemic PATH; resolve the claude binary from the usual homes,
-/// falling back to a login shell lookup once, then cache.
-fn find_claude() -> CmdResult<String> {
-    if let Some(cached) = CLAUDE_PATH.lock().unwrap().clone() {
+/// GUI apps get launchd's anemic PATH; resolve a CLI binary from the usual
+/// homes, falling back to a login shell lookup once, then cache per name.
+fn find_cli(name: &str) -> CmdResult<String> {
+    if let Some(cached) = CLI_PATHS
+        .lock()
+        .unwrap()
+        .get_or_insert_with(Default::default)
+        .get(name)
+        .cloned()
+    {
         return Ok(cached);
     }
     let home = dirs::home_dir().unwrap_or_default();
-    let candidates: [PathBuf; 4] = [
-        home.join(".local/bin/claude"),
-        home.join(".claude/local/claude"),
-        PathBuf::from("/opt/homebrew/bin/claude"),
-        PathBuf::from("/usr/local/bin/claude"),
+    let mut candidates = vec![
+        home.join(".local/bin").join(name),
+        PathBuf::from("/opt/homebrew/bin").join(name),
+        PathBuf::from("/usr/local/bin").join(name),
     ];
-    for candidate in candidates {
-        if candidate.exists() {
-            let found = candidate.to_string_lossy().into_owned();
-            *CLAUDE_PATH.lock().unwrap() = Some(found.clone());
-            return Ok(found);
+    if name == "claude" {
+        candidates.push(home.join(".claude/local/claude"));
+    }
+    let mut found = candidates
+        .into_iter()
+        .find(|c| c.exists())
+        .map(|c| c.to_string_lossy().into_owned());
+    if found.is_none() {
+        let out = Command::new("/bin/zsh")
+            .args(["-lc", &format!("command -v {name}")])
+            .output()?;
+        let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if out.status.success() && !path.is_empty() {
+            found = Some(path);
         }
     }
-    let out = Command::new("/bin/zsh")
-        .args(["-lc", "command -v claude"])
-        .output()?;
-    let found = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if out.status.success() && !found.is_empty() {
-        *CLAUDE_PATH.lock().unwrap() = Some(found.clone());
-        return Ok(found);
+    match found {
+        Some(path) => {
+            CLI_PATHS
+                .lock()
+                .unwrap()
+                .get_or_insert_with(Default::default)
+                .insert(name.to_owned(), path.clone());
+            Ok(path)
+        }
+        None => Err(CmdError::Internal(format!(
+            "{name} CLI not found — install it to use ? mode"
+        ))),
     }
-    Err(CmdError::Internal(
-        "claude CLI not found — install Claude Code to use ? mode".into(),
-    ))
 }
 
-/// Fire a prompt at the claude CLI; stream stdout lines as `ask-chunk`, then `ask-done`.
-/// `continue_conversation` rides `--continue` so follow-ups keep context.
+/// Fire a prompt at the selected agent CLI; stream stdout lines as
+/// `ask-chunk`, then `ask-done`. `continue_conversation` keeps context
+/// (`--continue` for claude, `exec resume --last` for codex).
 #[tauri::command]
 pub fn ask(
     app: AppHandle,
@@ -61,15 +78,23 @@ pub fn ask(
     prompt: String,
     continue_conversation: bool,
 ) -> CmdResult<()> {
-    if !state.config.read().unwrap().agents.ask_mode {
+    let (enabled, provider) = {
+        let cfg = state.config.read().unwrap();
+        (cfg.agents.ask_mode, cfg.agents.ask_provider.clone())
+    };
+    if !enabled {
         return Err(CmdError::Internal(
             "agent mode is off — enable it in Settings → Agents".into(),
         ));
     }
-    let bin = find_claude()?;
+    let bin = find_cli(if provider == "codex" {
+        "codex"
+    } else {
+        "claude"
+    })?;
     // The child inherits launcharr's TCC identity: anything it touches, macOS bills to
-    // us. Cage it — empty cwd we own (so project discovery finds nothing) and no
-    // filesystem/exec tools (`?` is Q&A, not an agent). Zero-permissions invariant.
+    // us. Cage it — empty cwd we own (so project discovery finds nothing) and the
+    // tightest tool restrictions each CLI offers (`?` is Q&A, not an agent).
     let cage = app
         .path()
         .app_data_dir()
@@ -79,32 +104,44 @@ pub fn ask(
     std::thread::spawn(move || {
         let mut cmd = Command::new(&bin);
         cmd.current_dir(&cage);
-        // NB: --disallowedTools is VARIADIC — anything after it becomes a "tool name",
-        // including the prompt. The prompt must come first.
-        cmd.args(["-p", &prompt]);
-        if continue_conversation {
-            cmd.arg("--continue");
+        if provider == "codex" {
+            // Verified against codex-cli 0.147: `exec --json` emits
+            // thread/turn/item events; `resume --last` keeps context. Cage is
+            // read-only sandbox — codex has no per-tool disallow flag.
+            cmd.arg("exec");
+            if continue_conversation {
+                cmd.args(["resume", "--last"]);
+            }
+            cmd.args(["--json", "--sandbox", "read-only", "--skip-git-repo-check"]);
+            cmd.arg(&prompt);
+        } else {
+            // NB: --disallowedTools is VARIADIC — anything after it becomes a
+            // "tool name", including the prompt. The prompt must come first.
+            cmd.args(["-p", &prompt]);
+            if continue_conversation {
+                cmd.arg("--continue");
+            }
+            cmd.args([
+                "--output-format",
+                "stream-json",
+                "--include-partial-messages",
+                "--verbose",
+                "--disallowedTools",
+            ]);
+            // Variadic flag stays LAST and each tool is its own argument.
+            cmd.args([
+                "Bash",
+                "Read",
+                "Write",
+                "Edit",
+                "Glob",
+                "Grep",
+                "NotebookEdit",
+                "WebFetch",
+                "WebSearch",
+                "Task",
+            ]);
         }
-        cmd.args([
-            "--output-format",
-            "stream-json",
-            "--include-partial-messages",
-            "--verbose",
-            "--disallowedTools",
-        ]);
-        // Variadic flag stays LAST and each tool is its own argument.
-        cmd.args([
-            "Bash",
-            "Read",
-            "Write",
-            "Edit",
-            "Glob",
-            "Grep",
-            "NotebookEdit",
-            "WebFetch",
-            "WebSearch",
-            "Task",
-        ]);
         cmd.stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

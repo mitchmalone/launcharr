@@ -1,6 +1,9 @@
 /**
- * Spike: parse one line of `claude -p --output-format stream-json` output into what the
- * answer surface needs. Pure — the Rust side is a dumb spawner emitting raw lines.
+ * Parse one line of agent-CLI output into what the answer surface needs.
+ * Handles both providers: `claude -p --output-format stream-json` (text
+ * deltas + final result) and `codex exec --json` (thread/turn/item events,
+ * no deltas — verified against codex-cli 0.147). Pure — the Rust side is a
+ * dumb spawner emitting raw lines.
  */
 
 export interface AskEvent {
@@ -21,6 +24,10 @@ interface StreamLine {
     type?: string
     delta?: { type?: string; text?: string }
   }
+  /** codex exec --json shapes. */
+  item?: { type?: string; text?: string }
+  message?: string
+  error?: { message?: string }
 }
 
 export function parseAskLine(line: string): AskEvent {
@@ -42,6 +49,21 @@ export function parseAskLine(line: string): AskEvent {
       return { error: parsed.result ?? 'the claude CLI reported an error' }
     }
     return { final: parsed.result ?? '' }
+  }
+  // codex: whole messages arrive at once; emit as deltas so multiple
+  // agent_message items append rather than replace.
+  if (
+    parsed.type === 'item.completed' &&
+    parsed.item?.type === 'agent_message' &&
+    typeof parsed.item.text === 'string'
+  ) {
+    return { delta: parsed.item.text }
+  }
+  if (parsed.type === 'error' && typeof parsed.message === 'string') {
+    return { error: parsed.message }
+  }
+  if (parsed.type === 'turn.failed') {
+    return { error: parsed.error?.message ?? 'the codex CLI reported an error' }
   }
   return {}
 }

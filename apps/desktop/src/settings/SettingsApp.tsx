@@ -437,12 +437,29 @@ function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
           Enable agent mode
         </label>
         <p className="hint">
-          Activates the <code>?</code> command: type <code>?</code> plus a
-          question in the launcher to converse with your own <code>claude</code>{' '}
-          CLI — your subscription, your credentials. The spawned CLI is caged
-          (empty working dir, no file or shell tools); Enter sends, follow-ups
-          keep context, Esc ends the conversation.
+          Activates the <code>?</code> command: press <code>?</code> in the
+          launcher to converse with your own agent CLI — your subscription, your
+          credentials. The spawned CLI is caged (empty working dir, tightest
+          tool restrictions it offers); Enter sends, follow-ups keep context,
+          Esc ends the conversation.
         </p>
+        {agents.askMode && (
+          <label className="check">
+            Provider
+            <select
+              value={agents.askProvider}
+              onChange={(e) =>
+                setAgents({
+                  askProvider: e.target
+                    .value as Config['agents']['askProvider'],
+                })
+              }
+            >
+              <option value="claude">claude (Claude Code)</option>
+              <option value="codex">codex (Codex CLI)</option>
+            </select>
+          </label>
+        )}
       </Row>
       <hr />
       <Row label="Usage">
