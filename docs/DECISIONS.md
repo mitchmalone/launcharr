@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-08-16 · `?` agent mode ported; `ask` joins the IPC surface; prefix keys become mode switches
+
+- **Decision (IPC).** One command joins the surface: `ask(prompt, continue_conversation)`
+  — spawns the user's own agent CLI (claude or codex per `agents.askProvider`) from a
+  caged cwd and streams raw stdout lines to the frontend as `ask-chunk` events; parsing
+  is TypeScript's job. Gated by `agents.askMode` (off by default), checked in the command
+  itself as well as the UI. launcharr still makes zero network requests here — the
+  user's CLI does, on their credentials (same family as the iTerm2 hand-off).
+- **Decision (interaction).** Prefix keys (`!` `?` `:`) pressed on an empty prompt now
+  switch mode and are consumed; Esc/Backspace return to search, mode keys hop directly.
+  This adopts the spike-ask-ai branch's keystroke-switched model (initially skipped in
+  the port, requested by Mitch the same day). Pasted prefixed text still parses through
+  the grammar, so invariant 4's first-char dispatch remains the substrate.
+- **Why.** The spike proved the streaming, caging (TCC inheritance — JOURNAL
+  2026-08-10), and markdown surface in July; the panel-framework era made porting cheap.
+  Codex support reuses the same spawner with `exec --json --sandbox read-only` +
+  `resume --last` (verified against codex-cli 0.147); its cage is weaker than claude's
+  (no per-tool disallow flag) — watched in daily use.
+
 ### 2026-08-16 · Limits credentials: consent capabilities, not source pickers
 
 - **Decision.** The per-provider source _selects_ (same day, below) are replaced by
