@@ -122,8 +122,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   trigger reducer in `@launcharr/core/awake` (agents/app/power/ssid/display/busy, all
   hysteresed, exhaustively tested), Rust watchdog rails (deadline + battery floor), bar
   coffee cell + hover card with the "also keeping this Mac awake" list. Four `awake_*`
-  IPC commands total (DECISIONS 2026-08-16 ×2). **Outstanding**: real-agent-run
-  acceptance test, lid-closed-on-AC measurement (needs a human lid), slice E deferred.
+  IPC commands total (DECISIONS 2026-08-16 ×2). **Both Amphetamine and Caffeinated quit
+  in favour of awake, 2026-08-17 — working in real use.** **Outstanding**: the timed
+  agents-idle release observed end-to-end, lid-closed-on-AC measurement (needs a human
+  lid), slice E deferred.
 - Panel tenants: `sysinfo`, then **settings migrated off the native window** (the big
   one); drill-down panel menu once 3 tenants exist.
 - Bar: per-workspace app hints; bluetooth glyph (audio + battery shipped 2026-08-16);
