@@ -79,18 +79,6 @@ pub const SYSTEM_COMMANDS: &[SystemCommand] = &[
         ),
     },
     SystemCommand {
-        slug: "caffeinate",
-        name: "Caffeinate (1 hour)",
-        aliases: "caffeine awake keep-awake",
-        action: Action::Exec(&["caffeinate", "-d", "-t", "3600"]),
-    },
-    SystemCommand {
-        slug: "decaffeinate",
-        name: "Decaffeinate",
-        aliases: "caffeine off",
-        action: Action::Exec(&["pkill", "-x", "caffeinate"]),
-    },
-    SystemCommand {
         slug: "restart",
         name: "Restart…",
         aliases: "reboot",
@@ -120,7 +108,6 @@ pub fn run(slug: &str) -> CmdResult<()> {
             Command::new("osascript").arg("-e").arg(script).spawn()?;
         }
         Action::Exec(argv) => {
-            // Fire-and-forget; caffeinate intentionally outlives the panel interaction.
             Command::new(argv[0]).args(&argv[1..]).spawn()?;
         }
     }

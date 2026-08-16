@@ -30,6 +30,7 @@ mod icons;
 mod indexer;
 mod notch;
 mod panel;
+mod power;
 mod scripts;
 mod settings_panes;
 mod settings_window;
@@ -98,6 +99,9 @@ pub fn run() {
             commands::bar_set_dropdown,
             commands::bar_battery_detail,
             commands::agents_status,
+            commands::awake_arm,
+            commands::awake_release,
+            commands::awake_status,
             commands::usage_status,
             ask::ask,
             commands::agent_jump,

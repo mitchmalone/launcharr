@@ -63,6 +63,26 @@ pub fn agents_status() -> Vec<crate::agents::AgentSession> {
     crate::agents::list()
 }
 
+/// awake: arm a keep-awake session's assertions (DECISIONS 2026-08-16). Sync —
+/// two in-process IOKit calls, no subprocess.
+#[tauri::command]
+pub fn awake_arm(display: bool, disks: bool) -> crate::error::CmdResult<()> {
+    crate::power::arm(display, disks)
+}
+
+/// awake: release everything held.
+#[tauri::command]
+pub fn awake_release() {
+    crate::power::release()
+}
+
+/// awake: session state plus the "also keeping this Mac awake" list. async:
+/// spawns `pmset` — panel/card open only, never the bar tick.
+#[tauri::command]
+pub async fn awake_status() -> crate::power::AwakeStatus {
+    crate::power::status()
+}
+
 /// Usage panel: cached local token aggregates; kicks a background rescan when
 /// stale, never blocks (DECISIONS 2026-08-16).
 #[tauri::command]

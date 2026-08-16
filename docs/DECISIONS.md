@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-08-16 · awake: in-process power assertions; three IPC commands; caffeinate slugs deleted
+
+- **Decision.** Keep-awake (`awake ⏎`, plan `plans/active/awake.md`) holds
+  `IOPMAssertionCreateWithName` assertions **in-process** in `power.rs` — never by spawning
+  `caffeinate`. Three Tauri commands join the surface (tiny-IPC rule): `awake_arm` /
+  `awake_release` (sync, two IOKit calls) and `awake_status` (async; spawns
+  `pmset -g assertions` for the "also keeping this Mac awake" list — panel/card open only,
+  never the bar tick). The `caffeinate` and `decaffeinate` system-command slugs are deleted.
+- **Why.** In-process assertions carry launcharr's name in `pmset -g assertions`, are
+  introspectable, and release on drop/quit/crash (per-process kernel state — the OS reaps
+  them with us). The deleted `decaffeinate` ran `pkill -x caffeinate`, killing **every**
+  caffeinate on the machine including ones held by build scripts and agent sessions — a
+  footgun, not a feature. Arming always pairs `PreventUserIdleSystemSleep` with
+  `PreventSystemSleep`: the latter is what survives lid-close on AC and costs nothing on
+  battery (macOS ignores it there by policy).
+- **Grammar continuity.** The deleted slugs' aliases (`caffeine`, `caffeinate`,
+  `keep-awake`) must resolve to the `awake` grammar when slice B lands, so muscle memory
+  still works. `sleep` stays what it is — the existing sleep-now system command.
+
 ### 2026-08-16 · Invariant 10 hardened: imported, never ported — and the bar moves to the kit
 
 - **Decision.** Mitch's call: **the website may never hold a second copy of any launcharr
