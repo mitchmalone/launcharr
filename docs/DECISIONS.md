@@ -5,6 +5,31 @@
 
 ---
 
+### 2026-08-16 · Notch profiles + arranger; bar disable hides, never destroys
+
+- **Decision (notch).** Notch detection is automatic per display —
+  `NSScreen.safeAreaInsets.top > 0` (notch.rs; safe objc2 API, no new crate, no
+  permission). The bar gains an optional second arrangement `bar.notchedModules`
+  (None → main `modules` applies everywhere); each bar window learns its profile via
+  an initialization script (`window.__notched`). Under a notch the absolute center is
+  the camera housing, so notched bars render the clock at the head of the right
+  cluster instead of mid-strip.
+- **Decision (arranger).** Settings → Menubar's up/down buttons are replaced by an
+  HTML5 drag-to-reorder list with per-module show/hide, duplicated for the notched
+  profile behind a "separate arrangement" checkbox (seeded from the main list).
+  Module normalization now lives once in `lib/config.ts` (`normalizeBarModules`),
+  shared by the bar renderer and settings.
+- **Decision (crash fix).** `bar.enabled` off now _hides_ the bar panels;
+  `window.destroy()` on the NSPanel subclass raised an ObjC exception that crossed
+  tao's run-loop observer and aborted the process (crash report 2026-08-16 15:18,
+  `__rust_foreign_exception`). Hidden panels idle — the push loop skips invisible
+  windows — and re-enable shows them again. Cost: a toggled-off bar keeps its webview
+  resident until restart; fresh installs with the bar off never create it.
+- **Also.** The launcharr accent reverted to `#ff6b8c` (Mitch: `#FF176C` reads too
+  red); the 2026-08-16 ground/fg/dim repaint stands. `tmux_layout` caches successes
+  only, so a failed `list-panes` spawn at cold start no longer paints agent cells
+  without their session borders for the first seconds.
+
 ### 2026-08-16 · Omarchy panel wave: audio + clipboard + help tenants, wifi scan, fuzzy keywords, 5-day ranking
 
 - **Decision (IPC).** Five commands join the surface: `wifi_scan`, `audio_status`,

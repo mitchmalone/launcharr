@@ -194,6 +194,11 @@ body,
   color: var(--fg, #dde1f0);
 }
 
+/* Clock inside the right cluster (notched displays — center is the notch). */
+.bar-clock {
+  color: var(--fg, #dde1f0);
+}
+
 .bar-right {
   display: flex;
   align-items: center;

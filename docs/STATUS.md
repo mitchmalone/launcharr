@@ -69,11 +69,18 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   search + history left, preview right, ⌘⌫ delete; `clip` inline rows remain), and
   **`help ⏎`** (filterable reference: modes, keys, panels, commands, scripts,
   quicklinks). Wifi commands ×5 + audio ×4 in Rust (DECISIONS 2026-08-16).
-- **2026-08-16 polish wave**: launcharr theme repainted (#1C1D2A ground, #FF176C
-  accent, #B5B9D9/#73747C fg/dim); bar wifi+battery cells use lucide icons (custom
-  Lucide-style brand icons slot into the same `ICON_PROPS`); panel keywords fuzzy-match
+- **2026-08-16 polish wave**: launcharr theme repainted (#1C1D2A ground, #B5B9D9/
+  #73747C fg/dim; accent stayed #FF6B8C after an #FF176C detour); lucide icons in the
+  bar (wifi/battery), launcher panel rows, and panel internals (wifi strength tiers
+  from scan dBm, speaker/headphones/mic device glyphs); panel keywords fuzzy-match
   like apps (`usag` → Usage, panel-kind index items); frecency = launches in past
   5 days, multiplier cap 2.0 — `code` learns VS Code (DECISIONS 2026-08-16).
+- **Notch profiles + arranger** (DECISIONS 2026-08-16): per-display notch detection
+  (`NSScreen.safeAreaInsets`, notch.rs), optional `bar.notchedModules` second
+  arrangement (clock joins the right cluster under a notch), Settings → Menubar
+  drag-to-reorder with per-module show/hide for both profiles. Bar disable now
+  hides panels instead of destroying (destroy = SIGABRT, JOURNAL 2026-08-16);
+  tmux layout cache keeps only successes so agent borders survive cold start.
 
 ## In progress / next (ROADMAP B2–B4, P1)
 

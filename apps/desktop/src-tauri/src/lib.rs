@@ -27,6 +27,7 @@ mod favicon;
 mod frecency;
 mod icons;
 mod indexer;
+mod notch;
 mod panel;
 mod scripts;
 mod settings_panes;

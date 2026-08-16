@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
   Bot,
+  GripVertical,
   Info,
   Keyboard,
   Link2,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { BAR_MODULE_IDS, type Config } from '../lib/config'
+import { type BarModule, type Config, normalizeBarModules } from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
 import HotkeyRecorder from './HotkeyRecorder'
 import iconUrl from './launcharr.svg'
@@ -526,31 +527,71 @@ const MODULE_LABELS: Record<string, string> = {
   battery: 'Battery',
 }
 
-function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
-  // Same normalization as the bar renderer: drop unknown ids, append missing.
-  const known = new Set<string>(BAR_MODULE_IDS)
-  const listed = config.bar.modules.filter((m) => known.has(m.id))
-  const listedIds = new Set(listed.map((m) => m.id))
-  const modules = [
-    ...listed,
-    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
-      id: id as string,
-      enabled: true,
-    })),
-  ]
-  const save = (next: typeof modules) =>
-    set('bar', { ...config.bar, modules: next })
-  const move = (i: number, delta: number) => {
-    const j = i + delta
-    if (j < 0 || j >= modules.length) return
+/** Drag-to-reorder widget list with per-module on/off. Pure HTML5 DnD —
+ * reorders live as the drag passes over rows, commits through onChange. */
+function ModuleArranger({
+  modules,
+  onChange,
+}: {
+  modules: BarModule[]
+  onChange: (next: BarModule[]) => void
+}) {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const overRow = (targetId: string) => {
+    if (!dragId || dragId === targetId) return
+    const from = modules.findIndex((m) => m.id === dragId)
+    const to = modules.findIndex((m) => m.id === targetId)
+    if (from < 0 || to < 0) return
     const next = modules.slice()
-    const a = next[i]
-    const b = next[j]
-    if (!a || !b) return
-    next[i] = b
-    next[j] = a
-    save(next)
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved as BarModule)
+    onChange(next)
   }
+  return (
+    <div>
+      {modules.map((m) => (
+        <div
+          key={m.id}
+          className={`modrow ${m.enabled ? '' : 'modrow-off'} ${m.id === dragId ? 'modrow-dragging' : ''}`}
+          draggable
+          onDragStart={(e) => {
+            setDragId(m.id)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragEnter={() => overRow(m.id)}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnd={() => setDragId(null)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragId(null)
+          }}
+        >
+          <GripVertical size={14} className="grip" aria-hidden />
+          <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
+          <label className="check" title={m.enabled ? 'shown' : 'hidden'}>
+            <input
+              type="checkbox"
+              checked={m.enabled}
+              onChange={(e) =>
+                onChange(
+                  modules.map((x) =>
+                    x.id === m.id ? { ...x, enabled: e.target.checked } : x,
+                  ),
+                )
+              }
+            />
+          </label>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
+  const modules = normalizeBarModules(config.bar.modules)
+  const notched = config.bar.notchedModules
+    ? normalizeBarModules(config.bar.notchedModules)
+    : null
   return (
     <>
       <Row label="Menubar">
@@ -572,41 +613,43 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
       <hr />
       <Row label="Widgets">
         <p className="hint">
-          Order is left → right; everything before the clock sits on the left,
-          everything after it on the right.
+          Drag to reorder, left → right; the checkbox shows or hides a widget.
+          Everything before the clock sits on the left, everything after it on
+          the right.
         </p>
-        {modules.map((m, i) => (
-          <div className="linkrow" key={m.id}>
-            <label className="check grow">
-              <input
-                type="checkbox"
-                checked={m.enabled}
-                onChange={(e) => {
-                  const next = modules.slice()
-                  next[i] = { ...m, enabled: e.target.checked }
-                  save(next)
-                }}
-              />
-              {MODULE_LABELS[m.id] ?? m.id}
-            </label>
-            <button
-              className="ghost"
-              title="move up"
-              disabled={i === 0}
-              onClick={() => move(i, -1)}
-            >
-              ↑
-            </button>
-            <button
-              className="ghost"
-              title="move down"
-              disabled={i === modules.length - 1}
-              onClick={() => move(i, 1)}
-            >
-              ↓
-            </button>
-          </div>
-        ))}
+        <ModuleArranger
+          modules={modules}
+          onChange={(next) => set('bar', { ...config.bar, modules: next })}
+        />
+      </Row>
+      <hr />
+      <Row label="Notched displays">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={notched !== null}
+            onChange={(e) =>
+              set('bar', {
+                ...config.bar,
+                // Seeded from the main arrangement; unchecking falls back.
+                notchedModules: e.target.checked ? modules : null,
+              })
+            }
+          />
+          Separate arrangement for notched displays
+        </label>
+        <p className="hint">
+          The camera housing eats the center, so notched bars render the clock
+          at the head of the right cluster instead of mid-strip.
+        </p>
+        {notched && (
+          <ModuleArranger
+            modules={notched}
+            onChange={(next) =>
+              set('bar', { ...config.bar, notchedModules: next })
+            }
+          />
+        )}
       </Row>
     </>
   )

@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-08-16 · Destroying the NSPanel bar aborts the whole process
+
+Toggling `bar.enabled` off called `WebviewWindow::destroy()` on the converted
+NSPanel and launcharr died with SIGABRT: an Objective-C exception thrown during
+teardown crossed into tao's run-loop observer as a foreign exception
+(`__rust_foreign_exception` → abort; crash report 15:18). NSPanels converted by
+tauri-nspanel (with the constrainFrameRect override installed on the class)
+don't survive tauri's destroy path — hide them instead and skip invisible
+windows in the push loop. Same likely applies to any future panel-class window.
+
 ### 2026-08-16 · `system_profiler SPAirPortDataType` scans wifi with no Location prompt — slowly, with typos
 
 The blocker that shelved wifi scanning in P0 (CoreWLAN wants Location Services) has a

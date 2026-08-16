@@ -141,17 +141,28 @@ fn tmux_layout() -> std::collections::HashMap<String, PaneLocation> {
             return layout.clone();
         }
     }
-    let layout = tmux_out(&[
+    let fresh = tmux_out(&[
         "list-panes",
         "-a",
         "-F",
         "#{pane_id}\t#{session_name}\t#{window_index}\t#{window_name}",
     ])
     .as_deref()
-    .map(parse_panes)
-    .unwrap_or_default();
-    *cache = Some((Instant::now(), layout.clone()));
-    layout
+    .map(parse_panes);
+    match fresh {
+        // Only successes are cached: a failed spawn during app cold start used
+        // to pin an empty layout for 2s and the bar painted agents without
+        // their tmux group borders (field report 2026-08-16). On failure,
+        // serve the previous layout (if any) and retry next call.
+        Some(layout) => {
+            *cache = Some((Instant::now(), layout.clone()));
+            layout
+        }
+        None => cache
+            .as_ref()
+            .map(|(_, layout)| layout.clone())
+            .unwrap_or_default(),
+    }
 }
 
 fn parse_panes(out: &str) -> std::collections::HashMap<String, PaneLocation> {

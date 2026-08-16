@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import { BAR_MODULE_IDS, type Config } from '../lib/config'
+import { type Config, normalizeBarModules } from '../lib/config'
 import { applyTheme } from '../lib/themes'
 import './bar.css'
 
@@ -264,21 +264,22 @@ function useBarConfig(): Config | null {
   return cfg
 }
 
-/** Config module list normalized: unknown ids dropped, missing known ids
- * appended enabled — mirrors config.rs. `clock` is the center anchor. */
+/** Injected by bar.rs before page scripts: does this display carry a notch? */
+declare global {
+  interface Window {
+    __notched?: boolean
+  }
+}
+const NOTCHED = window.__notched === true
+
+/** This display's module list: the notched arrangement when present and this
+ * bar sits under a notch, else the main one — normalized like config.rs. */
 function normalizeModules(
   cfg: Config | null,
 ): { id: string; enabled: boolean }[] {
-  const known = new Set<string>(BAR_MODULE_IDS)
-  const listed = (cfg?.bar.modules ?? []).filter((m) => known.has(m.id))
-  const listedIds = new Set(listed.map((m) => m.id))
-  return [
-    ...listed,
-    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
-      id: id as string,
-      enabled: true,
-    })),
-  ]
+  const list =
+    (NOTCHED ? cfg?.bar.notchedModules : null) ?? cfg?.bar.modules ?? []
+  return normalizeBarModules(list)
 }
 
 /**
@@ -470,14 +471,19 @@ function Bar() {
   const right = enabled(clockIdx < 0 ? [] : modules.slice(clockIdx + 1))
   const showClock = clockIdx >= 0 && (modules[clockIdx]?.enabled ?? false)
 
+  // Under a notch the absolute center is the camera housing — the clock joins
+  // the head of the right cluster instead of anchoring the middle.
   return (
     <div className="bar">
       <div className="bar-left">
         <span className="bar-logo">❯</span>
         {left}
       </div>
-      {showClock && <div className="bar-center">{clock}</div>}
-      <div className="bar-right">{right}</div>
+      {showClock && !NOTCHED && <div className="bar-center">{clock}</div>}
+      <div className="bar-right">
+        {showClock && NOTCHED && <span className="bar-clock">{clock}</span>}
+        {right}
+      </div>
     </div>
   )
 }

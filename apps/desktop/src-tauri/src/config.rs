@@ -37,6 +37,11 @@ pub struct BarConfig {
     /// modules before it sit left, after it sit right. Unknown ids are ignored;
     /// known ids missing from the list are appended enabled (forward compat).
     pub modules: Vec<BarModule>,
+    /// Optional separate arrangement for notched displays (the camera housing
+    /// eats the center, so those bars render the clock in the right cluster).
+    /// None → notched displays use `modules` too.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notched_modules: Option<Vec<BarModule>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +74,7 @@ impl Default for BarConfig {
                     enabled: true,
                 })
                 .collect(),
+            notched_modules: None,
         }
     }
 }

@@ -10,15 +10,15 @@
 
 :root {
   color-scheme: dark;
-  /* Brand palette: #1C1D2A ground, #FF176C mark. Panel and border are the
+  /* Brand palette: #1C1D2A ground, #FF6B8C mark. Panel and border are the
      ground lightened in the same hue family. */
   --bg: #1c1d2a;
   --panel: #262838;
   --border: #393b54;
   --fg: #b5b9d9;
   --dim: #73747c;
-  --accent: #ff176c;
-  --sigil: #ff176c;
+  --accent: #ff6b8c;
+  --sigil: #ff6b8c;
   --danger: #f85149;
 }
 
@@ -293,6 +293,40 @@ button {
 
 .ghost.add {
   margin-top: 4px;
+}
+
+/* --- Menubar widget arranger (drag to reorder). --- */
+
+.modrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
+
+.modrow .grip {
+  color: var(--dim);
+  flex: none;
+}
+
+.modrow .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.modrow-off .grow {
+  color: var(--dim);
+}
+
+.modrow-dragging {
+  opacity: 0.45;
+  border-style: dashed;
 }
 
 /* --- About. --- */

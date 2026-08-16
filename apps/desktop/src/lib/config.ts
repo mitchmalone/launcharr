@@ -31,7 +31,26 @@ export type Config = {
 export type BarConfig = {
   enabled: boolean
   /** Ordered widgets, left→right; `clock` is the center anchor. */
-  modules: { id: string; enabled: boolean }[]
+  modules: BarModule[]
+  /** Optional separate arrangement for notched displays; absent → `modules`. */
+  notchedModules?: BarModule[] | null
+}
+
+export type BarModule = { id: string; enabled: boolean }
+
+/** Same normalization everywhere (bar renderer + settings): drop unknown ids,
+ * append known-but-missing ids as enabled so new widgets appear on update. */
+export function normalizeBarModules(list: BarModule[]): BarModule[] {
+  const known = new Set<string>(BAR_MODULE_IDS)
+  const listed = list.filter((m) => known.has(m.id))
+  const listedIds = new Set(listed.map((m) => m.id))
+  return [
+    ...listed,
+    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
+      id: id as string,
+      enabled: true,
+    })),
+  ]
 }
 
 export type AgentsConfig = {

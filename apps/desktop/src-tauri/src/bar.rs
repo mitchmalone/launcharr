@@ -98,23 +98,25 @@ tauri_panel! {
 static THREADS_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Hot-apply `bar.enabled` from the config watcher (DECISIONS 2026-08-16):
-/// on → build the windows if absent; off → destroy them.
+/// on → build the windows if absent, else show them; off → hide them.
+/// Hide, never destroy: tearing the NSPanel subclass down mid-run-loop threw
+/// an ObjC exception that crossed into tao's run-loop observer and aborted the
+/// whole process (crash report + JOURNAL 2026-08-16). Hidden panels idle — the
+/// support threads skip invisible windows.
 pub fn set_enabled(app: &AppHandle, on: bool) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
-        if on {
-            if handle.get_webview_window("bar-0").is_none() {
-                if let Err(e) = init(&handle) {
-                    eprintln!("[launcharr bar] enable failed: {e:?}");
-                }
+        if on && handle.get_webview_window("bar-0").is_none() {
+            if let Err(e) = init(&handle) {
+                eprintln!("[launcharr bar] enable failed: {e:?}");
             }
-        } else {
-            for i in 0.. {
-                let Some(window) = handle.get_webview_window(&format!("bar-{i}")) else {
-                    break;
-                };
-                let _ = window.destroy();
-            }
+            return;
+        }
+        for i in 0.. {
+            let Some(window) = handle.get_webview_window(&format!("bar-{i}")) else {
+                break;
+            };
+            let _ = if on { window.show() } else { window.hide() };
         }
     });
 }
@@ -136,7 +138,11 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     eprintln!("[launcharr bar] {} bar(s) up", monitors.len());
     for (i, monitor) in monitors.iter().enumerate() {
         let label = format!("bar-{i}");
+        // Which layout profile this display uses (bar.notchedModules). Injected
+        // before page scripts run so the very first render picks correctly.
+        let notched = crate::notch::screen_has_notch(i);
         let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("bar.html".into()))
+            .initialization_script(format!("window.__notched = {notched};"))
             .decorations(false)
             .transparent(true)
             .resizable(false)
@@ -235,6 +241,10 @@ pub(crate) fn push(app: &AppHandle) {
         let Some(window) = app.get_webview_window(&format!("bar-{i}")) else {
             break;
         };
+        // Toggled-off bars are hidden, not destroyed (set_enabled) — skip them.
+        if !window.is_visible().unwrap_or(false) {
+            continue;
+        }
         if let Err(e) = window.eval(&script) {
             eprintln!("[launcharr bar] eval push failed on bar-{i}: {e}");
         }
