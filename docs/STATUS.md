@@ -89,13 +89,27 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   (destroy = SIGABRT, JOURNAL 2026-08-16); tmux layout cache keeps only successes
   so agent borders survive cold start.
 
+- **launcharr.com redesigned** (plans/done/www-redesign.md, DECISIONS 2026-08-16):
+  repositioned from "an app launcher for pirates" to **the keyboard control surface for
+  macOS** — the v0.5 story now has a site. New `/docs` route (scripts protocol, config,
+  panel triggers, uninstall); the demo grew the bar strip, agent hover cards, `?` ask
+  mode and live `wifi`/`dns`/`usage` panels. Two architecture changes: `apps/www` adopts
+  **shadcn/ui** (tokens mapped onto the launcharr vars, never imported; Radix only for
+  Tabs), and the site now consumes **`@launcharr/tui`** so the demo panels are the
+  shipping components — `src/lib/demo-themes.ts`, a hand-copy that had already drifted to
+  the retired `#ff176c`, is gone. **`packages/tui` is multi-consumer now**: www typecheck
+  catches kit changes. Site copy is fact-checked against the repo; the design guide's
+  `~90MB` (main-process RSS, not the whole app) and `bar.modules`/clock-anchor claims were
+  corrected on the way in.
+
 ## In progress / next (ROADMAP B2–B4, P1)
 
 - Panel tenants: `sysinfo`, then **settings migrated off the native window** (the big
   one); drill-down panel menu once 3 tenants exist.
-- Bar: per-workspace app hints; right-side glyph set (bluetooth/sound — opens the
-  per-module permissions conversation); NSWorkspace observer for event-driven front-app;
-  multi-display fix (JOURNAL 2026-08-15); placement config + notched profiles.
+- Bar: per-workspace app hints; bluetooth glyph (audio + battery shipped 2026-08-16);
+  NSWorkspace observer for event-driven front-app; multi-display fix (JOURNAL
+  2026-08-15 — notch detection assumes NSScreen order matches monitors, revisit
+  together); placement config (notched profiles shipped, plans/done/bar-zones-and-arranger.md).
 - Aerospace vendored wrap + adopt-or-stop migration (B3); module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
@@ -110,6 +124,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 - New-panel hands-check (plans/done/omarchy-panels-and-polish.md checklist): wifi `s`
   scan + secured join, audio slider steps + device switch audibly lands, clipboard
   copy-on-Enter dismisses, help filter, bar icons legible in all themes.
+- Zone-board hands-check (plans/done/bar-zones-and-arranger.md checklist): drag
+  between zones + retire/restore via the tray, notched vs external placement,
+  bar off/on toggle survives.
 - Agent monitoring hands-check: attention pulse visual; bar-cell click / `agents ⏎`
   Enter lands in the right tmux pane (plans/done/agent-monitoring.md field notes).
 - Anything off in daily use → JOURNAL it, next session fixes.
