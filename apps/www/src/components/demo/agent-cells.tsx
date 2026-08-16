@@ -1,55 +1,100 @@
 'use client'
 
-import { AGENT_GROUPS, AGENT_STATES, type Agent } from '@/lib/demo-data'
+import { useEffect, useRef, useState } from 'react'
+
+import {
+  AGENT_GROUPS,
+  AGENT_STATES,
+  type Agent,
+  agentAge,
+  agentTmuxLine,
+} from '@/lib/demo-data'
 
 /**
- * The bar's agent module: one glyph per session, boxed by tmux session, ordered
- * by tab. Hand-rolled rather than a Radix tooltip — the hover card lives inside
- * a fake menubar and has to look like the bar drew it, not like web chrome.
+ * The bar's agent module, ported from `AgentCluster` in
+ * apps/desktop/src/bar/main.tsx and the `.bar-agent*` / `.bar-card*` rules in
+ * bar/bar.css — never from a design mockup (AGENTS invariant 10).
+ *
+ * The bar chrome isn't in `@launcharr/tui` yet (it lives in the desktop app),
+ * so this is a port rather than an import. Every value below has a counterpart
+ * there; if the two drift, bar.css wins. Geometry is the real geometry — the
+ * enlarged spotlight scales the whole cluster rather than inventing sizes, so
+ * the paddings can't quietly diverge.
  */
+
+/** `.bar-agent-group`: bordered box per tmux session, height 22, padding 0 5px, gap 4px. */
+const GROUP_CLS =
+  'flex h-[22px] items-center gap-1 border border-(--d-dim) px-[5px]'
+
+/** `.bar-agent`: min-width 16, height/line-height 18, centered, 12px (from `.bar`). */
+const CELL_STYLE: React.CSSProperties = {
+  minWidth: 16,
+  height: 18,
+  lineHeight: '18px',
+  fontSize: 12,
+}
+
+/** `CLOSE_MS` in bar/hover.ts — the grace bridging the gap between cell and card. */
+const CLOSE_MS = 200
+
+/**
+ * `useBarHover`, minus the Rust cursor feed: the browser has real pointer
+ * events, but the semantics it produces are the ones to copy — the card stays
+ * open while the cursor is on the cell *or* the card, and closes only after
+ * the grace period. Without that, moving toward the card closes it.
+ */
+export function useCellHover(initial: Agent | null = null) {
+  const [hovered, setHovered] = useState<Agent | null>(initial)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const stay = () => clearTimeout(timer.current)
+  const enter = (a: Agent) => {
+    stay()
+    setHovered(a)
+  }
+  const leave = (to: Agent | null = null) => {
+    stay()
+    timer.current = setTimeout(() => setHovered(to), CLOSE_MS)
+  }
+  return { hovered, enter, leave, stay }
+}
+
 export function AgentCells({
-  onHover,
+  onEnter,
+  onLeave,
   hovered,
-  size = 'bar',
 }: {
-  onHover: (agent: Agent | null) => void
-  hovered: Agent | null
-  size?: 'bar' | 'spotlight'
+  onEnter: (agent: Agent) => void
+  onLeave: () => void
+  /** Marks the open cell, so the cluster and its card agree. */
+  hovered?: Agent | null
 }) {
-  const big = size === 'spotlight'
   return (
-    <div
-      className="flex items-center gap-1.5"
-      onMouseLeave={() => onHover(null)}
-    >
-      {AGENT_GROUPS.map((group, gi) => (
-        <div
-          key={gi}
-          className="flex items-center gap-1 border border-(--d-dim)"
-          style={{ height: big ? 26 : 22, padding: big ? '0 6px' : '0 5px' }}
-        >
+    <div className="flex items-center gap-1.5" onMouseLeave={onLeave}>
+      {AGENT_GROUPS.map((group) => (
+        <div key={group[0]!.tmuxSession} className={GROUP_CLS}>
           {group.map((a) => {
             const s = AGENT_STATES[a.state]
             return (
               <button
-                key={a.id}
+                key={a.session}
                 type="button"
-                aria-label={`${a.title} — ${s.label}`}
-                onMouseEnter={() => onHover(a)}
-                onFocus={() => onHover(a)}
+                // The app hit-tests `closest('[data-hover]')` — the whole cell.
+                data-hover={`agent:${a.session}`}
+                aria-label={`${a.title || a.agent} — ${s.label}`}
+                aria-expanded={hovered?.session === a.session}
+                onMouseEnter={() => onEnter(a)}
+                onFocus={() => onEnter(a)}
                 className="cursor-pointer border-none bg-transparent text-center"
                 style={{
-                  minWidth: big ? 20 : 16,
-                  height: big ? 22 : 18,
-                  lineHeight: big ? '22px' : '18px',
-                  fontSize: big ? 14 : 12,
+                  ...CELL_STYLE,
                   color: s.color,
                   animation:
-                    a.state === 'blocked'
+                    a.state === 'attention'
                       ? 'bar-agent-breathe 1.6s ease-in-out infinite'
                       : undefined,
-                  outline:
-                    hovered?.id === a.id ? '1px solid currentColor' : undefined,
                 }}
               >
                 {s.glyph}
@@ -62,30 +107,45 @@ export function AgentCells({
   )
 }
 
-/** The card the bar pops under a hovered agent cell. */
+/**
+ * `.bar-card.bar-agent-card` — padding 9px 12px, gap 3px, border 1px --dim,
+ * background --bg. Title, then the state line carrying the glyph and relative
+ * age, then detail and tmux lines in dim, then the hint at margin-top 6px.
+ */
 export function AgentHoverCard({
   agent,
-  showLine1 = false,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   agent: Agent
-  showLine1?: boolean
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
 }) {
   const s = AGENT_STATES[agent.state]
   return (
-    <div className="flex min-w-[300px] max-w-[52ch] flex-col gap-[3px] border border-(--d-dim) bg-(--d-glass) px-3 py-2.5 text-left text-xs tracking-[0.03em]">
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="flex min-w-[300px] max-w-[52ch] flex-col gap-[3px] border border-(--d-dim) bg-(--d-bg) px-3 py-[9px] text-left text-xs tracking-[0.03em]"
+    >
       <div className="overflow-hidden text-ellipsis whitespace-nowrap text-(--d-fg)">
-        {agent.title}
+        {agent.title || agent.agent}
       </div>
-      <div style={{ color: s.color }}>{s.label}</div>
-      {showLine1 ? (
+      <div
+        className="overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{ color: s.color }}
+      >
+        {s.glyph} {s.label} · {agentAge(agent.age)} ago
+      </div>
+      {agent.detail ? (
         <div className="overflow-hidden text-ellipsis whitespace-nowrap text-(--d-dim)">
-          {agent.line1}
+          {agent.detail}
         </div>
       ) : null}
       <div className="overflow-hidden text-ellipsis whitespace-nowrap text-(--d-dim)">
-        {agent.line2}
+        {agentTmuxLine(agent)}
       </div>
-      <div className="mt-0.5 text-[10px] text-(--d-dim)">
+      <div className="mt-1.5 text-[10px] text-(--d-dim)">
         click cell to jump
       </div>
     </div>

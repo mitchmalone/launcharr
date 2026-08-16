@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "description": "The launcharr TUI kit — Omarchy-inspired terminal-styled React components: panels, menus, hotkey rows, controls, calendar. Pure presentation + pure nav logic.",
+  "//exports": "./themes is deliberate, don't fold it back into '.': server components (apps/www) must be able to import the pure token data without pulling the React barrel, which re-exports hook-using components.",
   "exports": {
     ".": "./src/index.ts",
+    "./themes": "./src/themes.ts",
     "./styles.css": "./src/styles.css"
   },
   "scripts": {

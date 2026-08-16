@@ -3,16 +3,26 @@
 import { BatteryMedium, Wifi } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import type { Agent } from '@/lib/demo-data'
-
-import { AgentCells, AgentHoverCard } from './agent-cells'
+import { AgentCells, AgentHoverCard, useCellHover } from './agent-cells'
 
 const WORKSPACES = ['1', '2', '3', '4']
 
+/**
+ * The bar as it renders across the top of the demo desktop — ported from
+ * apps/desktop/src/bar/{main.tsx,bar.css}, not from the design export.
+ *
+ * Colour rules worth stating because they're easy to get backwards:
+ *   .bar-app  → --fg   (front app is NOT dim)
+ *   .bar-cell → --fg   ("fg, not dim — the dim tone read too dark against the
+ *                        strip"; dim stays for truly secondary text)
+ *   .bar-ws   → --dim, and the focused one inverts: bg --fg / color --bg
+ * The --d-* vars are the demo's per-theme mirror of the app's panel tokens.
+ */
+
 /** Sat 16 Aug 09:41 — the bar's clock module format. */
 function useClock(): string {
-  // Rendered empty on the server: a build-time timestamp in static HTML would
-  // ship stale and hydrate-mismatch. The bar fills in on mount.
+  // Empty on the server: a build-time timestamp would ship stale into static
+  // HTML and hydrate-mismatch. The bar fills in on mount.
   const [now, setNow] = useState<string>('')
   useEffect(() => {
     const fmt = () => {
@@ -35,11 +45,6 @@ function useClock(): string {
   return now
 }
 
-/**
- * The bar, as it renders across the top of the demo desktop. Static mock: the
- * real strip is painted from Rust-pushed snapshots at 1 Hz, and its modules are
- * arranged by `bar.layout`'s left/center/right zones.
- */
 export function DemoBar({
   workspace,
   onWorkspace,
@@ -50,10 +55,10 @@ export function DemoBar({
   frontApp?: string
 }) {
   const clock = useClock()
-  const [hovered, setHovered] = useState<Agent | null>(null)
+  const { hovered, enter, leave, stay } = useCellHover()
 
   return (
-    <div className="absolute inset-x-0 top-0 z-10 flex h-[30px] items-center justify-between bg-(--d-glass) px-3.5 font-mono text-xs tracking-[0.03em] text-(--d-fg)">
+    <div className="absolute inset-x-0 top-0 z-10 flex h-[30px] items-center justify-between bg-(--d-bg) px-3.5 font-mono text-xs tracking-[0.03em] text-(--d-fg)">
       {/* left zone: workspaces · agents · front app */}
       <div className="flex items-center gap-3.5">
         <span className="font-bold text-(--d-sigil)">❯</span>
@@ -67,13 +72,14 @@ export function DemoBar({
                 onClick={() => onWorkspace(w)}
                 aria-label={`workspace ${w}`}
                 aria-current={active}
-                className="cursor-pointer border-none px-1 text-center text-xs tracking-[0.03em]"
+                className="cursor-pointer border-none px-1 text-center text-xs tracking-[0.03em] hover:text-(--d-fg)"
                 style={{
                   minWidth: 20,
                   height: 18,
                   lineHeight: '18px',
+                  // .bar-ws-focused: a solid light block, Omarchy-style.
                   background: active ? 'var(--d-fg)' : 'transparent',
-                  color: active ? 'var(--d-glass)' : 'var(--d-dim)',
+                  color: active ? 'var(--d-bg)' : 'var(--d-dim)',
                   fontWeight: active ? 700 : 400,
                 }}
               >
@@ -83,14 +89,21 @@ export function DemoBar({
           })}
         </div>
         <div className="relative">
-          <AgentCells hovered={hovered} onHover={setHovered} />
+          <AgentCells hovered={hovered} onEnter={enter} onLeave={leave} />
           {hovered ? (
-            <div className="absolute left-0 top-[27px] z-10">
-              <AgentHoverCard agent={hovered} />
+            // .bar-card: top calc(100% + 5px) below the 30px strip. The card
+            // keeps itself open on hover, as `stay()` does in bar/hover.ts.
+            <div className="absolute left-0 top-[calc(100%+5px)] z-10">
+              <AgentHoverCard
+                agent={hovered}
+                onMouseEnter={stay}
+                onMouseLeave={() => leave()}
+              />
             </div>
           ) : null}
         </div>
-        <span className="max-w-[32ch] overflow-hidden text-ellipsis whitespace-nowrap text-(--d-dim)">
+        {/* .bar-app — fg, truncated at 32ch */}
+        <span className="max-w-[32ch] overflow-hidden text-ellipsis whitespace-nowrap text-(--d-fg)">
           {frontApp}
         </span>
       </div>
@@ -100,15 +113,15 @@ export function DemoBar({
         {clock}
       </div>
 
-      {/* right zone: wifi · trmnl · battery */}
-      <div className="flex items-center gap-3.5 text-(--d-dim)">
-        <span className="inline-flex items-center gap-1.5">
-          <Wifi size={14} strokeWidth={2.2} />
+      {/* right zone: wifi · trmnl · battery — .bar-cell is fg, not dim */}
+      <div className="flex items-center gap-3.5 text-(--d-fg)">
+        <span className="inline-flex items-center gap-[5px]">
+          <Wifi size={14} strokeWidth={2.2} aria-hidden />
           Blackbeard 5G
         </span>
-        <span className="inline-flex items-center gap-1.5">▣ 87%</span>
-        <span className="inline-flex items-center gap-1.5">
-          <BatteryMedium size={14} strokeWidth={2.2} />
+        <span className="inline-flex items-center gap-[5px]">▣ 87%</span>
+        <span className="inline-flex items-center gap-[5px]">
+          <BatteryMedium size={14} strokeWidth={2.2} aria-hidden />
           64%
         </span>
       </div>

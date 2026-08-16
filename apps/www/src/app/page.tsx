@@ -1,3 +1,4 @@
+import { BUILTIN_THEMES } from '@launcharr/tui/themes'
 import {
   AppWindow,
   ArrowUpRight,
@@ -38,6 +39,8 @@ import {
 } from '@/components/ui/table'
 import { AGENT_STATES } from '@/lib/demo-data'
 import { GITHUB_URL, RELEASE, RELEASES_URL, VERSION } from '@/lib/site'
+
+const LAUNCHARR_THEME = BUILTIN_THEMES.launcharr!
 
 const MONO_CODE = 'font-mono text-(--fg)'
 const SECTION = 'mx-auto max-w-[1080px] px-8'
@@ -455,8 +458,14 @@ export default function Home() {
               ordered by tab. Hover a cell for the task and state; click it and
               launcharr drops you into the exact pane.
             </p>
-            <div className="mt-2 grid gap-2.5 text-[13px]">
-              {(['blocked', 'working', 'done', 'idle'] as const).map(
+            <div
+              className="mt-2 grid gap-2.5 text-[13px]"
+              /* `working` resolves to the theme accent, as the bar does. */
+              style={
+                { '--d-accent': LAUNCHARR_THEME.accent } as React.CSSProperties
+              }
+            >
+              {(['attention', 'working', 'done', 'idle'] as const).map(
                 (state) => {
                   const s = AGENT_STATES[state]
                   return (
@@ -465,7 +474,7 @@ export default function Home() {
                         style={{
                           color: s.color,
                           animation:
-                            state === 'blocked'
+                            state === 'attention'
                               ? 'bar-agent-breathe 1.6s ease-in-out infinite'
                               : undefined,
                         }}

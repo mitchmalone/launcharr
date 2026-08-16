@@ -93,14 +93,23 @@ export function fmtTokens(n: number): string {
   return String(n)
 }
 
-export type AgentState = 'blocked' | 'working' | 'done' | 'idle'
+/**
+ * Wire states, verbatim from `AgentSession.state` in apps/desktop/src/bar/main.tsx.
+ * `attention` is the wire name; "blocked" is only its display label — the app keeps
+ * that split in AGENT_STATE_LABELS and so do we.
+ */
+export type AgentState = 'attention' | 'working' | 'done' | 'idle'
 
-/** Bar cell appearance per state — mirrors the bar's agent module. */
+/**
+ * Cell appearance per state, ported from `.bar-agent-*` in bar/bar.css. The three
+ * literal hexes are literal there too; `working` resolves to the *theme* accent, so
+ * it retints with the theme picker exactly as the real bar does.
+ */
 export const AGENT_STATES: Record<
   AgentState,
   { glyph: string; color: string; label: string; blurb: string }
 > = {
-  blocked: {
+  attention: {
     glyph: '◉',
     color: '#ff2d2d',
     label: 'blocked',
@@ -108,7 +117,9 @@ export const AGENT_STATES: Record<
   },
   working: {
     glyph: '●',
-    color: 'var(--cta)',
+    // bar.css says var(--accent); --d-accent is the demo's scoped mirror of it
+    // (the page's own --accent is the max-contrast foreground, not the theme's).
+    color: 'var(--d-accent)',
     label: 'working',
     blurb: 'agent is mid-task',
   },
@@ -126,57 +137,106 @@ export const AGENT_STATES: Record<
   },
 }
 
+/** Shaped like `AgentSession` in bar/main.tsx, minus the fields the card never reads. */
 export type Agent = {
-  id: string
-  group: string
+  session: string
+  agent: string
   state: AgentState
   title: string
-  line1: string
-  line2: string
+  detail: string
+  tmuxSession: string | null
+  tmuxWindow: number
+  tmuxWindowName: string
+  /** Seconds since the last update — the card renders "· Ns ago". */
+  age: number
 }
 
 export const AGENTS: Agent[] = [
   {
-    id: 'a1',
-    group: 'fable',
+    session: 'a1',
+    agent: 'claude',
     state: 'working',
     title: 'refactor ranking tie-break',
-    line1: 'reading packages/core/src/ranking.ts',
-    line2: 'fable · tab 1 · core',
+    detail: 'reading packages/core/src/ranking.ts',
+    tmuxSession: 'fable',
+    tmuxWindow: 1,
+    tmuxWindowName: 'core',
+    age: 12,
   },
   {
-    id: 'a2',
-    group: 'fable',
-    state: 'blocked',
+    session: 'a2',
+    agent: 'claude',
+    state: 'attention',
     title: 'release v0.5.0 — awaiting approval',
-    line1: 'permission needed: scripts/release.sh',
-    line2: 'fable · tab 2 · release',
+    detail: 'permission needed: scripts/release.sh',
+    tmuxSession: 'fable',
+    tmuxWindow: 2,
+    tmuxWindowName: 'release',
+    age: 47,
   },
   {
-    id: 'a3',
-    group: 'www',
+    session: 'a3',
+    agent: 'codex',
     state: 'done',
     title: 'usage panel — tests green',
-    line1: '14 passed, 0 failed',
-    line2: 'www · tab 1 · panels',
+    detail: '14 passed, 0 failed',
+    tmuxSession: 'www',
+    tmuxWindow: 1,
+    tmuxWindowName: 'panels',
+    age: 184,
   },
   {
-    id: 'a4',
-    group: 'www',
+    session: 'a4',
+    agent: 'claude',
     state: 'idle',
-    title: 'claude (idle)',
-    line1: 'waiting for a task',
-    line2: 'www · tab 2',
+    title: '',
+    detail: 'waiting for a task',
+    tmuxSession: 'www',
+    tmuxWindow: 2,
+    tmuxWindowName: '',
+    age: 900,
   },
 ]
 
-/** Agents grouped into their tmux-session boxes, in tab order. */
-export const AGENT_GROUPS: Agent[][] = Object.values(
-  AGENTS.reduce<Record<string, Agent[]>>((acc, a) => {
-    ;(acc[a.group] ??= []).push(a)
-    return acc
-  }, {}),
-)
+/** `agentAge` from bar/main.tsx — same thresholds, same rounding. */
+export function agentAge(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  return `${Math.round(seconds / 3600)}h`
+}
+
+/** The tmux line the card prints, or its no-pane fallback. */
+export function agentTmuxLine(a: Agent): string {
+  if (!a.tmuxSession) return 'no tmux pane'
+  return (
+    `${a.tmuxSession} · tab ${a.tmuxWindow}` +
+    (a.tmuxWindowName ? ` · ${a.tmuxWindowName}` : '')
+  )
+}
+
+/**
+ * `groupAgents` from bar/main.tsx: tmux-session groups ordered by name with
+ * cells ordered by tab index, then loose cells for agents outside tmux —
+ * invocation order never decides placement.
+ */
+export const AGENT_GROUPS: Agent[][] = (() => {
+  const byName = new Map<string, Agent[]>()
+  for (const a of AGENTS) {
+    if (!a.tmuxSession) continue
+    const list = byName.get(a.tmuxSession) ?? []
+    list.push(a)
+    byName.set(a.tmuxSession, list)
+  }
+  for (const list of byName.values()) {
+    list.sort(
+      (x, y) =>
+        x.tmuxWindow - y.tmuxWindow || x.session.localeCompare(y.session),
+    )
+  }
+  return [...byName.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, list]) => list)
+})()
 
 /**
  * Canned `?` answers. The real thing streams from the user's own claude/codex CLI

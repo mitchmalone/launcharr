@@ -162,10 +162,14 @@ export function Demo() {
     '--tui-dim': theme.dim,
     '--tui-accent': theme.accent,
     '--tui-selected': theme.selected,
-    '--d-glass': theme.glass,
+    /* --d-* mirror the panel tokens the bar styles against (bar.css reads
+       --bg/--fg/--dim/--accent; we namespace so the page's own same-named
+       tokens can't leak in). */
+    '--d-bg': theme.glass,
     '--d-border': theme.border,
     '--d-fg': theme.fg,
     '--d-dim': theme.dim,
+    '--d-accent': theme.accent,
     '--d-sigil': theme.sigil,
   } as React.CSSProperties
 

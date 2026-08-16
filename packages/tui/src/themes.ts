@@ -4,6 +4,11 @@
  * map), overlaying the launcharr defaults — or, when named after a built-in, that
  * built-in. Selection is `config.theme`; unknown names fall back to `launcharr` so a
  * hand-edit can't blank the UI.
+ *
+ * Reachable as `@launcharr/tui/themes` as well as through the barrel, and that second
+ * entry point is load-bearing: this module is pure data, so a React Server Component
+ * (apps/www) can import the tokens directly. Going through `.` instead drags in
+ * `components/controls.tsx`, whose hooks fail a server build. Keep it free of React.
  */
 
 export interface ThemeTokens {
