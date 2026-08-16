@@ -20,17 +20,19 @@ export interface ModelUsage {
   model: string
   tokens: number
 }
-export interface RateLimit {
+export interface LimitWindow {
+  name: string
   usedPercent: number
-  windowMinutes: number
   resetsAt: number | null
-  plan: string | null
 }
 export interface ProviderUsage {
   provider: string
   days: DayUsage[]
   models: ModelUsage[]
-  rateLimit: RateLimit | null
+  /** Account rate-limit windows; the primary "how soon am I limited" data. */
+  limits: LimitWindow[]
+  /** Source off / token expired / staleness caveat; null = limits are live. */
+  limitsNote: string | null
 }
 export interface UsageReport {
   generatedAt: number
@@ -52,13 +54,6 @@ export function fmtTokens(n: number): string {
   if (n >= 1e6) return scaled(n / 1e6, 'M')
   if (n >= 1e3) return scaled(n / 1e3, 'k')
   return String(n)
-}
-
-/** 10080 minutes → "weekly", 300 → "5h", 90 → "90m". */
-export function fmtWindow(minutes: number): string {
-  if (minutes === 10_080) return 'weekly'
-  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60}h`
-  return `${minutes}m`
 }
 
 /** Seconds until reset → "resets in 4d" / "resets in 7h" / "resets soon". */
@@ -144,6 +139,22 @@ export function UsagePanel({
       />
       {active && (
         <>
+          <SectionHeader label="Limits" />
+          {active.limits.map((l) => (
+            <MeterRow
+              key={l.name}
+              label={l.name}
+              value={l.usedPercent}
+              max={100}
+              right={`${Math.round(l.usedPercent)}%${
+                l.resetsAt != null ? ` · ${fmtReset(l.resetsAt, nowSecs)}` : ''
+              }`}
+              emphasis={l.usedPercent >= 80}
+            />
+          ))}
+          {active.limitsNote && (
+            <MeterRow label={active.limitsNote} value={0} right="" />
+          )}
           <SectionHeader label="Tokens by day" />
           {active.days.map((d) => (
             <MeterRow
@@ -168,20 +179,6 @@ export function UsagePanel({
                 right={fmtTokens(m.tokens)}
               />
             ))
-          )}
-          {active.rateLimit && (
-            <>
-              <SectionHeader
-                label={`${fmtWindow(active.rateLimit.windowMinutes)} limit`}
-                right={active.rateLimit.plan ?? undefined}
-              />
-              <MeterRow
-                label={`${Math.round(active.rateLimit.usedPercent)}% used`}
-                value={active.rateLimit.usedPercent}
-                max={100}
-                right={fmtReset(active.rateLimit.resetsAt, nowSecs)}
-              />
-            </>
           )}
         </>
       )}

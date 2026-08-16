@@ -63,10 +63,13 @@ it in `docs/DECISIONS.md`.
 
 1. **Zero granted permissions.** The app runs with none (sole exception: the standard
    Automation consent prompt on first iTerm2 hand-off). Nothing requiring Accessibility.
-2. **Zero network.** The desktop app makes no network requests, ever. One carve-out: a
-   user-initiated favicon fetch at quicklink-add time (see DECISIONS 2026-08-09). No
-   background fetches, no update pings, no telemetry. `apps/www` is obviously networked —
-   web-side convenience never leaks into the app.
+2. **Zero network.** The desktop app makes no network requests, ever. Two carve-outs,
+   both user-initiated: a favicon fetch at quicklink-add time (DECISIONS 2026-08-09), and
+   the usage monitor's account-limit fetches to the agent providers' own usage endpoints —
+   strictly opt-in per provider in Settings → Agents, off by default, using credentials
+   the provider CLIs already store, never refreshed or written by launcharr (DECISIONS
+   2026-08-16). No background fetches, no update pings, no telemetry. `apps/www` is
+   obviously networked — web-side convenience never leaks into the app.
 3. **Tiny IPC surface.** A handful of typed Tauri commands; every command is a future
    plugin-API liability.
 4. **Prefix dispatch is general.** `!` is mode dispatch via first-char lookup, not a special

@@ -24,7 +24,11 @@ import { listen } from '@tauri-apps/api/event'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { Config } from './lib/config'
+import {
+  type Config,
+  DEFAULT_AGENTS_CONFIG,
+  DEFAULT_BAR_MODULES,
+} from './lib/config'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
@@ -94,7 +98,15 @@ const DEFAULT_CONFIG: Config = {
   indexBookmarks: false,
   theme: 'launcharr',
   themes: {},
-  bar: { enabled: false },
+  bar: { enabled: false, modules: DEFAULT_BAR_MODULES },
+  agents: DEFAULT_AGENTS_CONFIG,
+}
+
+/** Panels gated by settings; anything unlisted is always on. */
+function panelEnabled(id: string, config: Config): boolean {
+  if (id === 'usage') return config.agents.usage
+  if (id === 'agents') return config.agents.monitor
+  return true
 }
 
 export default function App() {
@@ -132,11 +144,11 @@ export default function App() {
     () =>
       new Set([
         'clip',
-        ...Object.keys(PANELS),
+        ...Object.keys(PANELS).filter((id) => panelEnabled(id, config)),
         ...scripts.map((s) => s.trigger),
         ...quicklinks.map((l) => l.trigger as string),
       ]),
-    [scripts, quicklinks],
+    [scripts, quicklinks, config],
   )
   const parsed = useMemo(() => parseInput(raw, triggers), [raw, triggers])
 
@@ -213,7 +225,9 @@ export default function App() {
         return launchRows(parsed.query, index, frecency, config.searchFallback)
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
-        const panel = PANELS[parsed.trigger]
+        const panel = panelEnabled(parsed.trigger, config)
+          ? PANELS[parsed.trigger]
+          : undefined
         if (panel) return panelRows(parsed.trigger, panel.title, panel.hint)
         if (isScript(parsed.trigger)) return scriptRows(scriptItems)
         const link = quicklinks.find((l) => l.trigger === parsed.trigger)
@@ -230,7 +244,7 @@ export default function App() {
     frecency,
     clips,
     scriptItems,
-    config.searchFallback,
+    config,
     quicklinks,
     isScript,
     draft,

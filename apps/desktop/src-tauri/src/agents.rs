@@ -19,8 +19,31 @@ use crate::config::Terminal;
 use crate::error::{CmdError, CmdResult};
 
 /// Sessions untouched for this long are pruned — the old daemon kept every
-/// idle session forever and the bar filled with week-old ghosts.
-const STALE_SECS: u64 = 12 * 3600;
+/// idle session forever and the bar filled with week-old ghosts. Default;
+/// configurable via `agents.pruneHours`.
+const DEFAULT_STALE_SECS: u64 = 12 * 3600;
+
+/// Monitoring is off by default (Settings → Agents). The socket stays bound
+/// either way — cheaper and simpler than tearing down a blocked accept loop —
+/// but events are discarded and list() is empty while disabled.
+static MONITOR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static PRUNE_SECS: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(DEFAULT_STALE_SECS);
+
+/// Apply settings; called at setup and from the config watcher.
+pub fn configure(cfg: &crate::config::AgentsConfig) {
+    use std::sync::atomic::Ordering;
+    MONITOR.store(cfg.monitor, Ordering::Relaxed);
+    PRUNE_SECS.store(u64::from(cfg.prune_hours.max(1)) * 3600, Ordering::Relaxed);
+}
+
+fn monitoring() -> bool {
+    MONITOR.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn stale_secs() -> u64 {
+    PRUNE_SECS.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 /// One live agent session. Mirrored as `AgentSession` in the frontend.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,12 +95,16 @@ static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
 /// stamped with its current tmux location so the UI can group by session and
 /// order by tab.
 pub fn list() -> Vec<AgentSession> {
+    if !monitoring() {
+        return Vec::new();
+    }
     let layout = tmux_layout();
     let sessions = SESSIONS.lock().unwrap();
     let now = now_secs();
+    let stale = stale_secs();
     let mut fresh: Vec<AgentSession> = sessions
         .iter()
-        .filter(|s| now.saturating_sub(s.updated_at) <= STALE_SECS)
+        .filter(|s| now.saturating_sub(s.updated_at) <= stale)
         .cloned()
         .map(|mut s| {
             let loc = layout.get(&s.tmux);
@@ -196,12 +223,15 @@ fn handle(stream: UnixStream, app: &AppHandle) {
     let reader = std::io::BufReader::new(stream);
     for line in reader.lines() {
         let Ok(line) = line else { break };
+        if !monitoring() {
+            continue;
+        }
         let Ok(event) = serde_json::from_str::<AgentEvent>(&line) else {
             continue;
         };
         let applied = {
             let mut sessions = SESSIONS.lock().unwrap();
-            apply(&mut sessions, event, now_secs())
+            apply(&mut sessions, event, now_secs(), stale_secs())
         };
         if applied {
             if let Err(e) = save(&state_file(), &list()) {
@@ -216,11 +246,11 @@ fn handle(stream: UnixStream, app: &AppHandle) {
 /// Fold one event into the session list. Semantics ported from the retired Go
 /// store: `ended` deletes; blank title/detail/tmux inherit the previous value;
 /// everything else upserts. Stale sessions are dropped on the way through.
-fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64) -> bool {
+fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u64) -> bool {
     if event.session.is_empty() || event.agent.is_empty() {
         return false;
     }
-    sessions.retain(|s| now.saturating_sub(s.updated_at) <= STALE_SECS);
+    sessions.retain(|s| now.saturating_sub(s.updated_at) <= stale);
     if event.state == "ended" {
         sessions.retain(|s| s.session != event.session);
         return true;
@@ -401,11 +431,16 @@ mod tests {
     #[test]
     fn upserts_and_times_stamps() {
         let mut s = Vec::new();
-        assert!(apply(&mut s, event("a", "working"), 100));
+        assert!(apply(
+            &mut s,
+            event("a", "working"),
+            100,
+            DEFAULT_STALE_SECS
+        ));
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].state, "working");
         assert_eq!(s[0].updated_at, 100);
-        assert!(apply(&mut s, event("a", "idle"), 200));
+        assert!(apply(&mut s, event("a", "idle"), 200, DEFAULT_STALE_SECS));
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].state, "idle");
         assert_eq!(s[0].updated_at, 200);
@@ -414,10 +449,15 @@ mod tests {
     #[test]
     fn rejects_anonymous_events() {
         let mut s = Vec::new();
-        assert!(!apply(&mut s, AgentEvent::default(), 100));
+        assert!(!apply(
+            &mut s,
+            AgentEvent::default(),
+            100,
+            DEFAULT_STALE_SECS
+        ));
         let mut no_agent = event("a", "working");
         no_agent.agent = String::new();
-        assert!(!apply(&mut s, no_agent, 100));
+        assert!(!apply(&mut s, no_agent, 100, DEFAULT_STALE_SECS));
         assert!(s.is_empty());
     }
 
@@ -427,13 +467,13 @@ mod tests {
         let mut first = event("a", "working");
         first.title = "Fix auth".into();
         first.tmux = "%3".into();
-        apply(&mut s, first, 100);
-        apply(&mut s, event("a", "idle"), 200);
+        apply(&mut s, first, 100, DEFAULT_STALE_SECS);
+        apply(&mut s, event("a", "idle"), 200, DEFAULT_STALE_SECS);
         assert_eq!(s[0].title, "Fix auth");
         assert_eq!(s[0].tmux, "%3");
         let mut retitled = event("a", "working");
         retitled.title = "New task".into();
-        apply(&mut s, retitled, 300);
+        apply(&mut s, retitled, 300, DEFAULT_STALE_SECS);
         assert_eq!(s[0].title, "New task");
         assert_eq!(s[0].tmux, "%3");
     }
@@ -441,9 +481,9 @@ mod tests {
     #[test]
     fn ended_deletes_the_session() {
         let mut s = Vec::new();
-        apply(&mut s, event("a", "working"), 100);
-        apply(&mut s, event("b", "working"), 100);
-        assert!(apply(&mut s, event("a", "ended"), 200));
+        apply(&mut s, event("a", "working"), 100, DEFAULT_STALE_SECS);
+        apply(&mut s, event("b", "working"), 100, DEFAULT_STALE_SECS);
+        assert!(apply(&mut s, event("a", "ended"), 200, DEFAULT_STALE_SECS));
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].session, "b");
     }
@@ -451,8 +491,13 @@ mod tests {
     #[test]
     fn stale_sessions_are_pruned_on_apply() {
         let mut s = Vec::new();
-        apply(&mut s, event("old", "idle"), 100);
-        apply(&mut s, event("new", "working"), 100 + STALE_SECS + 1);
+        apply(&mut s, event("old", "idle"), 100, DEFAULT_STALE_SECS);
+        apply(
+            &mut s,
+            event("new", "working"),
+            100 + DEFAULT_STALE_SECS + 1,
+            DEFAULT_STALE_SECS,
+        );
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].session, "new");
     }
@@ -489,11 +534,11 @@ mod tests {
         let mut s = Vec::new();
         let mut done = event("a", "done");
         done.tmux = "%3".into();
-        apply(&mut s, done, 100);
+        apply(&mut s, done, 100, DEFAULT_STALE_SECS);
         assert_eq!(mark_read(&mut s, "a"), Some("%3".into()));
         assert_eq!(s[0].state, "idle");
         // Non-done states are untouched by a visit.
-        apply(&mut s, event("a", "working"), 200);
+        apply(&mut s, event("a", "working"), 200, DEFAULT_STALE_SECS);
         mark_read(&mut s, "a");
         assert_eq!(s[0].state, "working");
         assert_eq!(mark_read(&mut s, "missing"), None);

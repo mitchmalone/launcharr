@@ -92,6 +92,33 @@ tauri_panel! {
     })
 }
 
+/// The support threads (push, reframe, triggers, mouse) spawn once per
+/// process; they look windows up per tick, so they idle harmlessly while the
+/// bar is toggled off and re-attach when it returns.
+static THREADS_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Hot-apply `bar.enabled` from the config watcher (DECISIONS 2026-08-16):
+/// on → build the windows if absent; off → destroy them.
+pub fn set_enabled(app: &AppHandle, on: bool) {
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if on {
+            if handle.get_webview_window("bar-0").is_none() {
+                if let Err(e) = init(&handle) {
+                    eprintln!("[launcharr bar] enable failed: {e:?}");
+                }
+            }
+        } else {
+            for i in 0.. {
+                let Some(window) = handle.get_webview_window(&format!("bar-{i}")) else {
+                    break;
+                };
+                let _ = window.destroy();
+            }
+        }
+    });
+}
+
 /// Create one bar per display. Called at setup only when `bar.enabled`.
 pub fn init(app: &AppHandle) -> CmdResult<()> {
     // available_monitors() comes back empty for an accessory app even after
@@ -173,11 +200,13 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
         });
     }
     crate::bar_constrain::prevent_app_nap();
-    crate::bar_modules::start();
-    watch(app.clone());
-    watch_triggers(app.clone());
-    watch_mouse(app.clone());
-    push_loop(app.clone());
+    if !THREADS_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        crate::bar_modules::start();
+        watch(app.clone());
+        watch_triggers(app.clone());
+        watch_mouse(app.clone());
+        push_loop(app.clone());
+    }
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fmtReset, fmtTokens, fmtWindow } from './UsagePanel'
+import { fmtReset, fmtTokens } from './UsagePanel'
 
 describe('fmtTokens', () => {
   it('scales with one trimmed decimal', () => {
@@ -10,14 +10,6 @@ describe('fmtTokens', () => {
     expect(fmtTokens(2_100_000_000)).toBe('2.1B')
     expect(fmtTokens(42)).toBe('42')
     expect(fmtTokens(0)).toBe('0')
-  })
-})
-
-describe('fmtWindow', () => {
-  it('names known windows', () => {
-    expect(fmtWindow(10_080)).toBe('weekly')
-    expect(fmtWindow(300)).toBe('5h')
-    expect(fmtWindow(90)).toBe('90m')
   })
 })
 

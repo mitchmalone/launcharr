@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event'
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import type { Config } from '../lib/config'
+import { BAR_MODULE_IDS, type Config } from '../lib/config'
 import { applyTheme } from '../lib/themes'
 import './bar.css'
 
@@ -230,16 +230,39 @@ declare global {
   }
 }
 
-/** The bar wears the panel theme and follows config edits live. */
-function useBarTheme() {
+/** The bar wears the panel theme and renders module order/toggles from
+ * config, following edits live. */
+function useBarConfig(): Config | null {
+  const [cfg, setCfg] = useState<Config | null>(null)
   useEffect(() => {
-    const apply = (cfg: Config) => applyTheme(cfg.theme, cfg.themes, 'panel')
+    const apply = (c: Config) => {
+      applyTheme(c.theme, c.themes, 'panel')
+      setCfg(c)
+    }
     invoke<Config>('read_config').then(apply).catch(console.error)
     const un = listen<Config>('config-changed', (e) => apply(e.payload))
     return () => {
       un.then((f) => f())
     }
   }, [])
+  return cfg
+}
+
+/** Config module list normalized: unknown ids dropped, missing known ids
+ * appended enabled — mirrors config.rs. `clock` is the center anchor. */
+function normalizeModules(
+  cfg: Config | null,
+): { id: string; enabled: boolean }[] {
+  const known = new Set<string>(BAR_MODULE_IDS)
+  const listed = (cfg?.bar.modules ?? []).filter((m) => known.has(m.id))
+  const listedIds = new Set(listed.map((m) => m.id))
+  return [
+    ...listed,
+    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
+      id: id as string,
+      enabled: true,
+    })),
+  ]
 }
 
 /**
@@ -282,7 +305,7 @@ function useSnapshot(): [
 
 function Bar() {
   const [snap, now, patch] = useSnapshot()
-  useBarTheme()
+  const cfg = useBarConfig()
 
   const switchWorkspace = (ws: string) => {
     // Optimistic: highlight now, aerospace catches up off the main thread.
@@ -319,52 +342,109 @@ function Bar() {
           ? 'bar-cell bar-warn'
           : 'bar-cell'
 
+  // Each widget as a node; order and toggles come from config (Settings →
+  // Menubar), with `clock` splitting left from right.
+  const moduleNode = (id: string): React.ReactNode => {
+    switch (id) {
+      case 'workspaces':
+        return (
+          snap &&
+          snap.workspaces.length > 0 && (
+            <div key={id} className="bar-ws-cluster">
+              {snap.workspaces.map((ws) => (
+                <button
+                  key={ws}
+                  type="button"
+                  className={`bar-ws ${ws === snap.focused ? 'bar-ws-focused' : ''}`}
+                  onClick={() => switchWorkspace(ws)}
+                >
+                  {ws}
+                </button>
+              ))}
+            </div>
+          )
+        )
+      case 'agents':
+        return (
+          snap && (
+            <AgentCluster
+              key={id}
+              agents={
+                cfg?.agents.showIdle === false
+                  ? snap.agents.filter((a) => a.state !== 'idle')
+                  : snap.agents
+              }
+              now={now}
+            />
+          )
+        )
+      case 'frontApp':
+        return (
+          snap?.frontApp && (
+            <span key={id} className="bar-app">
+              {snap.frontApp}
+            </span>
+          )
+        )
+      case 'wifi':
+        return (
+          snap && (
+            <span
+              key={id}
+              className={`bar-cell ${snap.wifi.online ? '' : 'bar-danger'}`}
+              title={snap.wifi.ssid ?? undefined}
+            >
+              {snap.wifi.online
+                ? `◠ ${snap.wifi.ssid ?? 'SSID hidden'}`
+                : '◠ Offline'}
+            </span>
+          )
+        )
+      case 'trmnl':
+        return (
+          snap?.trmnl && (
+            <span
+              key={id}
+              className={trmnlClass}
+              title={snap.trmnl.name ?? 'TRMNL'}
+            >
+              ▣ {snap.trmnl.pct != null ? `${snap.trmnl.pct}%` : '--'}
+            </span>
+          )
+        )
+      case 'battery':
+        return snap?.batteryPct != null ? (
+          <span key={id} className={batteryClass}>
+            {snap.charging || snap.onAc ? '↯' : '▮'} {snap.batteryPct}%
+          </span>
+        ) : (
+          snap?.onAc && (
+            <span key={id} className="bar-cell">
+              ↯ AC
+            </span>
+          )
+        )
+      default:
+        return null
+    }
+  }
+
+  const modules = normalizeModules(cfg)
+  const clockIdx = modules.findIndex((m) => m.id === 'clock')
+  const enabled = (list: { id: string; enabled: boolean }[]) =>
+    list.filter((m) => m.enabled).map((m) => moduleNode(m.id))
+  const left = enabled(clockIdx < 0 ? modules : modules.slice(0, clockIdx))
+  const right = enabled(clockIdx < 0 ? [] : modules.slice(clockIdx + 1))
+  const showClock = clockIdx >= 0 && (modules[clockIdx]?.enabled ?? false)
+
   return (
     <div className="bar">
       <div className="bar-left">
         <span className="bar-logo">❯</span>
-        {snap && snap.workspaces.length > 0 && (
-          <div className="bar-ws-cluster">
-            {snap.workspaces.map((ws) => (
-              <button
-                key={ws}
-                type="button"
-                className={`bar-ws ${ws === snap.focused ? 'bar-ws-focused' : ''}`}
-                onClick={() => switchWorkspace(ws)}
-              >
-                {ws}
-              </button>
-            ))}
-          </div>
-        )}
-        {snap && <AgentCluster agents={snap.agents} now={now} />}
-        {snap?.frontApp && <span className="bar-app">{snap.frontApp}</span>}
+        {left}
       </div>
-      <div className="bar-center">{clock}</div>
-      <div className="bar-right">
-        {snap && (
-          <span
-            className={`bar-cell ${snap.wifi.online ? '' : 'bar-danger'}`}
-            title={snap.wifi.ssid ?? undefined}
-          >
-            {snap.wifi.online
-              ? `◠ ${snap.wifi.ssid ?? 'SSID hidden'}`
-              : '◠ Offline'}
-          </span>
-        )}
-        {snap?.trmnl && (
-          <span className={trmnlClass} title={snap.trmnl.name ?? 'TRMNL'}>
-            ▣ {snap.trmnl.pct != null ? `${snap.trmnl.pct}%` : '--'}
-          </span>
-        )}
-        {snap?.batteryPct != null ? (
-          <span className={batteryClass}>
-            {snap.charging || snap.onAc ? '↯' : '▮'} {snap.batteryPct}%
-          </span>
-        ) : (
-          snap?.onAc && <span className="bar-cell">↯ AC</span>
-        )}
-      </div>
+      {showClock && <div className="bar-center">{clock}</div>}
+      <div className="bar-right">{right}</div>
     </div>
   )
 }

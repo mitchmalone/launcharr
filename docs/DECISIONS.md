@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-08-16 · Account limits join the usage monitor: opt-in HTTPS, opt-in credentials (invariant 2 amended)
+
+- **Decision.** The usage panel's primary question — "how soon am I limited?" — is
+  answered by the providers' own endpoints (`api.anthropic.com/api/oauth/usage`,
+  `chatgpt.com/backend-api/wham/usage`), because the windows are account-wide and
+  server-computed; local journals can't see other devices (Mitch's openclaw boxes share
+  the Codex account). Everything is opt-in in the new Settings → Agents tab: the usage
+  monitor itself, then per-provider credential sources — Claude
+  `off | credentialsFile (~/.claude/.credentials.json) | keychain (via /usr/bin/security,
+macOS consent prompt)`, Codex `off | authFile (~/.codex/auth.json)`. **launcharr never
+  refreshes or writes another app's tokens** — expired → a visible "run the CLI" note.
+  Invariant 2 gains this as its second carve-out. Local monitoring also becomes opt-in
+  (`agents.monitor`, prune window + show-idle options), and `bar.enabled` +
+  `bar.modules` (ordered, clock as center anchor) are Settings-managed and hot-applied.
+- **Why.** Mitch approved HTTPS for this use-case (2026-08-16); the alternative
+  mechanisms CodexBar uses (browser-cookie decryption, PTY-scraping the claude TUI,
+  token refresh with keychain rewrite races) are exactly what the invariants exist to
+  keep out. Off-by-default keeps the fresh-install posture identical to before.
+
 ### 2026-08-16 · Usage monitor is local-only: journals, not APIs
 
 - **Decision.** The `usage ⏎` token monitor (CodexBar-inspired) reads only the journals

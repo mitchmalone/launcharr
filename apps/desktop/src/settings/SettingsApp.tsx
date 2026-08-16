@@ -2,10 +2,19 @@ import type { Link } from '@launcharr/core/types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Info, Keyboard, Link2, Search, Settings, Terminal } from 'lucide-react'
+import {
+  Bot,
+  Info,
+  Keyboard,
+  Link2,
+  PanelTop,
+  Search,
+  Settings,
+  Terminal,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import type { Config } from '../lib/config'
+import { BAR_MODULE_IDS, type Config } from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
 import HotkeyRecorder from './HotkeyRecorder'
 import iconUrl from './launcharr.svg'
@@ -23,6 +32,8 @@ const TABS = [
   { id: 'search', label: 'Search', icon: Search },
   { id: 'links', label: 'Links', icon: Link2 },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
+  { id: 'agents', label: 'Agents', icon: Bot },
+  { id: 'menubar', label: 'Menubar', icon: PanelTop },
   { id: 'about', label: 'About', icon: Info },
 ] as const
 
@@ -105,6 +116,8 @@ export default function SettingsApp() {
         {tab === 'search' && <SearchTab config={config} set={set} />}
         {tab === 'links' && <LinksTab config={config} set={set} />}
         {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
+        {tab === 'agents' && <AgentsTab config={config} set={set} />}
+        {tab === 'menubar' && <MenubarTab config={config} set={set} />}
         {tab === 'about' && <AboutTab />}
       </main>
     </div>
@@ -360,6 +373,217 @@ function ShortcutsTab({ config, set }: { config: Config; set: SetFn }) {
       >
         + add shortcut
       </button>
+    </>
+  )
+}
+
+function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
+  const agents = config.agents
+  const setAgents = (patch: Partial<Config['agents']>) =>
+    set('agents', { ...agents, ...patch })
+  return (
+    <>
+      <Row label="Local monitoring">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={agents.monitor}
+            onChange={(e) => setAgents({ monitor: e.target.checked })}
+          />
+          Enable local agent monitoring
+        </label>
+        <p className="hint">
+          Live session states in the bar and the <code>agents ⏎</code> panel.
+          Agents report in over a local socket (Claude Code hooks →{' '}
+          <code>agents.sock</code>); nothing leaves this machine.
+        </p>
+        {agents.monitor && (
+          <>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={agents.showIdle}
+                onChange={(e) => setAgents({ showIdle: e.target.checked })}
+              />
+              Show idle sessions in the bar
+            </label>
+            <label className="check">
+              Forget sessions after{' '}
+              <input
+                className="tiny"
+                type="number"
+                min={1}
+                max={168}
+                value={agents.pruneHours}
+                onChange={(e) =>
+                  setAgents({
+                    pruneHours: Math.max(1, Number(e.target.value) || 12),
+                  })
+                }
+              />{' '}
+              hours of silence
+            </label>
+          </>
+        )}
+      </Row>
+      <hr />
+      <Row label="Usage">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={agents.usage}
+            onChange={(e) => setAgents({ usage: e.target.checked })}
+          />
+          Enable agent usage
+        </label>
+        <p className="hint">
+          Activates the <code>usage ⏎</code> token monitor: tokens by day and
+          model, read from the journals Claude Code and Codex already keep
+          locally.
+        </p>
+        {agents.usage && (
+          <>
+            <p className="hint">
+              Account limits (“how soon am I rate-limited?”) are computed by the
+              providers, so showing them means one HTTPS request to each — using
+              credentials the CLIs already store. Off by default; choose per
+              provider how launcharr may read them. launcharr never refreshes or
+              writes tokens.
+            </p>
+            <label className="check">
+              Claude limits
+              <select
+                value={agents.claudeLimits}
+                onChange={(e) =>
+                  setAgents({
+                    claudeLimits: e.target
+                      .value as Config['agents']['claudeLimits'],
+                  })
+                }
+              >
+                <option value="off">off — no request, no credentials</option>
+                <option value="credentialsFile">
+                  read ~/.claude/.credentials.json
+                </option>
+                <option value="keychain">
+                  read Claude Code keychain item (macOS will ask)
+                </option>
+              </select>
+            </label>
+            <label className="check">
+              Codex limits
+              <select
+                value={agents.codexLimits}
+                onChange={(e) =>
+                  setAgents({
+                    codexLimits: e.target
+                      .value as Config['agents']['codexLimits'],
+                  })
+                }
+              >
+                <option value="off">off — local snapshot only (stale)</option>
+                <option value="authFile">read ~/.codex/auth.json</option>
+              </select>
+            </label>
+          </>
+        )}
+      </Row>
+    </>
+  )
+}
+
+const MODULE_LABELS: Record<string, string> = {
+  workspaces: 'Workspaces (Aerospace)',
+  agents: 'Agent monitors',
+  frontApp: 'Active app',
+  clock: 'Clock (center anchor)',
+  wifi: 'Wi-Fi',
+  trmnl: 'TRMNL battery',
+  battery: 'Battery',
+}
+
+function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
+  // Same normalization as the bar renderer: drop unknown ids, append missing.
+  const known = new Set<string>(BAR_MODULE_IDS)
+  const listed = config.bar.modules.filter((m) => known.has(m.id))
+  const listedIds = new Set(listed.map((m) => m.id))
+  const modules = [
+    ...listed,
+    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
+      id: id as string,
+      enabled: true,
+    })),
+  ]
+  const save = (next: typeof modules) =>
+    set('bar', { ...config.bar, modules: next })
+  const move = (i: number, delta: number) => {
+    const j = i + delta
+    if (j < 0 || j >= modules.length) return
+    const next = modules.slice()
+    const a = next[i]
+    const b = next[j]
+    if (!a || !b) return
+    next[i] = b
+    next[j] = a
+    save(next)
+  }
+  return (
+    <>
+      <Row label="Menubar">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={config.bar.enabled}
+            onChange={(e) =>
+              set('bar', { ...config.bar, enabled: e.target.checked })
+            }
+          />
+          Enable the launcharr bar
+        </label>
+        <p className="hint">
+          Replaces the macOS menu bar with an Omarchy-style strip. Applies
+          immediately.
+        </p>
+      </Row>
+      <hr />
+      <Row label="Widgets">
+        <p className="hint">
+          Order is left → right; everything before the clock sits on the left,
+          everything after it on the right.
+        </p>
+        {modules.map((m, i) => (
+          <div className="linkrow" key={m.id}>
+            <label className="check grow">
+              <input
+                type="checkbox"
+                checked={m.enabled}
+                onChange={(e) => {
+                  const next = modules.slice()
+                  next[i] = { ...m, enabled: e.target.checked }
+                  save(next)
+                }}
+              />
+              {MODULE_LABELS[m.id] ?? m.id}
+            </label>
+            <button
+              className="ghost"
+              title="move up"
+              disabled={i === 0}
+              onClick={() => move(i, -1)}
+            >
+              ↑
+            </button>
+            <button
+              className="ghost"
+              title="move down"
+              disabled={i === modules.length - 1}
+              onClick={() => move(i, 1)}
+            >
+              ↓
+            </button>
+          </div>
+        ))}
+      </Row>
     </>
   )
 }

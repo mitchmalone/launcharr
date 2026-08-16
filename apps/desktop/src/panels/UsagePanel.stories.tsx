@@ -22,7 +22,17 @@ const REPORT: UsageReport = {
         { model: 'claude-fable-5', tokens: 732_787_128 },
         { model: 'claude-opus-5', tokens: 193_794_670 },
       ],
-      rateLimit: null,
+      limits: [
+        { name: '5h session', usedPercent: 62.5, resetsAt: NOW + 3 * 3600 },
+        {
+          name: 'weekly · all models',
+          usedPercent: 41,
+          resetsAt: NOW + 3 * 86_400,
+        },
+        { name: 'weekly · opus', usedPercent: 12, resetsAt: NOW + 3 * 86_400 },
+        { name: 'weekly · Fable', usedPercent: 88, resetsAt: NOW + 2 * 86_400 },
+      ],
+      limitsNote: null,
     },
     {
       provider: 'codex',
@@ -36,12 +46,11 @@ const REPORT: UsageReport = {
         { label: 'Today', tokens: 0 },
       ],
       models: [{ model: 'gpt-5.5', tokens: 2_964_211 }],
-      rateLimit: {
-        usedPercent: 5,
-        windowMinutes: 10_080,
-        resetsAt: NOW + 4 * 86_400,
-        plan: 'prolite',
-      },
+      limits: [
+        { name: 'weekly', usedPercent: 5, resetsAt: NOW + 4 * 86_400 },
+        { name: '5h', usedPercent: 40, resetsAt: NOW + 2 * 3600 },
+      ],
+      limitsNote: null,
     },
   ],
 }
@@ -100,7 +109,8 @@ export const usagePanelStories = defineStories('UsagePanel (app)', [
                 tokens: 0,
               })),
               models: [],
-              rateLimit: null,
+              limits: [],
+              limitsNote: 'account limits off — enable in Settings → Agents',
             },
           ],
         }}

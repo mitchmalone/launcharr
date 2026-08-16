@@ -27,11 +27,106 @@ pub struct Link {
     pub browser: Option<String>,
 }
 
-/// v0.5 bar (spike): off by default so the launcher-only install is untouched.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// v0.5 bar: off by default so the launcher-only install is untouched.
+/// `enabled` hot-applies via the config watcher (no restart).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct BarConfig {
     pub enabled: bool,
+    /// Ordered widget list, rendered left→right. `clock` is the center anchor:
+    /// modules before it sit left, after it sit right. Unknown ids are ignored;
+    /// known ids missing from the list are appended enabled (forward compat).
+    pub modules: Vec<BarModule>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BarModule {
+    pub id: String,
+    pub enabled: bool,
+}
+
+/// Every widget the bar knows, in default order. The settings UI and the
+/// frontend renderer both normalize against this list.
+pub const BAR_MODULE_IDS: [&str; 7] = [
+    "workspaces",
+    "agents",
+    "frontApp",
+    "clock",
+    "wifi",
+    "trmnl",
+    "battery",
+];
+
+impl Default for BarConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            modules: BAR_MODULE_IDS
+                .iter()
+                .map(|id| BarModule {
+                    id: (*id).into(),
+                    enabled: true,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// How the usage monitor may read a provider's stored CLI credentials for
+/// account-limit fetches. Everything defaults to `Off`; each step up is an
+/// explicit user choice in Settings → Agents (DECISIONS 2026-08-16).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClaudeLimitsSource {
+    #[default]
+    Off,
+    /// Read `~/.claude/.credentials.json` (plain file, no prompt).
+    CredentialsFile,
+    /// Read the `Claude Code-credentials` keychain item via /usr/bin/security —
+    /// macOS shows its standard consent prompt on first read.
+    Keychain,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CodexLimitsSource {
+    #[default]
+    Off,
+    /// Read `~/.codex/auth.json` (plain file, no prompt).
+    AuthFile,
+}
+
+/// Agent integrations: local session monitoring and the usage monitor. All
+/// off by default — a fresh install watches nothing and fetches nothing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AgentsConfig {
+    /// Local agent session monitoring: socket listener, bar cells, `agents ⏎`.
+    pub monitor: bool,
+    /// Show idle (green) sessions in the bar; active states always show.
+    pub show_idle: bool,
+    /// Sessions silent this long are pruned from monitoring.
+    pub prune_hours: u32,
+    /// The `usage ⏎` token monitor (local journal aggregation).
+    pub usage: bool,
+    /// Account rate-limit fetch for Claude (network, opt-in).
+    pub claude_limits: ClaudeLimitsSource,
+    /// Account rate-limit fetch for Codex (network, opt-in).
+    pub codex_limits: CodexLimitsSource,
+}
+
+impl Default for AgentsConfig {
+    fn default() -> Self {
+        Self {
+            monitor: false,
+            show_idle: true,
+            prune_hours: 12,
+            usage: false,
+            claude_limits: ClaudeLimitsSource::Off,
+            codex_limits: CodexLimitsSource::Off,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,8 +158,10 @@ pub struct Config {
     pub theme: String,
     /// User-defined themes: name → token overrides. Opaque to Rust; just persisted.
     pub themes: std::collections::HashMap<String, serde_json::Value>,
-    /// The menubar-replacement bar (v0.5). Takes effect on restart.
+    /// The menubar-replacement bar (v0.5).
     pub bar: BarConfig,
+    /// Agent monitoring + usage monitor (all off by default).
+    pub agents: AgentsConfig,
 }
 
 impl Default for Config {
@@ -83,6 +180,7 @@ impl Default for Config {
             theme: "launcharr".into(),
             themes: std::collections::HashMap::new(),
             bar: BarConfig::default(),
+            agents: AgentsConfig::default(),
         }
     }
 }
@@ -184,6 +282,11 @@ pub fn watch(app: AppHandle) {
                         || old.index_bookmarks != new_config.index_bookmarks
                     {
                         crate::indexer::refresh(&app);
+                    }
+                    crate::agents::configure(&new_config.agents);
+                    crate::usage::configure(&new_config.agents);
+                    if old.bar.enabled != new_config.bar.enabled {
+                        crate::bar::set_enabled(&app, new_config.bar.enabled);
                     }
                     let _ = app.emit("config-changed", &new_config);
                 }

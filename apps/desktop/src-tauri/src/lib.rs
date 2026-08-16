@@ -152,6 +152,8 @@ pub fn run() {
                     });
                 });
             }
+            agents::configure(&cfg.agents);
+            usage::configure(&cfg.agents);
             agents::start(app.handle().clone());
             tray::init(app.handle())?;
             shortcut::sync(app.handle(), &cfg);
