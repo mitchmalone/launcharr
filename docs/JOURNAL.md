@@ -6,6 +6,29 @@
 
 ---
 
+### 2026-08-16 · A React Server Component can't import the `@launcharr/tui` barrel
+
+`apps/www` builds fine importing kit _components_ (they're in `'use client'` files), but
+importing `BUILTIN_THEMES` from `@launcharr/tui` into a **server** component fails the
+Next build: the barrel re-exports `components/controls.tsx`, whose `useRef` pulls the whole
+module graph into a server context. The error names `controls.tsx`/`hooks.ts`, not the
+themes module, so it reads like a component problem when it's a barrel problem. Fix: a
+`./themes` entry point — themes are pure data, so server components take that path
+directly. Same trap waits for any other pure module in the kit (`nav/*`); split an entry
+point when a server-side consumer appears, not before.
+
+### 2026-08-16 · The demo bar's colors are in bar.css, and the design export was already stale
+
+Building the website's bar strip from the Claude Design export instead of
+`apps/desktop/src/bar/{main.tsx,bar.css}` shipped four wrong facts in one go — front app
+and right cells on `--dim` (bar.css: "fg, not dim — the dim tone read too dark against the
+strip"), the `working` agent cell on the site's pink instead of the theme accent so it
+never retinted, a hover card missing its glyph and relative age, and `blocked` used as a
+state key when that's only the display label for wire state `attention`. All four were
+decided the same day the export was generated. Now invariant 10 — see DECISIONS. Practical
+tell: if a website component contains a hex literal that also appears in the app, it's a
+port that should have been an import.
+
 ### 2026-08-16 · `ioreg` battery keys: nested-first, flags as digits, negatives printed unsigned
 
 Three traps in `ioreg -rn AppleSmartBattery` text output, all hit while building

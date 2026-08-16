@@ -113,9 +113,35 @@ Found on the way in, beyond the planned scope:
   _page_ tokens — the demo must set them explicitly or the panels inherit the marketing
   palette. Worth knowing for any future `@launcharr/tui` consumer.
 
+## Correction after review (2026-08-16)
+
+Mitch reviewed the running site and caught that the bar strip, agent cells and hover card
+had been built from the **design export's** hardcoded values rather than the app source —
+the exact failure the rest of this plan was careful to avoid for the matcher and panels.
+Four wrong facts, all decided the same day the export was generated: front app and
+right-side cells on `--dim` (bar.css is explicit that `.bar-cell` is `--fg`), the `working`
+cell on the site's `--cta` instead of the theme accent so it never retinted, a hover card
+missing its glyph and relative age with the wrong tmux line and offset, and `blocked` used
+as a state key when the wire name is `attention`.
+
+Hover was broken outright too: leaving a cell reset the card, so it reverted the moment the
+cursor left a 16px glyph. `bar/hover.ts` holds its card open while the cursor is on the
+cell _or_ the card and closes after a 200ms grace; `useCellHover` now ports that. Paddings
+diverged because the spotlight had an invented "large" size — the cluster renders real
+geometry now and the spotlight scales it with a transform, so there is one set of values.
+
+Outcome: **AGENTS invariant 10** (the site demos the real thing, never a replica) +
+DECISIONS entry, `264ca02` and `cc1a372`. `packages/tui` gained a `./themes` entry point
+along the way (server components can't import the barrel — JOURNAL 2026-08-16).
+
 ## Follow-ups (not blocking)
 
+- **Extract the bar chrome into `packages/tui`.** The website is a second consumer of a
+  visual language that only exists in `apps/desktop/src/bar/`, so the port is debt per
+  invariant 10. Needs Mitch's go-ahead (architecture) and coordination with whoever is live
+  on `bar/` — it was the battery session's active file set at the time.
 - The welcome video slot renders a placeholder frame; drop the embed in when footage exists.
-- `og.png` still carries the old "app launcher for pirates" positioning.
+- `og.png` still carries the old "app launcher for pirates" positioning — a rendered image,
+  so it needs regenerating rather than editing.
 - The comparison table's competitor claims are point-in-time and unversioned — worth a
   re-check whenever it's noticed to be stale.

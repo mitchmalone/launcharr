@@ -100,7 +100,13 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   the retired `#ff176c`, is gone. **`packages/tui` is multi-consumer now**: www typecheck
   catches kit changes. Site copy is fact-checked against the repo; the design guide's
   `~90MB` (main-process RSS, not the whole app) and `bar.modules`/clock-anchor claims were
-  corrected on the way in.
+  corrected on the way in. **Review caught the bar strip / agent cells / hover card built
+  from the design export instead of `bar/{main.tsx,bar.css}`** — wrong cell colors
+  (`--dim` where `.bar-cell` is `--fg`), pink instead of theme accent, broken hover, and
+  `blocked` used as a state key when the wire name is `attention`. Fixed, and the lesson is
+  now **AGENTS invariant 10** (the site demos the real thing, never a replica —
+  DECISIONS 2026-08-16). `packages/tui` also gained a `./themes` entry point: server
+  components can't import the barrel (JOURNAL 2026-08-16).
 
 ## In progress / next (ROADMAP B2–B4, P1)
 
@@ -112,6 +118,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   together); placement config (notched profiles shipped, plans/done/bar-zones-and-arranger.md).
 - Aerospace vendored wrap + adopt-or-stop migration (B3); module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
+- **Bar chrome → `packages/tui`** (awaiting Mitch's call): `apps/www` is now a second
+  consumer of a visual language that lives only in `apps/desktop/src/bar/`, so the
+  website's port is debt under invariant 10. Architecture move on files another stream is
+  usually live in — coordinate before starting.
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
   sketchybar config there when confident; TRMNL secret chain (age helper and infisical
