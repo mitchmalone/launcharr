@@ -1,3 +1,5 @@
+import type { AgentSession, BarSnapshot } from '@launcharr/tui'
+
 /**
  * Mock payloads for the website demo. Shapes mirror what the app's Rust side pushes
  * (wifi.rs, usage.rs, the agent socket monitor) so the demo panels are the real
@@ -94,149 +96,104 @@ export function fmtTokens(n: number): string {
 }
 
 /**
- * Wire states, verbatim from `AgentSession.state` in apps/desktop/src/bar/main.tsx.
- * `attention` is the wire name; "blocked" is only its display label — the app keeps
- * that split in AGENT_STATE_LABELS and so do we.
+ * Fictional agent sessions, in the shape the app's Rust side pushes
+ * (`AgentSession` from `@launcharr/tui`). The glyphs, colours, grouping and card
+ * layout are the kit's — the website supplies data only (AGENTS invariant 10).
+ *
+ * `updatedAt` is epoch seconds, so the demo builds these relative to load time.
  */
-export type AgentState = 'attention' | 'working' | 'done' | 'idle'
-
-/**
- * Cell appearance per state, ported from `.bar-agent-*` in bar/bar.css. The three
- * literal hexes are literal there too; `working` resolves to the *theme* accent, so
- * it retints with the theme picker exactly as the real bar does.
- */
-export const AGENT_STATES: Record<
-  AgentState,
-  { glyph: string; color: string; label: string; blurb: string }
-> = {
-  attention: {
-    glyph: '◉',
-    color: '#ff2d2d',
-    label: 'blocked',
-    blurb: 'needs you — breathes until you look',
-  },
-  working: {
-    glyph: '●',
-    // bar.css says var(--accent); --d-accent is the demo's scoped mirror of it
-    // (the page's own --accent is the max-contrast foreground, not the theme's).
-    color: 'var(--d-accent)',
-    label: 'working',
-    blurb: 'agent is mid-task',
-  },
-  done: {
-    glyph: '●',
-    color: '#00b0ff',
-    label: 'done · unread',
-    blurb: 'finished; marks read when you jump',
-  },
-  idle: {
-    glyph: '○',
-    color: '#00c853',
-    label: 'idle',
-    blurb: 'session open, nothing running',
-  },
-}
-
-/** Shaped like `AgentSession` in bar/main.tsx, minus the fields the card never reads. */
-export type Agent = {
-  session: string
-  agent: string
-  state: AgentState
-  title: string
-  detail: string
-  tmuxSession: string | null
-  tmuxWindow: number
-  tmuxWindowName: string
-  /** Seconds since the last update — the card renders "· Ns ago". */
+export const AGENT_AGES: {
+  agent: Omit<AgentSession, 'updatedAt'>
   age: number
-}
-
-export const AGENTS: Agent[] = [
+}[] = [
   {
-    session: 'a1',
-    agent: 'claude',
-    state: 'working',
-    title: 'refactor ranking tie-break',
-    detail: 'reading packages/core/src/ranking.ts',
-    tmuxSession: 'fable',
-    tmuxWindow: 1,
-    tmuxWindowName: 'core',
     age: 12,
+    agent: {
+      session: 'a1',
+      agent: 'claude',
+      state: 'working',
+      title: 'refactor ranking tie-break',
+      detail: 'reading packages/core/src/ranking.ts',
+      tmux: '',
+      tmuxSession: 'fable',
+      tmuxWindow: 1,
+      tmuxWindowName: 'core',
+    },
   },
   {
-    session: 'a2',
-    agent: 'claude',
-    state: 'attention',
-    title: 'release v0.5.0 — awaiting approval',
-    detail: 'permission needed: scripts/release.sh',
-    tmuxSession: 'fable',
-    tmuxWindow: 2,
-    tmuxWindowName: 'release',
     age: 47,
+    agent: {
+      session: 'a2',
+      agent: 'claude',
+      state: 'attention',
+      title: 'release v0.5.0 — awaiting approval',
+      detail: 'permission needed: scripts/release.sh',
+      tmux: '',
+      tmuxSession: 'fable',
+      tmuxWindow: 2,
+      tmuxWindowName: 'release',
+    },
   },
   {
-    session: 'a3',
-    agent: 'codex',
-    state: 'done',
-    title: 'usage panel — tests green',
-    detail: '14 passed, 0 failed',
-    tmuxSession: 'www',
-    tmuxWindow: 1,
-    tmuxWindowName: 'panels',
     age: 184,
+    agent: {
+      session: 'a3',
+      agent: 'codex',
+      state: 'done',
+      title: 'usage panel — tests green',
+      detail: '14 passed, 0 failed',
+      tmux: '',
+      tmuxSession: 'www',
+      tmuxWindow: 1,
+      tmuxWindowName: 'panels',
+    },
   },
   {
-    session: 'a4',
-    agent: 'claude',
-    state: 'idle',
-    title: '',
-    detail: 'waiting for a task',
-    tmuxSession: 'www',
-    tmuxWindow: 2,
-    tmuxWindowName: '',
     age: 900,
+    agent: {
+      session: 'a4',
+      agent: 'claude',
+      state: 'idle',
+      title: '',
+      detail: 'waiting for a task',
+      tmux: '',
+      tmuxSession: 'www',
+      tmuxWindow: 2,
+      tmuxWindowName: '',
+    },
   },
 ]
 
-/** `agentAge` from bar/main.tsx — same thresholds, same rounding. */
-export function agentAge(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
-  return `${Math.round(seconds / 3600)}h`
+/** Stamp the fictional ages against a real clock. */
+export function demoAgents(nowSeconds: number): AgentSession[] {
+  return AGENT_AGES.map(({ agent, age }) => ({
+    ...agent,
+    updatedAt: nowSeconds - age,
+  }))
 }
 
-/** The tmux line the card prints, or its no-pane fallback. */
-export function agentTmuxLine(a: Agent): string {
-  if (!a.tmuxSession) return 'no tmux pane'
-  return (
-    `${a.tmuxSession} · tab ${a.tmuxWindow}` +
-    (a.tmuxWindowName ? ` · ${a.tmuxWindowName}` : '')
-  )
-}
+/** What the states mean — the legend beside the agent-monitoring section. */
+export const AGENT_STATE_BLURBS: { state: string; blurb: string }[] = [
+  { state: 'attention', blurb: 'needs you — breathes until you look' },
+  { state: 'working', blurb: 'agent is mid-task' },
+  { state: 'done', blurb: 'finished; marks read when you jump' },
+  { state: 'idle', blurb: 'session open, nothing running' },
+]
 
-/**
- * `groupAgents` from bar/main.tsx: tmux-session groups ordered by name with
- * cells ordered by tab index, then loose cells for agents outside tmux —
- * invocation order never decides placement.
- */
-export const AGENT_GROUPS: Agent[][] = (() => {
-  const byName = new Map<string, Agent[]>()
-  for (const a of AGENTS) {
-    if (!a.tmuxSession) continue
-    const list = byName.get(a.tmuxSession) ?? []
-    list.push(a)
-    byName.set(a.tmuxSession, list)
+/** A full bar snapshot, exactly as bar.rs would push one. */
+export function demoSnapshot(nowSeconds: number, focused: string): BarSnapshot {
+  return {
+    workspaces: ['1', '2', '3', '4'],
+    focused,
+    frontApp: 'Ghostty',
+    batteryPct: 64,
+    onAc: false,
+    charging: false,
+    wifi: { online: true, ssid: 'Blackbeard 5G' },
+    trmnl: { pct: 87, name: 'TRMNL' },
+    agents: demoAgents(nowSeconds),
   }
-  for (const list of byName.values()) {
-    list.sort(
-      (x, y) =>
-        x.tmuxWindow - y.tmuxWindow || x.session.localeCompare(y.session),
-    )
-  }
-  return [...byName.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, list]) => list)
-})()
+}
 
 /**
  * Canned `?` answers. The real thing streams from the user's own claude/codex CLI

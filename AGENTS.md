@@ -92,17 +92,21 @@ it in `docs/DECISIONS.md`.
 9. **Release facts are generated, not authored.** `apps/www/src/lib/release.json` is written
    by `scripts/release.sh` — never hand-edit it. `site.ts` derives version, artifact URLs,
    and install methods from it; site copy is free, release data is not.
-10. **The site demos the real thing — never a replica.** Anything in `apps/www` that depicts
-    the app (panels, rows, the bar, agent cells, themes, keyboard behaviour) is **imported
-    from the shipping code** — `packages/tui`, `packages/core` — or, where that surface
-    doesn't live in a package yet, **ported from the app source with the source file named
-    in a comment**. Never invent a component, and never build one from a design mockup: a
-    mockup is a proposal, the app is the fact, and mockups go stale within hours (proven
-    2026-08-16, DECISIONS). Only genuinely absent data is fictional — a fake index, fake OS
-    readings — and it is shaped like the real payload. **The demo being the actual app is
-    the site's whole novelty; a replica that drifts is worse than no demo at all.** When a
-    port and the app disagree, the app wins. When a ported surface gains a second consumer,
-    extract it into a package instead of keeping two copies.
+10. **The website never holds a second copy of launcharr UI.** Every pixel `apps/www`
+    renders of the app — panels, rows, the bar, agent cells, cards, themes, keyboard
+    behaviour — is **imported from a shared package** (`packages/tui`, `packages/core`).
+    Not ported, not mirrored, not "kept in sync": imported. If a surface the site needs
+    lives only in `apps/desktop`, the fix is to **extract it into a package first**, then
+    import it — never to retype it with a comment pointing at the original. Copying is not
+    a shortcut to be justified; it is the failure. Never invent a component, and never
+    build one from a design mockup: a mockup is a proposal, the app is the fact, and
+    mockups go stale within hours (proven 2026-08-16, DECISIONS). Only genuinely absent
+    **data** is fictional — a fake index, fake OS readings — and it is shaped like the
+    real payload. **The demo being the actual app is the site's whole novelty; a replica
+    that drifts is worse than no demo at all**, because it ships a confident lie that
+    stays invisible until someone who knows the app looks at it. This scales the wrong way
+    with complexity: every new surface doubles the copies, and each one drifts silently.
+    Generalises invariant 5 from the matcher to the entire UI.
 
 ## Performance budgets (requirements, not aspirations)
 

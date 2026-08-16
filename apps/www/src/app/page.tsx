@@ -1,4 +1,4 @@
-import { BUILTIN_THEMES } from '@launcharr/tui/themes'
+import { agentGlyph, agentStateLabel } from '@launcharr/tui/bar'
 import {
   AppWindow,
   ArrowUpRight,
@@ -23,6 +23,7 @@ import Link from 'next/link'
 
 import { AgentSpotlight } from '@/components/agent-spotlight'
 import { BarStrip } from '@/components/bar-strip'
+import { BarThemeScope } from '@/components/bar-theme-scope'
 import { GithubIcon, XIcon } from '@/components/brand-icons'
 import { Demo } from '@/components/demo/demo'
 import { InstallTabs } from '@/components/install-tabs'
@@ -37,10 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AGENT_STATES } from '@/lib/demo-data'
+import { AGENT_STATE_BLURBS } from '@/lib/demo-data'
 import { GITHUB_URL, RELEASE, RELEASES_URL, VERSION } from '@/lib/site'
-
-const LAUNCHARR_THEME = BUILTIN_THEMES.launcharr!
 
 const MONO_CODE = 'font-mono text-(--fg)'
 const SECTION = 'mx-auto max-w-[1080px] px-8'
@@ -458,38 +457,22 @@ export default function Home() {
               ordered by tab. Hover a cell for the task and state; click it and
               launcharr drops you into the exact pane.
             </p>
-            <div
-              className="mt-2 grid gap-2.5 text-[13px]"
-              /* `working` resolves to the theme accent, as the bar does. */
-              style={
-                { '--d-accent': LAUNCHARR_THEME.accent } as React.CSSProperties
-              }
-            >
-              {(['attention', 'working', 'done', 'idle'] as const).map(
-                (state) => {
-                  const s = AGENT_STATES[state]
-                  return (
-                    <div key={state} className="flex items-center gap-3">
-                      <span
-                        style={{
-                          color: s.color,
-                          animation:
-                            state === 'attention'
-                              ? 'bar-agent-breathe 1.6s ease-in-out infinite'
-                              : undefined,
-                        }}
-                      >
-                        {s.glyph}
-                      </span>
-                      <span className="min-w-[12ch] text-(--fg)">
-                        {s.label}
-                      </span>
-                      <span className="text-(--muted)">{s.blurb}</span>
-                    </div>
-                  )
-                },
-              )}
-            </div>
+            {/* Glyphs, labels and colours all come from the kit — `bar-agent-*`
+                is the same class the real cell wears, so this legend cannot
+                disagree with the bar above it. */}
+            <BarThemeScope className="mt-2 grid gap-2.5 text-[13px]">
+              {AGENT_STATE_BLURBS.map(({ state, blurb }) => (
+                <div key={state} className="flex items-center gap-3">
+                  <span className={`bar-agent bar-agent-${state}`}>
+                    {agentGlyph(state)}
+                  </span>
+                  <span className="min-w-[12ch] text-(--fg)">
+                    {agentStateLabel(state)}
+                  </span>
+                  <span className="text-(--muted)">{blurb}</span>
+                </div>
+              ))}
+            </BarThemeScope>
           </div>
           <AgentSpotlight />
         </div>

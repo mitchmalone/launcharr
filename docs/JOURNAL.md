@@ -15,7 +15,8 @@ module graph into a server context. The error names `controls.tsx`/`hooks.ts`, n
 themes module, so it reads like a component problem when it's a barrel problem. Fix: a
 `./themes` entry point — themes are pure data, so server components take that path
 directly. Same trap waits for any other pure module in the kit (`nav/*`); split an entry
-point when a server-side consumer appears, not before.
+point when a server-side consumer appears, not before — `./bar` became the second instance
+within hours, when the bar's pure formatters were needed by a server component.
 
 ### 2026-08-16 · The demo bar's colors are in bar.css, and the design export was already stale
 

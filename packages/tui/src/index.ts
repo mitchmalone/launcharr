@@ -34,3 +34,48 @@ export {
 export type { CustomThemes, ThemeTokens } from './themes'
 export { defineStories } from './story'
 export type { Story, StoryFile } from './story'
+export {
+  Bar,
+  BarAgents,
+  BarBatteryCard,
+  BarBatteryCell,
+  BarCard,
+  BarCardDim,
+  BarCardHint,
+  BarCardLine,
+  BarCardSection,
+  BarCardTitle,
+  BarCell,
+  BarClock,
+  BarFrontApp,
+  BarHoverCell,
+  BarTrmnlCell,
+  BarWifiCell,
+  BarWorkspaces,
+  ICON_PROPS,
+  batteryIcon,
+} from './bar/components'
+export {
+  AGENT_GLYPHS,
+  AGENT_STATE_LABELS,
+  agentAge,
+  agentGlyph,
+  agentLocation,
+  agentStateLabel,
+  batteryState,
+  batteryTone,
+  formatBarClock,
+  groupAgents,
+  timeLeft,
+  toneClass,
+  trmnlTone,
+} from './bar/format'
+export type { CellTone } from './bar/format'
+export type {
+  AgentSession,
+  BarHoverApi,
+  BarModule,
+  BarSnapshot,
+  BarZones,
+  BatteryDetail,
+} from './bar/types'
