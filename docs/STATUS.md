@@ -58,6 +58,7 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   2026-08-10), markdown-lite rendering, `--continue` follow-ups, Esc ends. Gated by
   `agents.askMode` ("Enable agent mode", Settings → Agents, off by default); Esc/Backspace
   return to search, mode keys hop directly. Branch kept for reference.
+- **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the
   launcher window — `PANELS` registry in App.tsx, breadcrumb prompt, Esc-stack, panels
   are storied presentational components + thin invoke containers. Tenants: **`wifi ⏎`**
   (active network pinned, known networks scroll + Enter-connects, `p` power, scan row
