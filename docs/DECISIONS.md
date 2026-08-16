@@ -5,6 +5,58 @@
 
 ---
 
+### 2026-08-16 · Zone board v2: full-width, and retirement replaces show/hide
+
+- **Decision (layout).** The Menubar tab's zone boards deliberately break the settings
+  window's 160px-label/control grid — three drag columns need the whole content column
+  (`.row-full`). One-tab exception, not a new pattern.
+- **Decision (retirement).** The per-module checkbox is gone: ✕ on a widget row retires
+  it to a "Retired" tray under the board; tray chips drag back into any zone (or drag a
+  widget straight onto the tray). Persistence is the existing `enabled: false` flag left
+  in place — no schema change, and the bar renderer already skips disabled modules, so
+  the concurrently-edited bar code needed no touches (coordinated with the battery
+  session; boundaries held: this change is SettingsApp.tsx + settings.css only).
+
+### 2026-08-16 · Battery hover card: one lazy command, and power mode stays read-only
+
+- **Decision.** The bar's battery cell gets a hover card (capacity, time left, cycles, draw,
+  health, active power mode), fed by a new `bar_battery_detail` command that spawns
+  `ioreg -rn AppleSmartBattery` + `pmset -g custom` **on hover only**, never on the 1 Hz
+  snapshot. The power-profile row is **read-only** — clicking the cell opens System
+  Settings → Battery (a validated `open_path` target, not a new command).
+- **Why.** The snapshot is pushed to every bar every second; hanging an `ioreg` spawn off it
+  would buy a cost nobody sees most of the time — hence the fifth bar command, weighed
+  against invariant 3 and taken. Setting power mode needs `pmset` as root, i.e. an admin
+  prompt on every switch: invariant 1 (zero granted permissions) says macOS keeps that
+  switch and we only report its position.
+- **Also.** `bar_set_dropdown` now takes the height the open card needs (cards measure
+  themselves), and the `window.__barMouse` hover machinery moved from `AgentCluster` into a
+  shared `src/bar/hover.ts` — two hovering cells can't share one global by accident.
+
+### 2026-08-16 · apps/www adopts shadcn/ui, and the site consumes `@launcharr/tui`
+
+- **Decision (shadcn).** `apps/www` gains the shadcn/ui foundation — `components.json`,
+  `cn()`, `clsx` + `tailwind-merge` + CVA — and copies components in under
+  `src/components/ui/`. Its tokens are **mapped onto the existing launcharr CSS vars**,
+  never imported: shadcn's oklch palette would fork the design tokens that invariant 8
+  makes single-source. Radix is admitted only where it buys real keyboard a11y (Tabs);
+  Button/Badge/Table are CVA-and-markup only, and the agent hover card stays hand-rolled
+  because a Radix tooltip fights the fake-menubar aesthetic it lives inside.
+- **Why.** The redesign adds a comparison table, tabbed install, and a docs route — the
+  ordinary UI vocabulary the site has so far hand-rolled. shadcn is copy-in, so the
+  components become repo code we own rather than a dependency that owns us, which is what
+  keeps this compatible with "every dependency is a liability."
+- **Decision (tui).** The site takes `@launcharr/tui` as a workspace dependency and renders
+  the demo's wifi/dns/usage panels from the real kit. `src/lib/demo-themes.ts` — a
+  hand-copied theme fork — is deleted in favour of the kit's `BUILTIN_THEMES`.
+- **Why.** The fork had already drifted: it carried the retired `#ff176c` accent after the
+  app reverted to `#ff6b8c`. The kit is pure presentation with React as its only peer dep,
+  so there was never a reason for the website to own a second copy. Same spirit as
+  invariant 5 — the site demos the real thing or it isn't a demo.
+- **Cost.** The website now breaks if `@launcharr/tui` changes shape. Accepted: that break
+  is a typecheck failure in `pnpm verify`, which is exactly the signal a drifted hand-copy
+  never gave us.
+
 ### 2026-08-16 · Bar layout becomes explicit zones (left / center / right)
 
 - **Decision.** The clock-anchored flat module list (same day, below) lasted hours:

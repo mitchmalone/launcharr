@@ -297,6 +297,26 @@ button {
 
 /* --- Menubar zone board (drag between/within alignment zones). --- */
 
+/* Full-width section: the boards deliberately break the label/control grid —
+ * three drag columns need the whole content column (Mitch, 2026-08-16). */
+.row-full {
+  margin-bottom: 18px;
+}
+
+.row-full > .hint {
+  margin: 0 0 10px;
+}
+
+.row-full > .check {
+  margin-bottom: 10px;
+}
+
+.zoneboard-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .zoneboard {
   display: grid;
   gap: 8px;
@@ -325,6 +345,39 @@ button {
   padding: 14px 0;
   /* Keep dragenter targeting the column, not this hint. */
   pointer-events: none;
+}
+
+/* Retired tray: widgets pulled off the bar wait here as draggable chips. */
+.zonetray {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.zonetray-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zonetray .modrow {
+  margin-bottom: 0;
+}
+
+.modrow-retired .grow {
+  color: var(--dim);
+}
+
+.modx {
+  background: none;
+  border: none;
+  color: var(--dim);
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.modx:hover {
+  color: var(--danger);
 }
 
 /* --- Menubar widget arranger (drag to reorder). --- */

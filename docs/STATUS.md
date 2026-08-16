@@ -25,7 +25,11 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 - **The bar** (`bar.enabled` in config, ON for Mitch; Sketchybar retired — revert
   `brew services start sketchybar`): Omarchy-flat strip — workspaces (clickable +
   hotkey-tracked), front app, clock, wifi SSID, TRMNL battery (fail-soft, token
-  currently unresolvable), battery states. Architecture: Rust-pushed snapshots via
+  currently unresolvable), battery states — the battery cell **hovers open a card**
+  (plans/done/battery-hover-card.md): capacity, time left, cycles, draw, health, and the
+  active power mode read-only, click for System Settings → Battery. Hover machinery is
+  now shared (`src/bar/hover.ts`), cards declare their own dropdown height.
+  Architecture: Rust-pushed snapshots via
   webview eval at 1 Hz + FSEvents triggers dir (`~/.config/launcharr/triggers/` —
   aerospace exec-on-workspace-change touches it; **dotfiles change uncommitted**),
   async commands only, Floating level + constrainFrameRect override (menu bar slides
@@ -49,7 +53,7 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   fallback are code-owned; last-good cache bridges failures with "as of" stamps) in
   **Settings → Agents**,
   which also gates local monitoring (prune window, show-idle). **Settings → Menubar**:
-  bar on/off hot-applied + widget order (`bar.modules`, clock = center anchor).
+  bar on/off hot-applied + the zone board (see the zone-layouts bullet below).
 - **`?` agent mode** (ported 2026-08-16 from the spike-ask-ai branch): press `?` —
   the key flips the mode and is consumed (spike's keystroke-switched modes adopted for
   `!` `?` `:` after all, same day); provider selectable claude|codex (`agents.askProvider`,
@@ -79,8 +83,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   detection (`NSScreen.safeAreaInsets`, notch.rs); `bar.layout` is explicit zones
   (left/center/right, clock ordinary) with optional `bar.notchedLayout` (no center
   zone; absent → derived, center folds into right head); legacy flat lists migrate
-  at load. Settings → Menubar is a drag zone board (columns per zone, show/hide per
-  module, both profiles). Bar disable now hides panels instead of destroying
+  at load. Settings → Menubar is a full-width drag zone board (columns per zone, both
+  profiles; ✕ retires a widget to a tray, dragging back restores — DECISIONS
+  2026-08-16). Bar disable now hides panels instead of destroying
   (destroy = SIGABRT, JOURNAL 2026-08-16); tmux layout cache keeps only successes
   so agent borders survive cold start.
 

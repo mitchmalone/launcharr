@@ -539,9 +539,13 @@ const ZONE_LABELS: Record<ZoneName, string> = {
   right: 'Right',
 }
 
-/** One column per alignment zone; modules drag between and within columns,
- * with per-module show/hide. Pure HTML5 DnD — the list reorders live as the
- * drag passes over rows, commits through onChange. */
+/**
+ * One column per alignment zone plus a "Retired" tray. Modules drag between
+ * and within columns; ✕ retires a widget to the tray, dragging it back into a
+ * zone restores it. Retirement is `enabled: false` in place — the bar already
+ * skips disabled modules, so no schema change. Pure HTML5 DnD: the list
+ * reorders live as the drag passes over rows, commits through onChange.
+ */
 function ZoneBoard({
   zones,
   zoneNames,
@@ -553,88 +557,120 @@ function ZoneBoard({
 }) {
   const [dragId, setDragId] = useState<string | null>(null)
 
+  const all = () => [...zones.left, ...zones.center, ...zones.right]
+  const retired = all().filter((m) => !m.enabled)
   const without = (id: string): BarZones => ({
     left: zones.left.filter((m) => m.id !== id),
     center: zones.center.filter((m) => m.id !== id),
     right: zones.right.filter((m) => m.id !== id),
   })
-  const dragged = () =>
-    [...zones.left, ...zones.center, ...zones.right].find(
-      (m) => m.id === dragId,
-    )
-  /** Drop the dragged module into `zone`, before `beforeId` (or at the end). */
+  /** Drop the dragged module into `zone`, before `beforeId` (or at the end);
+   * dropping restores a retired widget. */
   const placeAt = (zone: ZoneName, beforeId: string | null) => {
-    const moved = dragged()
+    const moved = all().find((m) => m.id === dragId)
     if (!moved || moved.id === beforeId) return
     const next = without(moved.id)
     const list = next[zone]
     const at = beforeId ? list.findIndex((m) => m.id === beforeId) : -1
-    list.splice(at < 0 ? list.length : at, 0, moved)
+    list.splice(at < 0 ? list.length : at, 0, { ...moved, enabled: true })
     onChange(next)
   }
+  const retire = (id: string) => {
+    const flip = (list: BarZones['left']) =>
+      list.map((x) => (x.id === id ? { ...x, enabled: false } : x))
+    onChange({
+      left: flip(zones.left),
+      center: flip(zones.center),
+      right: flip(zones.right),
+    })
+  }
+
+  const chip = (
+    m: { id: string; enabled: boolean },
+    inZone: ZoneName | null,
+  ) => (
+    <div
+      key={m.id}
+      className={`modrow ${m.id === dragId ? 'modrow-dragging' : ''} ${inZone ? '' : 'modrow-retired'}`}
+      draggable
+      onDragStart={(e) => {
+        setDragId(m.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragEnter={(e) => {
+        if (inZone) {
+          e.stopPropagation()
+          placeAt(inZone, m.id)
+        }
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnd={() => setDragId(null)}
+    >
+      <GripVertical size={14} className="grip" aria-hidden />
+      <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
+      {inZone && (
+        <button
+          type="button"
+          className="modx"
+          title="retire widget"
+          onClick={() => retire(m.id)}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
 
   return (
-    <div
-      className="zoneboard"
-      style={{ gridTemplateColumns: `repeat(${zoneNames.length}, 1fr)` }}
-    >
-      {zoneNames.map((zone) => (
-        <div
-          key={zone}
-          className="zonecol"
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnter={(e) => {
-            // Only when entering the column's empty space, not a row.
-            if (e.target === e.currentTarget) placeAt(zone, null)
-          }}
-          onDrop={(e) => {
-            e.preventDefault()
-            setDragId(null)
-          }}
-        >
-          <div className="zonehead">{ZONE_LABELS[zone]}</div>
-          {zones[zone].map((m) => (
+    <div className="zoneboard-wrap">
+      <div
+        className="zoneboard"
+        style={{ gridTemplateColumns: `repeat(${zoneNames.length}, 1fr)` }}
+      >
+        {zoneNames.map((zone) => {
+          const active = zones[zone].filter((m) => m.enabled)
+          return (
             <div
-              key={m.id}
-              className={`modrow ${m.enabled ? '' : 'modrow-off'} ${m.id === dragId ? 'modrow-dragging' : ''}`}
-              draggable
-              onDragStart={(e) => {
-                setDragId(m.id)
-                e.dataTransfer.effectAllowed = 'move'
-              }}
-              onDragEnter={(e) => {
-                e.stopPropagation()
-                placeAt(zone, m.id)
-              }}
+              key={zone}
+              className="zonecol"
               onDragOver={(e) => e.preventDefault()}
-              onDragEnd={() => setDragId(null)}
+              onDragEnter={(e) => {
+                // Only when entering the column's empty space, not a row.
+                if (e.target === e.currentTarget) placeAt(zone, null)
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragId(null)
+              }}
             >
-              <GripVertical size={14} className="grip" aria-hidden />
-              <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
-              <label className="check" title={m.enabled ? 'shown' : 'hidden'}>
-                <input
-                  type="checkbox"
-                  checked={m.enabled}
-                  onChange={(e) => {
-                    const flip = (list: typeof zones.left) =>
-                      list.map((x) =>
-                        x.id === m.id ? { ...x, enabled: e.target.checked } : x,
-                      )
-                    onChange({
-                      left: flip(zones.left),
-                      center: flip(zones.center),
-                      right: flip(zones.right),
-                    })
-                  }}
-                />
-              </label>
+              <div className="zonehead">{ZONE_LABELS[zone]}</div>
+              {active.map((m) => chip(m, zone))}
+              {active.length === 0 && (
+                <div className="zoneempty">drop here</div>
+              )}
             </div>
-          ))}
-          {zones[zone].length === 0 && (
-            <div className="zoneempty">drop here</div>
+          )
+        })}
+      </div>
+      <div
+        className="zonetray"
+        onDragOver={(e) => e.preventDefault()}
+        onDragEnter={() => {
+          if (dragId) retire(dragId)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragId(null)
+        }}
+      >
+        <div className="zonehead">Retired</div>
+        <div className="zonetray-chips">
+          {retired.map((m) => chip(m, null))}
+          {retired.length === 0 && (
+            <div className="zoneempty">✕ a widget, or drag it here</div>
           )}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -663,18 +699,23 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
         </p>
       </Row>
       <hr />
-      <Row label="Widgets">
+      {/* Boards break the 160px-label grid on purpose (Mitch, 2026-08-16):
+          three drag columns need the whole content width. */}
+      <section className="row-full">
+        <div className="zonehead">Widgets</div>
         <p className="hint">
-          Drag widgets between the zones; the checkbox shows or hides one.
+          Drag widgets between the zones; ✕ retires one to the tray below,
+          dragging it back restores it.
         </p>
         <ZoneBoard
           zones={layout}
           zoneNames={['left', 'center', 'right']}
           onChange={(next) => set('bar', { ...config.bar, layout: next })}
         />
-      </Row>
+      </section>
       <hr />
-      <Row label="Notched displays">
+      <section className="row-full">
+        <div className="zonehead">Notched displays</div>
         <label className="check">
           <input
             type="checkbox"
@@ -704,7 +745,7 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
             }
           />
         )}
-      </Row>
+      </section>
     </>
   )
 }
