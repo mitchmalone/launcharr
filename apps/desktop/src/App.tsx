@@ -29,6 +29,7 @@ import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
 import { DnsPanelContainer } from './panels/DnsPanelContainer'
+import { UsagePanelContainer } from './panels/UsagePanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
@@ -49,6 +50,11 @@ const PANELS: Record<
     title: 'Agents',
     hint: 'coding agent sessions ▸',
     component: AgentsPanelContainer,
+  },
+  usage: {
+    title: 'Usage',
+    hint: 'token monitor ▸',
+    component: UsagePanelContainer,
   },
   wifi: {
     title: 'Wi-Fi',

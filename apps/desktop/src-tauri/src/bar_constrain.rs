@@ -95,6 +95,17 @@ pub fn enable_hover_events(webview: *mut AnyObject) -> bool {
     true
 }
 
+/// Global cursor position in screen points, origin at the primary screen's
+/// bottom-left. `+[NSEvent mouseLocation]` is a permission-free global read
+/// (unlike event *taps*, which need Accessibility) and safe off-main.
+pub fn mouse_location() -> Option<(f64, f64)> {
+    let cls = AnyClass::get(c"NSEvent")?;
+    // SAFETY: class method with no args returning NSPoint; matches AppKit's
+    // declared signature.
+    let p: objc2_foundation::NSPoint = unsafe { objc2::msg_send![cls, mouseLocation] };
+    Some((p.x, p.y))
+}
+
 /// App Nap can throttle frame delivery for a background accessory app. Take a
 /// user-initiated activity assertion (allowing idle system sleep) for the
 /// app's lifetime while the bar exists.

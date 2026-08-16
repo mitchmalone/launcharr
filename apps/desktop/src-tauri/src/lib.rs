@@ -32,6 +32,7 @@ mod shortcut;
 mod system_commands;
 mod terminal;
 mod tray;
+mod usage;
 mod wifi;
 
 /// `--extract-icons <dir>` child-process entry (see icons.rs for why this exists).
@@ -91,6 +92,7 @@ pub fn run() {
             commands::bar_switch_workspace,
             commands::bar_set_dropdown,
             commands::agents_status,
+            commands::usage_status,
             commands::agent_jump,
             commands::wifi_status,
             commands::wifi_known_networks,

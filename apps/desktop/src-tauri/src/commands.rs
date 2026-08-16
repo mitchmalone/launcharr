@@ -54,6 +54,13 @@ pub fn agents_status() -> Vec<crate::agents::AgentSession> {
     crate::agents::list()
 }
 
+/// Usage panel: cached local token aggregates; kicks a background rescan when
+/// stale, never blocks (DECISIONS 2026-08-16).
+#[tauri::command]
+pub fn usage_status() -> crate::usage::UsageReport {
+    crate::usage::report()
+}
+
 /// Jump to an agent session's tmux pane and bring the terminal frontmost;
 /// visiting marks a `done` session read. async: spawns tmux and `open`.
 #[tauri::command]

@@ -5,6 +5,20 @@
 
 ---
 
+### 2026-08-16 · Usage monitor is local-only: journals, not APIs
+
+- **Decision.** The `usage ⏎` token monitor (CodexBar-inspired) reads only the journals
+  the agent CLIs already write — `~/.claude/projects/**/*.jsonl` (per-message usage,
+  deduped by message id across session forks) and `~/.codex/sessions/**/*.jsonl`
+  (`token_count` totals + the local `rate_limits` snapshot). One command joins the IPC
+  surface: `usage_status`, returning a cached report and kicking a background rescan
+  when stale (per-file cache keyed by len+mtime; measured 110ms cold / 12ms warm over
+  ~98MB).
+- **Why.** CodexBar gets richer data via OAuth APIs and browser-cookie decryption — both
+  unthinkable under invariants 1–2. The journals carry everything the panel needs, and
+  local-only means the panel works offline and adds zero attack surface. Providers are
+  data-driven; more can join without new architecture.
+
 ### 2026-08-16 · Agent monitoring absorbed: launcharr owns the agent-status socket
 
 - **Decision.** launcharr replaces `sketchybar-agent-status` (Go daemon + sketchybar

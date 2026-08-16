@@ -39,6 +39,50 @@ pub fn set_dropdown(app: &AppHandle, open: bool) {
     let _ = app.run_on_main_thread(move || reframe(&handle));
 }
 
+/// Synthetic hover: WebKit refuses to process hover for a never-active
+/// accessory window even with an always-active tracking area (proven
+/// 2026-08-16), so hover is driven from Rust — poll the global cursor
+/// (permission-free) and feed window-local coordinates to the page, which
+/// resolves the hovered element itself. `(-1, -1)` means "cursor left".
+fn watch_mouse(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut was_inside = false;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(125));
+            let Some((x, y, inside)) = mouse_in_bar(&app) else {
+                continue;
+            };
+            if !inside && !was_inside {
+                continue;
+            }
+            let (px, py) = if inside { (x, y) } else { (-1.0, -1.0) };
+            was_inside = inside;
+            let Some(window) = app.get_webview_window("bar-0") else {
+                continue;
+            };
+            let _ = window.eval(format!(
+                "window.__barMouse && window.__barMouse({px:.1},{py:.1})"
+            ));
+        }
+    });
+}
+
+/// Cursor in bar-window CSS coordinates plus whether it's inside the window's
+/// current region (strip, or strip + dropdown while open). Primary display
+/// only, like the rest of the bar.
+fn mouse_in_bar(app: &AppHandle) -> Option<(f64, f64, bool)> {
+    let monitor = app.primary_monitor().ok()??;
+    let scale = monitor.scale_factor();
+    let width = monitor.size().width as f64 / scale;
+    let height = monitor.size().height as f64 / scale;
+    let (mx, my) = crate::bar_constrain::mouse_location()?;
+    // mouseLocation is bottom-left origin; the bar hangs from the top edge.
+    let x = mx;
+    let y = height - my;
+    let inside = (0.0..=width).contains(&x) && (0.0..=wanted_height()).contains(&y);
+    Some((x, y, inside))
+}
+
 tauri_panel! {
     panel!(BarPanel {
         config: {
@@ -132,6 +176,7 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     crate::bar_modules::start();
     watch(app.clone());
     watch_triggers(app.clone());
+    watch_mouse(app.clone());
     push_loop(app.clone());
     Ok(())
 }

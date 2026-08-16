@@ -40,6 +40,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   Go daemon booted out (revert: bootstrap
   `~/Library/LaunchAgents/com.mitchmalone.sketchybar-agent-status.plist` + repoint
   hooks; settings backups at `~/.claude*/settings.json.bak-agent-status`).
+- **`usage ⏎` token monitor** (plans/done/usage-panel.md): CodexBar-inspired, local-only
+  — Claude + Codex journals parsed in Rust (dedup, per-file cache, 110ms cold/12ms warm),
+  tokens by day/model + Codex weekly rate limit. `usage_status` command
+  (DECISIONS 2026-08-16).
 - **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the
   launcher window — `PANELS` registry in App.tsx, breadcrumb prompt, Esc-stack, panels
   are storied presentational components + thin invoke containers. Tenants: **`wifi ⏎`**

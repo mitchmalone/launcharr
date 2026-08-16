@@ -95,12 +95,12 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
   const idleTimer = useRef<number | null>(null)
   useEffect(
     () => () => {
+      delete window.__barMouse
       if (closeTimer.current != null) clearTimeout(closeTimer.current)
       if (idleTimer.current != null) clearTimeout(idleTimer.current)
     },
     [],
   )
-  if (agents.length === 0) return null
 
   const cancelClose = () => {
     if (closeTimer.current != null) {
@@ -114,9 +114,8 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
     setHoveredId(null)
     invoke('bar_set_dropdown', { open: false }).catch(console.error)
   }
-  // Fail-safe: AppKit hover delivery to a non-activating panel has already
-  // burned us once (bar_constrain::enable_hover_events) — if leave events go
-  // missing again, a card with no mouse activity for 10s closes itself.
+  // Fail-safe: if the Rust mouse feed ever stalls, a card with no activity
+  // for 10s closes itself rather than stranding the dropdown open.
   const armIdleClose = () => {
     if (idleTimer.current != null) clearTimeout(idleTimer.current)
     idleTimer.current = window.setTimeout(close, 10_000)
@@ -130,10 +129,41 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
     setHoveredId(id)
   }
   // Delayed close bridges the pixel gap between the strip and the card.
+  // Arm-once, not reset: the mouse feed repeats while the cursor is outside,
+  // and re-arming on every tick would keep the deadline forever in the future.
   const scheduleClose = () => {
-    cancelClose()
+    if (closeTimer.current != null) return
     closeTimer.current = window.setTimeout(close, 200)
   }
+
+  // Hover arrives from Rust, not AppKit: WebKit won't process hover for a
+  // never-active accessory window (JOURNAL 2026-08-16), so bar.rs polls the
+  // global cursor and feeds window-local coordinates here. (-1,-1) = left.
+  window.__barMouse = (x: number, y: number) => {
+    if (x < 0) {
+      if (hoveredId !== null) scheduleClose()
+      return
+    }
+    const el = document.elementFromPoint(x, y)
+    const cell = el?.closest('.bar-agent') as HTMLElement | null
+    if (cell?.dataset.session) {
+      if (cell.dataset.session !== hoveredId) openFor(cell.dataset.session)
+      else {
+        cancelClose()
+        armIdleClose()
+      }
+      return
+    }
+    if (hoveredId === null) return
+    if (el?.closest('.bar-agent-card')) {
+      cancelClose()
+      armIdleClose()
+    } else {
+      scheduleClose()
+    }
+  }
+
+  if (agents.length === 0) return null
 
   const { groups, loose } = groupAgents(agents)
   const hovered = agents.find((a) => a.session === hoveredId) ?? null
@@ -141,6 +171,7 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
     <button
       key={a.session}
       type="button"
+      data-session={a.session}
       className={`bar-agent bar-agent-${a.state}`}
       onMouseEnter={() => openFor(a.session)}
       onClick={() =>
@@ -194,6 +225,8 @@ declare global {
   interface Window {
     /** Rust pushes snapshots here via webview eval (see bar.rs push()). */
     __barPush?: (snap: BarSnapshot) => void
+    /** Rust-fed cursor position in CSS px; (-1,-1) = left the bar region. */
+    __barMouse?: (x: number, y: number) => void
   }
 }
 
