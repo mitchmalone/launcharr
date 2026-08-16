@@ -8,7 +8,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import {
@@ -20,6 +20,7 @@ import {
 } from '../lib/config'
 import { applyTheme } from '../lib/themes'
 import './bar.css'
+import { type BarHover, useBarHover } from './hover'
 
 /** Mirrors AgentSession in agents.rs. */
 interface AgentSession {
@@ -104,6 +105,9 @@ function groupAgents(agents: AgentSession[]) {
   return { groups, loose }
 }
 
+/** Growth the agent card needs while open (see useBarHover). */
+const AGENT_CARD_HEIGHT = 130
+
 /**
  * Agent session cells, replacing the retired sketchybar emoji widgets: one
  * glyph per session, boxed by tmux session and ordered by tab. Hovering opens
@@ -111,91 +115,30 @@ function groupAgents(agents: AgentSession[]) {
  * since a 30px strip can't host a popover — with the agent's task, state, and
  * tmux location. Click jumps to the pane and marks a done session read.
  */
-function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const closeTimer = useRef<number | null>(null)
-  const idleTimer = useRef<number | null>(null)
-  useEffect(
-    () => () => {
-      delete window.__barMouse
-      if (closeTimer.current != null) clearTimeout(closeTimer.current)
-      if (idleTimer.current != null) clearTimeout(idleTimer.current)
-    },
-    [],
-  )
-
-  const cancelClose = () => {
-    if (closeTimer.current != null) {
-      clearTimeout(closeTimer.current)
-      closeTimer.current = null
-    }
-  }
-  const close = () => {
-    cancelClose()
-    if (idleTimer.current != null) clearTimeout(idleTimer.current)
-    setHoveredId(null)
-    invoke('bar_set_dropdown', { open: false }).catch(console.error)
-  }
-  // Fail-safe: if the Rust mouse feed ever stalls, a card with no activity
-  // for 10s closes itself rather than stranding the dropdown open.
-  const armIdleClose = () => {
-    if (idleTimer.current != null) clearTimeout(idleTimer.current)
-    idleTimer.current = window.setTimeout(close, 10_000)
-  }
-  const openFor = (id: string) => {
-    cancelClose()
-    armIdleClose()
-    if (hoveredId === null) {
-      invoke('bar_set_dropdown', { open: true }).catch(console.error)
-    }
-    setHoveredId(id)
-  }
-  // Delayed close bridges the pixel gap between the strip and the card.
-  // Arm-once, not reset: the mouse feed repeats while the cursor is outside,
-  // and re-arming on every tick would keep the deadline forever in the future.
-  const scheduleClose = () => {
-    if (closeTimer.current != null) return
-    closeTimer.current = window.setTimeout(close, 200)
-  }
-
-  // Hover arrives from Rust, not AppKit: WebKit won't process hover for a
-  // never-active accessory window (JOURNAL 2026-08-16), so bar.rs polls the
-  // global cursor and feeds window-local coordinates here. (-1,-1) = left.
-  window.__barMouse = (x: number, y: number) => {
-    if (x < 0) {
-      if (hoveredId !== null) scheduleClose()
-      return
-    }
-    const el = document.elementFromPoint(x, y)
-    const cell = el?.closest('.bar-agent') as HTMLElement | null
-    if (cell?.dataset.session) {
-      if (cell.dataset.session !== hoveredId) openFor(cell.dataset.session)
-      else {
-        cancelClose()
-        armIdleClose()
-      }
-      return
-    }
-    if (hoveredId === null) return
-    if (el?.closest('.bar-agent-card')) {
-      cancelClose()
-      armIdleClose()
-    } else {
-      scheduleClose()
-    }
-  }
-
+function AgentCluster({
+  agents,
+  now,
+  hover,
+}: {
+  agents: AgentSession[]
+  now: Date
+  hover: BarHover
+}) {
   if (agents.length === 0) return null
 
   const { groups, loose } = groupAgents(agents)
+  const hoveredId = hover.hovered?.startsWith('agent:')
+    ? hover.hovered.slice('agent:'.length)
+    : null
   const hovered = agents.find((a) => a.session === hoveredId) ?? null
   const cell = (a: AgentSession) => (
     <button
       key={a.session}
       type="button"
-      data-session={a.session}
+      data-hover={`agent:${a.session}`}
+      data-hover-height={AGENT_CARD_HEIGHT}
       className={`bar-agent bar-agent-${a.state}`}
-      onMouseEnter={() => openFor(a.session)}
+      onMouseEnter={() => hover.enter(`agent:${a.session}`, AGENT_CARD_HEIGHT)}
       onClick={() =>
         invoke('agent_jump', { session: a.session }).catch(console.error)
       }
@@ -207,9 +150,8 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
   return (
     <div
       className="bar-agents"
-      onMouseEnter={cancelClose}
-      onMouseLeave={scheduleClose}
-      onMouseMove={hoveredId !== null ? armIdleClose : undefined}
+      onMouseEnter={hover.stay}
+      onMouseLeave={hover.leave}
     >
       {groups.map(([name, list]) => (
         <div key={name} className="bar-agent-group">
@@ -218,25 +160,23 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
       ))}
       {loose.map(cell)}
       {hovered && (
-        <div className="bar-agent-card">
-          <div className="bar-agent-card-title">
-            {hovered.title || hovered.agent}
-          </div>
-          <div className={`bar-agent-card-state bar-agent-${hovered.state}`}>
+        <div className="bar-card bar-agent-card" ref={hover.cardRef}>
+          <div className="bar-card-title">{hovered.title || hovered.agent}</div>
+          <div className={`bar-card-line bar-agent-${hovered.state}`}>
             {AGENT_GLYPHS[hovered.state] ?? '○'}{' '}
             {AGENT_STATE_LABELS[hovered.state] ?? hovered.state} ·{' '}
             {agentAge(hovered.updatedAt, now)} ago
           </div>
           {hovered.detail && (
-            <div className="bar-agent-card-line">{hovered.detail}</div>
+            <div className="bar-card-line bar-card-dim">{hovered.detail}</div>
           )}
-          <div className="bar-agent-card-line">
+          <div className="bar-card-line bar-card-dim">
             {hovered.tmuxSession
               ? `${hovered.tmuxSession} · tab ${hovered.tmuxWindow}` +
                 (hovered.tmuxWindowName ? ` · ${hovered.tmuxWindowName}` : '')
               : 'no tmux pane'}
           </div>
-          <div className="bar-agent-card-hint">click cell to jump</div>
+          <div className="bar-card-hint">click cell to jump</div>
         </div>
       )}
     </div>
@@ -247,9 +187,198 @@ declare global {
   interface Window {
     /** Rust pushes snapshots here via webview eval (see bar.rs push()). */
     __barPush?: (snap: BarSnapshot) => void
-    /** Rust-fed cursor position in CSS px; (-1,-1) = left the bar region. */
-    __barMouse?: (x: number, y: number) => void
   }
+}
+
+/** Mirrors BatteryDetail in battery.rs — every field optional by design. */
+interface BatteryDetail {
+  pct: number | null
+  onAc: boolean
+  charging: boolean
+  fullyCharged: boolean
+  cycleCount: number | null
+  capacityWh: number | null
+  designWh: number | null
+  healthPct: number | null
+  minutesRemaining: number | null
+  batteryWatts: number | null
+  systemWatts: number | null
+  powerMode: 'low' | 'automatic' | 'high' | null
+}
+
+const BATTERY_CARD_HEIGHT = 250
+
+const POWER_MODES: [BatteryDetail['powerMode'], string][] = [
+  ['low', 'Low power'],
+  ['automatic', 'Automatic'],
+  ['high', 'High power'],
+]
+
+/** "4h 58m" / "58m" — the same shape macOS puts in its own battery menu. */
+function timeLeft(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  return h > 0 ? `${h}h ${minutes % 60}m` : `${minutes}m`
+}
+
+/** The lead line under "Battery": what the pack is doing right now. */
+function batteryState(d: BatteryDetail): string {
+  if (d.charging) return 'charging'
+  if (d.onAc) return d.fullyCharged ? 'charged' : 'AC attached · not charging'
+  return 'discharging'
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="bar-card-dim">{label}</span>
+      <span className="bar-battery-value">{value}</span>
+    </>
+  )
+}
+
+/**
+ * The battery cell and its hover card: the strip shows percent, the card the
+ * facts that don't fit — capacity, time left, cycles, draw, health, and the
+ * active power mode. Power mode is read-only (setting it needs admin auth,
+ * which the zero-permissions invariant won't spend); the click opens System
+ * Settings → Battery instead. Detail is fetched on hover only, never on the
+ * 1 Hz snapshot path.
+ */
+function BatteryCell({
+  snap,
+  className,
+  hover,
+}: {
+  snap: BarSnapshot
+  className: string
+  hover: BarHover
+}) {
+  const open = hover.hovered === 'battery'
+  const [detail, setDetail] = useState<BatteryDetail | null>(null)
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    invoke<BatteryDetail>('bar_battery_detail')
+      .then((d) => live && setDetail(d))
+      .catch(console.error)
+    return () => {
+      live = false
+    }
+  }, [open])
+
+  if (snap.batteryPct == null) {
+    // Desktop Mac: no pack to report on, so no card either.
+    return snap.onAc ? (
+      <span className="bar-cell">
+        <BatteryCharging {...ICON_PROPS} />
+        AC
+      </span>
+    ) : null
+  }
+  const Icon =
+    snap.charging || snap.onAc
+      ? BatteryCharging
+      : snap.batteryPct >= 75
+        ? BatteryFull
+        : snap.batteryPct >= 35
+          ? BatteryMedium
+          : BatteryLow
+  // The card leans on the live snapshot for percent/state so it never lags the
+  // strip it hangs from; only the slow facts come from the detail fetch.
+  const d: BatteryDetail | null = detail && {
+    ...detail,
+    pct: snap.batteryPct,
+    onAc: snap.onAc,
+    charging: snap.charging,
+  }
+  const watts = d?.charging || !d?.onAc ? d?.batteryWatts : d?.systemWatts
+  return (
+    <span className="bar-battery">
+      <button
+        type="button"
+        data-hover="battery"
+        data-hover-height={BATTERY_CARD_HEIGHT}
+        className={className}
+        onMouseEnter={() => hover.enter('battery', BATTERY_CARD_HEIGHT)}
+        onClick={() =>
+          invoke('open_path', { target: 'battery-settings' }).catch(
+            console.error,
+          )
+        }
+      >
+        <Icon {...ICON_PROPS} />
+        {snap.batteryPct}%
+      </button>
+      {open && d && (
+        <div className="bar-card bar-battery-card" ref={hover.cardRef}>
+          <div className="bar-battery-head">
+            <Icon size={20} strokeWidth={2.2} aria-hidden />
+            <div>
+              <div className="bar-card-title">Battery</div>
+              <div className="bar-card-dim bar-battery-state">
+                {batteryState(d)}
+              </div>
+            </div>
+            <div className="bar-battery-pct">{d.pct}%</div>
+          </div>
+          <div className="bar-battery-track">
+            <div
+              className={`bar-battery-fill ${className.includes('bar-danger') ? 'bar-battery-fill-low' : ''}`}
+              style={{ width: `${d.pct ?? 0}%` }}
+            />
+          </div>
+          <div className="bar-battery-grid">
+            {d.capacityWh != null && (
+              <Stat
+                label="Battery size"
+                value={`${Math.round(d.capacityWh)}Wh`}
+              />
+            )}
+            {d.minutesRemaining != null && (
+              <Stat
+                label={d.charging ? 'Time to full' : 'Time left'}
+                value={timeLeft(d.minutesRemaining)}
+              />
+            )}
+            {d.cycleCount != null && (
+              <Stat label="Charge cycles" value={`${d.cycleCount}`} />
+            )}
+            {watts != null && watts !== 0 && (
+              <Stat
+                label={
+                  d.charging
+                    ? 'Charging'
+                    : d.onAc
+                      ? 'System draw'
+                      : 'Discharging'
+                }
+                value={`${Math.abs(watts).toFixed(1)}W`}
+              />
+            )}
+            {d.healthPct != null && (
+              <Stat label="Health" value={`${d.healthPct}%`} />
+            )}
+          </div>
+          {d.powerMode && (
+            <>
+              <div className="bar-card-section">Power profile</div>
+              <div className="bar-battery-modes">
+                {POWER_MODES.map(([mode, label]) => (
+                  <span
+                    key={label}
+                    className={`bar-battery-mode ${mode === d.powerMode ? 'bar-battery-mode-on' : ''}`}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="bar-card-hint">click cell for Battery settings</div>
+        </div>
+      )}
+    </span>
+  )
 }
 
 /** The bar wears the panel theme and renders module order/toggles from
@@ -326,6 +455,9 @@ function useSnapshot(): [
 function Bar() {
   const [snap, now, patch] = useSnapshot()
   const cfg = useBarConfig()
+  // One owner of the Rust mouse feed for the whole bar — every hoverable cell
+  // shares it (see hover.ts).
+  const hover = useBarHover()
 
   const switchWorkspace = (ws: string) => {
     // Optimistic: highlight now, aerospace catches up off the main thread.
@@ -395,6 +527,7 @@ function Bar() {
                   : snap.agents
               }
               now={now}
+              hover={hover}
             />
           )
         )
@@ -435,32 +568,17 @@ function Bar() {
             </span>
           )
         )
-      case 'battery': {
-        if (snap?.batteryPct == null) {
-          return (
-            snap?.onAc && (
-              <span key={id} className="bar-cell">
-                <BatteryCharging {...ICON_PROPS} />
-                AC
-              </span>
-            )
-          )
-        }
-        const BatteryIcon =
-          snap.charging || snap.onAc
-            ? BatteryCharging
-            : snap.batteryPct >= 75
-              ? BatteryFull
-              : snap.batteryPct >= 35
-                ? BatteryMedium
-                : BatteryLow
+      case 'battery':
         return (
-          <span key={id} className={batteryClass}>
-            <BatteryIcon {...ICON_PROPS} />
-            {snap.batteryPct}%
-          </span>
+          snap && (
+            <BatteryCell
+              key={id}
+              snap={snap}
+              className={batteryClass}
+              hover={hover}
+            />
+          )
         )
-      }
       case 'clock':
         return (
           <span key={id} className="bar-clock">

@@ -41,10 +41,19 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
     crate::bar::snapshot()
 }
 
-/// Open/close the bar's agent hover dropdown (window resize, main thread).
+/// Open/close a bar hover dropdown (window resize, main thread). `height` is
+/// the extra logical height the open card needs; the bar clamps it.
 #[tauri::command]
-pub fn bar_set_dropdown(open: bool, app: AppHandle) {
-    crate::bar::set_dropdown(&app, open);
+pub fn bar_set_dropdown(open: bool, height: Option<f64>, app: AppHandle) {
+    crate::bar::set_dropdown(&app, open, height);
+}
+
+/// The battery hover card's detail (DECISIONS 2026-08-16). async: spawns
+/// `ioreg` and `pmset`, and only ever on hover — the 1 Hz snapshot must not
+/// carry data nobody is looking at.
+#[tauri::command]
+pub async fn bar_battery_detail() -> crate::battery::BatteryDetail {
+    crate::battery::detail()
 }
 
 /// Agents panel: the monitored sessions (DECISIONS 2026-08-16). Sync — reads
@@ -335,8 +344,10 @@ pub fn write_config(config: Config) -> CmdResult<()> {
     Ok(())
 }
 
-/// Open launcharr's editable surfaces from settings: the config file (default editor) or
-/// the scripts folder (Finder). Validated enum — never an arbitrary path across IPC.
+/// Open launcharr's editable surfaces from settings: the config file (default editor),
+/// the scripts folder (Finder), or System Settings → Battery (the battery hover card's
+/// click target — macOS owns power mode, we only report it). Validated enum — never an
+/// arbitrary path across IPC.
 #[tauri::command]
 pub fn open_path(target: String) -> CmdResult<()> {
     let path = match target.as_str() {
@@ -346,6 +357,13 @@ pub fn open_path(target: String) -> CmdResult<()> {
             std::fs::create_dir_all(&dir)?;
             dir
         }
+        // The same curated pane table the launcher indexes — one source of truth
+        // for deep links, even for a one-off caller like the bar.
+        "battery-settings" => crate::settings_panes::SETTINGS_PANES
+            .iter()
+            .find(|(name, _)| *name == "Battery")
+            .map(|(_, id)| std::path::PathBuf::from(crate::settings_panes::deep_link(id)))
+            .ok_or_else(|| CmdError::Internal("no Battery settings pane".into()))?,
         other => return Err(CmdError::Internal(format!("unknown open target: {other}"))),
     };
     std::process::Command::new("open").arg(path).spawn()?;

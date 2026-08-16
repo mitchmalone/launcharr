@@ -6,6 +6,32 @@
 
 ---
 
+### 2026-08-16 · `ioreg` battery keys: nested-first, flags as digits, negatives printed unsigned
+
+Three traps in `ioreg -rn AppleSmartBattery` text output, all hit while building
+the battery card. (1) The first occurrence of a key is often the copy nested in
+the `BatteryData` dict, not the top-level one — `DesignCapacity` exists _only_
+there. Search for the quoted key (`"DesignCapacity"`) so `"FedDesignCapacity"`
+can't answer for it. (2) Flags print as `Yes`/`No` at top level but as `1`/`0`
+inside dicts, so a flag reader that only knows Yes/No returns nothing for
+`FullyCharged`. (3) `Amperage` is two's-complement but printed unsigned —
+`18446744073709551543` is −73 mA; parse as `u64`, then `as i64`. Time estimates
+use `65535` for "unknown", which is what `AvgTimeToEmpty` reads whenever the
+machine is on AC.
+
+### 2026-08-16 · Bar hover cards: one `__barMouse`, and let the card measure itself
+
+The Rust cursor feed writes a single `window.__barMouse`, so the hover
+machinery can't live inside one component — the second hoverable cell silently
+wins the global and the first stops opening. It now lives in `src/bar/hover.ts`,
+owned by `Bar`, hit-testing `[data-hover]` cells and `.bar-card` regions.
+Card height had the same shape of problem: the window grows by a fixed amount,
+so a card whose content arrives after the open (the battery detail fetch) gets
+clipped by a guess made before it existed. The cell's `data-hover-height` is now
+just the opening estimate; a `ResizeObserver` on the card re-sends the real
+height (`getBoundingClientRect().bottom`, viewport-relative — the viewport top
+_is_ the strip top, so nesting can't skew it).
+
 ### 2026-08-16 · Destroying the NSPanel bar aborts the whole process
 
 Toggling `bar.enabled` off called `WebviewWindow::destroy()` on the converted

@@ -17,6 +17,7 @@ mod audio;
 mod bar;
 mod bar_constrain;
 mod bar_modules;
+mod battery;
 mod bookmarks;
 mod clipboard;
 mod commands;
@@ -95,6 +96,7 @@ pub fn run() {
             commands::bar_snapshot,
             commands::bar_switch_workspace,
             commands::bar_set_dropdown,
+            commands::bar_battery_detail,
             commands::agents_status,
             commands::usage_status,
             ask::ask,

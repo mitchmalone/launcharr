@@ -16,25 +16,30 @@ use crate::error::{CmdError, CmdResult};
 /// Logical bar height, matching the Sketchybar setup it replaces.
 pub const BAR_HEIGHT: f64 = 30.0;
 
-/// Extra logical height while the agent hover card is open — the strip can't
-/// host a popover inside 30px, so the whole window grows downward briefly.
+/// Extra logical height while a hover card is open — the strip can't host a
+/// popover inside 30px, so the whole window grows downward briefly. The page
+/// asks for the height its card needs; this is the fallback and the ceiling.
 const DROPDOWN_EXTRA: f64 = 130.0;
+const DROPDOWN_MAX: f64 = 480.0;
 
-/// Whether the hover dropdown is open; the reframe heartbeat must agree with
-/// the hover state or it snaps the window back mid-hover.
-static DROPDOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Extra height the open hover card wants, 0 when closed; the reframe
+/// heartbeat must agree with the hover state or it snaps the window back
+/// mid-hover.
+static DROPDOWN_EXTRA_PX: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 fn wanted_height() -> f64 {
-    if DROPDOWN.load(std::sync::atomic::Ordering::Relaxed) {
-        BAR_HEIGHT + DROPDOWN_EXTRA
-    } else {
-        BAR_HEIGHT
-    }
+    BAR_HEIGHT + f64::from(DROPDOWN_EXTRA_PX.load(std::sync::atomic::Ordering::Relaxed))
 }
 
-/// Open/close the hover dropdown by resizing the primary bar window.
-pub fn set_dropdown(app: &AppHandle, open: bool) {
-    DROPDOWN.store(open, std::sync::atomic::Ordering::Relaxed);
+/// Open/close a hover dropdown by resizing the primary bar window. Cards
+/// declare their own height — the agent card is short, the battery card isn't.
+pub fn set_dropdown(app: &AppHandle, open: bool, height: Option<f64>) {
+    let extra = if open {
+        height.unwrap_or(DROPDOWN_EXTRA).clamp(0.0, DROPDOWN_MAX)
+    } else {
+        0.0
+    };
+    DROPDOWN_EXTRA_PX.store(extra as u32, std::sync::atomic::Ordering::Relaxed);
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || reframe(&handle));
 }
@@ -356,7 +361,7 @@ pub fn snapshot() -> BarSnapshot {
             .unwrap_or_default();
         eprintln!("[launcharr bar] focus fallback used; table={raw:?} → focused={focused:?}");
     }
-    let (battery_pct, on_ac, charging) = battery_cached();
+    let (battery_pct, on_ac, charging) = crate::battery::cached();
     BarSnapshot {
         workspaces,
         focused,
@@ -385,28 +390,6 @@ fn parse_workspace_table(out: &str) -> (Vec<String>, Option<String>) {
         names.push(name);
     }
     (names, focused)
-}
-
-/// Battery changes on the scale of minutes; don't pay a pmset spawn per tick.
-fn battery_cached() -> (Option<u8>, bool, bool) {
-    use std::sync::Mutex;
-    use std::time::{Duration, Instant};
-    type Reading = (Option<u8>, bool, bool);
-    static CACHE: Mutex<Option<(Instant, Reading)>> = Mutex::new(None);
-    let mut cache = CACHE.lock().unwrap();
-    if let Some((at, value)) = *cache {
-        if at.elapsed() < Duration::from_secs(30) {
-            return value;
-        }
-    }
-    let value = Command::new("/usr/bin/pmset")
-        .args(["-g", "batt"])
-        .output()
-        .ok()
-        .map(|out| parse_battery(&String::from_utf8_lossy(&out.stdout)))
-        .unwrap_or((None, false, false));
-    *cache = Some((Instant::now(), value));
-    value
 }
 
 /// Focus a workspace (bar click). The name comes from our own snapshot, but
@@ -479,54 +462,9 @@ fn parse_lines(out: &str) -> Vec<String> {
         .collect()
 }
 
-/// Parse `pmset -g batt`: percentage from the first `NN%` token, AC from the
-/// "Now drawing from 'AC Power'" header, charging from the state field
-/// ("discharging" must not count).
-fn parse_battery(out: &str) -> (Option<u8>, bool, bool) {
-    let pct = out.split('%').next().and_then(|before| {
-        let digits: String = before
-            .chars()
-            .rev()
-            .take_while(char::is_ascii_digit)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-        digits.parse().ok()
-    });
-    let charging = out.contains("; charging") || out.contains("; finishing charge");
-    (pct, out.contains("AC Power"), charging)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn parses_battery_discharging() {
-        let out = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=5308515)\t89%; discharging; 4:32 remaining present: true\n";
-        assert_eq!(parse_battery(out), (Some(89), false, false));
-    }
-
-    #[test]
-    fn parses_battery_on_ac() {
-        let out = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=5308515)\t100%; charged; 0:00 remaining present: true\n";
-        assert_eq!(parse_battery(out), (Some(100), true, false));
-    }
-
-    #[test]
-    fn parses_battery_charging() {
-        let out = "Now drawing from 'AC Power'\n -InternalBattery-0 (id=5308515)\t64%; charging; 1:10 remaining present: true\n";
-        assert_eq!(parse_battery(out), (Some(64), true, true));
-    }
-
-    #[test]
-    fn battery_absent_on_desktops() {
-        assert_eq!(
-            parse_battery("Now drawing from 'AC Power'\n"),
-            (None, true, false)
-        );
-    }
 
     #[test]
     fn parses_workspace_table() {
