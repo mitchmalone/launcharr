@@ -92,9 +92,11 @@ function groupAgents(agents: AgentSession[]) {
 function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const closeTimer = useRef<number | null>(null)
+  const idleTimer = useRef<number | null>(null)
   useEffect(
     () => () => {
       if (closeTimer.current != null) clearTimeout(closeTimer.current)
+      if (idleTimer.current != null) clearTimeout(idleTimer.current)
     },
     [],
   )
@@ -106,8 +108,22 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
       closeTimer.current = null
     }
   }
+  const close = () => {
+    cancelClose()
+    if (idleTimer.current != null) clearTimeout(idleTimer.current)
+    setHoveredId(null)
+    invoke('bar_set_dropdown', { open: false }).catch(console.error)
+  }
+  // Fail-safe: AppKit hover delivery to a non-activating panel has already
+  // burned us once (bar_constrain::enable_hover_events) — if leave events go
+  // missing again, a card with no mouse activity for 10s closes itself.
+  const armIdleClose = () => {
+    if (idleTimer.current != null) clearTimeout(idleTimer.current)
+    idleTimer.current = window.setTimeout(close, 10_000)
+  }
   const openFor = (id: string) => {
     cancelClose()
+    armIdleClose()
     if (hoveredId === null) {
       invoke('bar_set_dropdown', { open: true }).catch(console.error)
     }
@@ -116,10 +132,7 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
   // Delayed close bridges the pixel gap between the strip and the card.
   const scheduleClose = () => {
     cancelClose()
-    closeTimer.current = window.setTimeout(() => {
-      setHoveredId(null)
-      invoke('bar_set_dropdown', { open: false }).catch(console.error)
-    }, 200)
+    closeTimer.current = window.setTimeout(close, 200)
   }
 
   const { groups, loose } = groupAgents(agents)
@@ -143,6 +156,7 @@ function AgentCluster({ agents, now }: { agents: AgentSession[]; now: Date }) {
       className="bar-agents"
       onMouseEnter={cancelClose}
       onMouseLeave={scheduleClose}
+      onMouseMove={hoveredId !== null ? armIdleClose : undefined}
     >
       {groups.map(([name, list]) => (
         <div key={name} className="bar-agent-group">

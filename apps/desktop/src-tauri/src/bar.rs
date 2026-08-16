@@ -123,6 +123,9 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
             if !crate::bar_constrain::disable_occlusion_detection(platform.inner().cast()) {
                 eprintln!("[launcharr bar] occlusion-detection override unavailable");
             }
+            if !crate::bar_constrain::enable_hover_events(platform.inner().cast()) {
+                eprintln!("[launcharr bar] hover tracking unavailable");
+            }
         });
     }
     crate::bar_constrain::prevent_app_nap();

@@ -52,6 +52,49 @@ pub fn disable_occlusion_detection(webview: *mut AnyObject) -> bool {
     true
 }
 
+/// Hover (mouseenter/leave/move) never reaches the bar's DOM: WKWebView's own
+/// tracking area is active-in-active-app, and an accessory app is only active
+/// after a click — so "hover" degraded to a click action and the mouseleave
+/// that closes the agent dropdown never arrived (found 2026-08-16). Attach an
+/// always-active tracking area owned by the webview so AppKit feeds it
+/// enter/exit/move regardless of activation, and let the window pass
+/// mouse-moved events along.
+pub fn enable_hover_events(webview: *mut AnyObject) -> bool {
+    if webview.is_null() {
+        return false;
+    }
+    let Some(area_class) = AnyClass::get(c"NSTrackingArea") else {
+        return false;
+    };
+    // NSTrackingArea options: MouseEnteredAndExited | MouseMoved |
+    // ActiveAlways | InVisibleRect (values from NSTrackingArea.h).
+    const OPTIONS: usize = 0x01 | 0x02 | 0x80 | 0x200;
+    // SAFETY: pointer comes from tauri's PlatformWebview (a live WKWebView).
+    // alloc+init returns +1; addTrackingArea: retains, so the release balances
+    // our alloc and the view owns the area. InVisibleRect ignores the rect
+    // argument and tracks the view's whole visible bounds.
+    unsafe {
+        let window: *mut AnyObject = objc2::msg_send![&*webview, window];
+        if !window.is_null() {
+            let _: () = objc2::msg_send![&*window, setAcceptsMouseMovedEvents: true];
+        }
+        let area: *mut AnyObject = objc2::msg_send![area_class, alloc];
+        let area: *mut AnyObject = objc2::msg_send![
+            area,
+            initWithRect: NSRect::ZERO,
+            options: OPTIONS,
+            owner: &*webview,
+            userInfo: std::ptr::null_mut::<AnyObject>()
+        ];
+        if area.is_null() {
+            return false;
+        }
+        let _: () = objc2::msg_send![&*webview, addTrackingArea: &*area];
+        let _: () = objc2::msg_send![&*area, release];
+    }
+    true
+}
+
 /// App Nap can throttle frame delivery for a background accessory app. Take a
 /// user-initiated activity assertion (allowing idle system sleep) for the
 /// app's lifetime while the bar exists.

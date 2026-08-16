@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-08-16 · Hover never reaches an accessory app's panel until you click it
+
+The agent dropdown "opened on click, not hover, and never closed": WKWebView's own
+mouse-tracking area is active-in-active-app, and launcharr (accessory policy) is only
+active after a first-mouse click on the panel — so mouseenter arrived with the click and
+mouseleave never arrived at all. Fix: `bar_constrain::enable_hover_events` attaches an
+NSTrackingArea (ActiveAlways | InVisibleRect | enter/exit/move, owner = the webview) and
+sets `acceptsMouseMovedEvents` on the window. Belt-and-braces in JS: a card with no mouse
+activity for 10s closes itself, so lost leave events can't strand it again.
+
 ### 2026-08-16 · Concurrent socket handlers tore agents.json on the first live test
 
 The agents monitor spawns a handler thread per socket connection, and Claude hook events
