@@ -37,6 +37,8 @@ export type { Story, StoryFile } from './story'
 export {
   Bar,
   BarAgents,
+  BarAwakeCard,
+  BarAwakeCell,
   BarBatteryCard,
   BarBatteryCell,
   BarCard,
@@ -54,6 +56,7 @@ export {
   BarWorkspaces,
   ICON_PROPS,
   batteryIcon,
+  formatHold,
 } from './bar/components'
 export {
   AGENT_GLYPHS,
@@ -73,6 +76,8 @@ export {
 export type { CellTone } from './bar/format'
 export type {
   AgentSession,
+  AwakeBarState,
+  AwakeHolder,
   BarHoverApi,
   BarModule,
   BarSnapshot,

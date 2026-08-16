@@ -63,11 +63,19 @@ pub fn agents_status() -> Vec<crate::agents::AgentSession> {
     crate::agents::list()
 }
 
-/// awake: arm a keep-awake session's assertions (DECISIONS 2026-08-16). Sync —
-/// two in-process IOKit calls, no subprocess.
+/// awake: arm a keep-awake session (DECISIONS 2026-08-16). Sync — in-process
+/// IOKit calls, no subprocess. `spec` is the TS session descriptor, stored
+/// verbatim; `untilEpochMs`/`batteryFloor` are the mechanical rails Rust
+/// enforces itself.
 #[tauri::command]
-pub fn awake_arm(display: bool, disks: bool) -> crate::error::CmdResult<()> {
-    crate::power::arm(display, disks)
+pub fn awake_arm(
+    display: bool,
+    disks: bool,
+    until_epoch_ms: Option<i64>,
+    battery_floor: Option<u8>,
+    spec: Option<String>,
+) -> crate::error::CmdResult<()> {
+    crate::power::arm(display, disks, until_epoch_ms, battery_floor, spec)
 }
 
 /// awake: release everything held.
@@ -81,6 +89,65 @@ pub fn awake_release() {
 #[tauri::command]
 pub async fn awake_status() -> crate::power::AwakeStatus {
     crate::power::status()
+}
+
+/// awake: one sample for trigger evaluation (DECISIONS 2026-08-16). The
+/// caller says which expensive readings its armed condition needs — Rust
+/// never interprets the session spec. async: may hop to the main thread for
+/// the app list and pay a cached `netstat`.
+#[tauri::command]
+pub async fn awake_readings(
+    app: tauri::AppHandle,
+    apps: bool,
+    display: bool,
+    net: bool,
+) -> AwakeReadings {
+    let (battery_pct, on_ac, _) = crate::battery::cached();
+    AwakeReadings {
+        state: crate::power::state(),
+        reading: AwakeReading {
+            now_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0),
+            on_ac,
+            battery_pct,
+            ssid: crate::bar_modules::wifi().ssid,
+            agent_states: crate::agents::list().into_iter().map(|a| a.state).collect(),
+            running_apps: apps.then(|| crate::sysread::running_apps(&app)).flatten(),
+            external_display: display.then(crate::sysread::external_display),
+            load1: crate::sysread::load1(),
+            cores: crate::sysread::cores(),
+            net_bytes: if net {
+                crate::sysread::net_bytes()
+            } else {
+                None
+            },
+        },
+    }
+}
+
+/// Mirrors `AwakeReading` in @launcharr/core.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AwakeReading {
+    now_ms: i64,
+    on_ac: bool,
+    battery_pct: Option<u8>,
+    ssid: Option<String>,
+    agent_states: Vec<String>,
+    running_apps: Option<Vec<String>>,
+    external_display: Option<bool>,
+    load1: Option<f64>,
+    cores: u32,
+    net_bytes: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AwakeReadings {
+    state: crate::power::AwakeState,
+    reading: AwakeReading,
 }
 
 /// Usage panel: cached local token aggregates; kicks a background rescan when

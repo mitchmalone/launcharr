@@ -157,31 +157,45 @@ list — reusing `src/bar/hover.ts` and the battery card's shape.
 
 ### Slice B — the panel
 
-- [ ] `AwakePanel.tsx` + container + stories (incl. sleeping / armed / helper-not-installed
+- [x] `AwakePanel.tsx` + container + stories (incl. sleeping / armed / helper-not-installed
       / battery-floor-tripped states), registered in `panels/registry.ts`.
-- [ ] Keyboard model above; arming from defaults is two keystrokes.
-- [ ] **Copy pass against the three rules**, reviewed as its own step, not as a byproduct.
-- [ ] `awake` grammar forms in `packages/core`.
+- [x] Keyboard model above; arming from defaults is two keystrokes. _Deviations, on
+      purpose: the agents row hides when agent monitoring is off (an option that can
+      never release is a lie), the SSID row hides when there is no SSID, and the default
+      end is "while agents are working" only when an agent is actually working at open —
+      else "until I turn it off"._
+- [x] **Copy pass against the three rules**, reviewed as its own step, not as a byproduct.
+      _All strings live in `@launcharr/core/awake` (untilLabel/endsLabel/holdLabel) so the
+      panel, grammar rows and bar card can't drift apart._
+- [x] `awake` grammar forms in `packages/core` (`awake 2h/45m/until 6pm/while agents/
+while <app>/off`); `caffeine`/`caffeinate`/`keep-awake` are fuzzy aliases of the
+      panel item.
 
 ### Slice C — triggers
 
-- [ ] Trigger model in `packages/core`: a pure reducer `(reading, prev) -> next` (hysteresis
+- [x] Trigger model in `packages/core`: a pure reducer `(reading, prev) -> next` (hysteresis
       needs the previous state), exhaustively tested. No I/O.
-- [ ] Agent trigger state mapping: `working` and `attention`/blocked hold; `idle` **and
+- [x] Agent trigger state mapping: `working` and `attention`/blocked hold; `idle` **and
       `done` (unread)** release — a finished agent is finished work, and holding on
       done-unread recreates the Amphetamine all-night failure. Stale-session pruning in
       `agents.rs` means dead hooks decay to release for free.
-- [ ] Sources wired to existing readings; poll piggybacks the 1 Hz bar snapshot where
-      possible — must not cost a new spawn per tick (cache like `battery::cached`).
-- [ ] Busy trigger reads in-process (`host_statistics64` for CPU, `getifaddrs` for network —
-      no spawns) or, failing that, polls its own slow cadence (~30 s; a 5-quiet-minute
-      release needs nothing faster). Never `iostat`/`netstat`/`ps` per tick.
-- [ ] Hysteresis on every threshold trigger so a Mac doesn't flap in and out of awake.
-- [ ] Battery floor rail.
+- [x] Sources wired via one `awake_readings` command; the bar window evaluates on each
+      Rust-pushed snapshot only while a conditional session is armed (zero idle cost);
+      launcher window is the 10 s fallback when the bar is off (DECISIONS 2026-08-16).
+- [x] Busy trigger: CPU via libc `getloadavg` (in-process), network via `netstat -ib`
+      behind a 30 s cache paid only while a busy session is armed. **Disk dropped** — no
+      cheap permission-free cumulative counter; the copy says "processor and network".
+- [x] Hysteresis on every trigger (60 s agents/wifi, 10–15 s app/power/display, 5 min
+      busy); missing readings fail toward holding.
+- [x] Battery floor rail — enforced in Rust's watchdog with the deadline, so both fire
+      with every webview asleep; the panel shows why a session ended (`released` reason).
 
 ### Slice D — the bar cell
 
-- [ ] Cell + hover card, zone-board entry, `bar.enabled` respecting.
+- [x] Cell + hover card (`BarAwakeCell`/`BarAwakeCard` in `packages/tui`, invariant 10),
+      zone-board entry, `bar.enabled` respecting. Coffee glyph: dim asleep, accent armed;
+      click releases; card shows hold/ends/elapsed + the others list (pmset on card-open
+      only).
 
 ### Slice E — lid closed on battery (deferred, own milestone)
 
@@ -196,16 +210,18 @@ list — reusing `src/bar/hover.ts` and the battery card's shape.
 
 ## Acceptance criteria
 
-- [ ] `pnpm verify` green.
-- [ ] Arming from a fresh `awake ⏎` takes one further keystroke with defaults.
-- [ ] Every option's label and description says what the user observes and how it ends; no
+- [x] `pnpm verify` green.
+- [x] Arming from a fresh `awake ⏎` takes one further keystroke with defaults (⏎ opens,
+      ⏎ arms — the form's Enter always starts).
+- [x] Every option's label and description says what the user observes and how it ends; no
       API vocabulary survives in the UI. Verified by reading the panel cold.
 - [ ] A session armed on "while agents are working" holds through a real agent run and
-      releases within ~1 min of the last agent going idle.
+      releases within ~1 min of the last agent going idle. _Needs a real run — Mitch._
 - [ ] `pmset -g assertions` shows launcharr's assertions by name while armed, and nothing
-      after release/quit/crash.
-- [ ] No other process's `caffeinate` is ever killed.
-- [ ] Trigger evaluation costs no new spawn per bar tick; budgets unregressed.
+      after release/quit/crash. _Verify live after first real arm._
+- [x] No other process's `caffeinate` is ever killed.
+- [x] Trigger evaluation costs no new spawn per bar tick; budgets unregressed (idle bar
+      pays only the in-memory `awake` field on the existing snapshot).
 - [ ] Lid closed **on AC** keeps the machine up with no helper and no prompt.
 - [ ] With slice E unshipped, the lid-on-battery row is visible, off, and explains itself.
 

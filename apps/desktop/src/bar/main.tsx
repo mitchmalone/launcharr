@@ -1,6 +1,16 @@
 import {
+  type AwakeStatus,
+  endsLabel,
+  formatSeconds,
+  holdLabel,
+  needsWatching,
+  parseSpec,
+} from '@launcharr/core/awake'
+import {
   Bar,
   BarAgents,
+  BarAwakeCard,
+  BarAwakeCell,
   BarBatteryCell,
   BarClock,
   BarFrontApp,
@@ -14,9 +24,10 @@ import {
 import '@launcharr/tui/bar.css'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { awakeWatchTick, freshAwakeMemory } from '../lib/awake'
 import {
   type BarZones,
   type Config,
@@ -129,6 +140,22 @@ function useBatteryDetail(open: boolean): BatteryDetail | null {
   return open ? detail : null
 }
 
+/** The holders list is a `pmset` spawn — fetched on card-open only. */
+function useAwakeStatus(open: boolean): AwakeStatus | null {
+  const [status, setStatus] = useState<AwakeStatus | null>(null)
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    invoke<AwakeStatus>('awake_status')
+      .then((s) => live && setStatus(s))
+      .catch(console.error)
+    return () => {
+      live = false
+    }
+  }, [open])
+  return open ? status : null
+}
+
 function BarWindow() {
   const [snap, now, patch] = useSnapshot()
   const cfg = useBarConfig()
@@ -136,6 +163,22 @@ function BarWindow() {
   // shares it (see hover.ts).
   const hover = useBarHover()
   const batteryDetail = useBatteryDetail(hover.hovered === 'battery')
+  const awakeStatus = useAwakeStatus(hover.hovered === 'awake')
+
+  // Primary awake-trigger watcher: evaluate on each Rust-pushed snapshot
+  // while a conditional session is armed. Costs nothing when idle — the
+  // gate below reads the snapshot the push already delivered.
+  const awakeMem = useRef(freshAwakeMemory())
+  useEffect(() => {
+    const a = snap?.awake
+    if (!a?.armed || !a.spec) {
+      awakeMem.current = freshAwakeMemory()
+      return
+    }
+    const spec = parseSpec(a.spec)
+    if (!spec || !needsWatching(spec.until)) return
+    awakeWatchTick(awakeMem.current).catch(console.error)
+  }, [snap])
 
   const switchWorkspace = (ws: string) => {
     // Optimistic: highlight now, aerospace catches up off the main thread.
@@ -193,6 +236,38 @@ function BarWindow() {
             name={snap!.trmnl.name}
           />
         ) : null
+      case 'awake': {
+        const a = snap!.awake
+        const spec = a?.spec ? parseSpec(a.spec) : null
+        const remaining =
+          a?.untilEpochMs != null
+            ? `${formatSeconds(
+                Math.max(0, Math.round((a.untilEpochMs - Date.now()) / 1000)),
+              )} left`
+            : null
+        return (
+          <BarAwakeCell
+            key={id}
+            armed={a?.armed ?? false}
+            timeLabel={remaining ?? formatSeconds(a?.elapsedSeconds ?? 0)}
+            hover={hover}
+            onRelease={() => invoke('awake_release').catch(console.error)}
+            card={
+              <BarAwakeCard
+                armed={a?.armed ?? false}
+                holdLabel={spec ? holdLabel(spec.screen, spec.disks) : null}
+                endsLabel={
+                  spec ? endsLabel(spec.until, a?.untilEpochMs ?? null) : null
+                }
+                elapsed={a?.armed ? formatSeconds(a.elapsedSeconds) : null}
+                remaining={remaining}
+                others={awakeStatus?.others ?? []}
+                cardRef={hover.cardRef}
+              />
+            }
+          />
+        )
+      }
       case 'battery':
         return (
           <BarBatteryCell

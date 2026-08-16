@@ -1,3 +1,4 @@
+import { type AwakeUntil, parseAwakeArgs, untilLabel } from './awake'
 import { searchEmoji } from './emoji'
 import { fuzzyMatch } from './matcher'
 import { evaluate, formatResult } from './math'
@@ -36,6 +37,8 @@ export type RowEnter =
   | { kind: 'delete-clip'; id: number }
   | { kind: 'script-alt-action'; index: number }
   | { kind: 'open-panel'; panel: string }
+  | { kind: 'awake-arm'; until: AwakeUntil }
+  | { kind: 'awake-release' }
 
 /** ⌥⏎ per item kind: apps reveal in Finder, links copy their URL. */
 function itemAlt(item: IndexItem): Row['alt'] {
@@ -301,6 +304,42 @@ export function clipRows(args: string, clips: Clip[]): Row[] {
 export function clipTitle(content: string): string {
   const line = content.trim().split('\n')[0] ?? ''
   return line.length > 70 ? `${line.slice(0, 70)}…` : line
+}
+
+/**
+ * `awake <args>` arms without the panel — the panel is for choosing, the
+ * grammar for repeating. One row saying exactly what ⏎ starts and how it
+ * ends; unparseable args fall back to the open-panel row.
+ */
+export function awakeRows(args: string): Row[] {
+  const cmd = parseAwakeArgs(args)
+  if (cmd?.kind === 'off') {
+    return [
+      {
+        key: 'awake-off',
+        title: 'Stop keeping this Mac awake',
+        hint: 'sleeps normally again',
+        positions: [],
+        icon: null,
+        glyph: '☾',
+        enter: { kind: 'awake-release' },
+      },
+    ]
+  }
+  if (cmd?.kind === 'arm') {
+    return [
+      {
+        key: 'awake-arm',
+        title: `Mac stays awake ${untilLabel(cmd.until)}`,
+        hint: 'screen can sleep · ⏎',
+        positions: [],
+        icon: null,
+        glyph: '☉',
+        enter: { kind: 'awake-arm', until: cmd.until },
+      },
+    ]
+  }
+  return panelRows('awake', 'Awake', 'keep-alive sessions ▸')
 }
 
 /** Trigger words that open a full TUI panel (`wifi ⏎`): one row, Enter opens. */

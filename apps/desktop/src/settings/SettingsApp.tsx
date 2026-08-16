@@ -530,6 +530,7 @@ const MODULE_LABELS: Record<string, string> = {
   clock: 'Clock',
   wifi: 'Wi-Fi',
   trmnl: 'TRMNL battery',
+  awake: 'Awake (keep-alive)',
   battery: 'Battery',
 }
 

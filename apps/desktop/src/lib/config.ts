@@ -54,7 +54,7 @@ const module = (id: string): BarModule => ({ id, enabled: true })
 export const DEFAULT_BAR_LAYOUT: BarZones = {
   left: ['workspaces', 'agents', 'frontApp'].map(module),
   center: [module('clock')],
-  right: ['wifi', 'trmnl', 'battery'].map(module),
+  right: ['wifi', 'trmnl', 'awake', 'battery'].map(module),
 }
 
 /** Same normalization everywhere (bar renderer + settings): drop unknown ids,
@@ -121,6 +121,7 @@ export const BAR_MODULE_IDS = [
   'clock',
   'wifi',
   'trmnl',
+  'awake',
   'battery',
 ] as const
 

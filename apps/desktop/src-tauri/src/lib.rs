@@ -35,6 +35,7 @@ mod scripts;
 mod settings_panes;
 mod settings_window;
 mod shortcut;
+mod sysread;
 mod system_commands;
 mod terminal;
 mod tray;
@@ -102,6 +103,7 @@ pub fn run() {
             commands::awake_arm,
             commands::awake_release,
             commands::awake_status,
+            commands::awake_readings,
             commands::usage_status,
             ask::ask,
             commands::agent_jump,

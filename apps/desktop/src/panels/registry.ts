@@ -2,6 +2,7 @@ import {
   Bot,
   CircleHelp,
   ClipboardList,
+  Coffee,
   Gauge,
   Globe,
   type LucideIcon,
@@ -20,11 +21,20 @@ export interface PanelInfo {
   id: string
   title: string
   hint: string
+  /** Extra fuzzy-match words beyond the id (the deleted caffeinate slugs'
+   * muscle memory lands on the awake panel through these). */
+  aliases?: string[]
 }
 
 export const PANEL_INFO: PanelInfo[] = [
   { id: 'agents', title: 'Agents', hint: 'coding agent sessions ▸' },
   { id: 'usage', title: 'Usage', hint: 'token monitor ▸' },
+  {
+    id: 'awake',
+    title: 'Awake',
+    hint: 'keep-alive sessions ▸',
+    aliases: ['caffeine', 'caffeinate', 'keep-awake', 'stay-awake'],
+  },
   { id: 'wifi', title: 'Wi-Fi', hint: 'networks & power ▸' },
   { id: 'dns', title: 'DNS', hint: 'network info ▸' },
   { id: 'audio', title: 'Audio', hint: 'volume & devices ▸' },
@@ -36,6 +46,7 @@ export const PANEL_INFO: PanelInfo[] = [
 export const PANEL_ICONS: Record<string, LucideIcon> = {
   agents: Bot,
   usage: Gauge,
+  awake: Coffee,
   wifi: Wifi,
   dns: Globe,
   audio: Volume2,

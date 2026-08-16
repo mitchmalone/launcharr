@@ -5,6 +5,28 @@
 
 ---
 
+### 2026-08-16 · awake B–D: sessions split Rust-mechanical / TS-opinionated; one readings command
+
+- **Decision.** A keep-awake session's _semantics_ live in TypeScript: `@launcharr/core/awake`
+  owns the spec type, grammar, every user-facing string, and the pure trigger reducer
+  `(reading, prev) -> verdict`. Rust stores the spec **verbatim** (never interprets it) and
+  enforces only the two mechanical rails — the absolute deadline and the battery floor — in a
+  watchdog thread, so they fire with every webview asleep. One further IPC command joins the
+  surface: `awake_readings(apps, display, net)` — a single sample (AC, battery, SSID, agent
+  states, plus optionally running apps / external display / net bytes, each gathered only when
+  the _caller_ asks). The caller decides the flags from the spec, keeping Rust opinion-free.
+  `BarSnapshot` gains the cheap `awake` state.
+- **Watcher placement.** The bar window evaluates triggers on each Rust-pushed snapshot while a
+  conditional session is armed (zero cost idle); the launcher window runs a 10 s fallback
+  interval only when the bar is off. Both may run — release is idempotent. Known degradation:
+  with the bar off, the fallback rides WebKit timers, which throttle in hidden windows; the
+  grace windows and Rust rails bound the damage.
+- **Readings sources.** Load via libc `getloadavg`, displays via CGGetOnlineDisplayList /
+  CGDisplayIsBuiltin, apps via NSWorkspace on the main thread (all in-process, permission-free);
+  network via `netstat -ib` behind a 30 s cache, paid only while a busy session is armed. The
+  busy trigger watches **processor and network** — disk I/O has no cheap permission-free
+  cumulative counter, so the panel copy says exactly that (plan deviation, recorded there).
+
 ### 2026-08-16 · awake: in-process power assertions; three IPC commands; caffeinate slugs deleted
 
 - **Decision.** Keep-awake (`awake ⏎`, plan `plans/active/awake.md`) holds

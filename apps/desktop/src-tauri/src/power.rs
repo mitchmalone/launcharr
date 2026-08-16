@@ -129,22 +129,36 @@ impl Drop for Assertion {
     }
 }
 
-/// The one active keep-awake session. Session semantics (until-conditions,
-/// triggers) live in TypeScript; Rust only knows what is held right now.
+/// The one active keep-awake session. Session *semantics* (which trigger,
+/// every word of copy) live in TypeScript; Rust holds the assertions plus the
+/// two mechanical rails a webview can't be trusted with across sleep/undock —
+/// the absolute deadline and the battery floor. `spec` is the TS session
+/// descriptor stored verbatim, never interpreted here.
 struct Session {
     /// Never read — owned so the assertions live exactly as long as the session.
     _held: Vec<Assertion>,
     display: bool,
     disks: bool,
     since: Instant,
+    until_epoch_ms: Option<i64>,
+    battery_floor: Option<u8>,
+    spec: Option<String>,
 }
 
 static SESSION: Mutex<Option<Session>> = Mutex::new(None);
+/// Why the last session ended without the user asking: "deadline" | "floor".
+static RELEASED: Mutex<Option<&'static str>> = Mutex::new(None);
 
 /// Arm (or re-arm, replacing the current set). Always holds system-awake plus
 /// the on-AC lid-close assertion — that pair is the plan's default and costs
 /// nothing when unplugged (macOS just ignores the AC one).
-pub fn arm(display: bool, disks: bool) -> CmdResult<()> {
+pub fn arm(
+    display: bool,
+    disks: bool,
+    until_epoch_ms: Option<i64>,
+    battery_floor: Option<u8>,
+    spec: Option<String>,
+) -> CmdResult<()> {
     let mut kinds = vec![Kind::System, Kind::SystemOnAc];
     if display {
         kinds.push(Kind::Display);
@@ -158,31 +172,123 @@ pub fn arm(display: bool, disks: bool) -> CmdResult<()> {
             "could not create any power assertion".into(),
         ));
     }
+    *RELEASED.lock().unwrap() = None;
     *SESSION.lock().unwrap() = Some(Session {
         _held: held,
         display,
         disks,
         since: Instant::now(),
+        until_epoch_ms,
+        battery_floor,
+        spec,
     });
+    start_watchdog();
     Ok(())
 }
 
 /// Release everything. Dropping the session drops its assertions.
 pub fn release() {
+    *RELEASED.lock().unwrap() = None;
     *SESSION.lock().unwrap() = None;
 }
 
-/// What the panel header and hover card render.
+fn release_because(reason: &'static str) {
+    let mut session = SESSION.lock().unwrap();
+    if session.is_some() {
+        *session = None;
+        *RELEASED.lock().unwrap() = Some(reason);
+    }
+}
+
+fn now_epoch_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// The mechanical rails: a session with a deadline ends at the deadline, and
+/// a session with a battery floor ends when an unplugged battery reaches it.
+/// Checked here (5s cadence) so they fire even with every webview asleep;
+/// `battery::cached` keeps this spawn-free most ticks.
+fn check_rails() {
+    let (deadline, floor) = match &*SESSION.lock().unwrap() {
+        Some(s) => (s.until_epoch_ms, s.battery_floor),
+        None => return,
+    };
+    if let Some(at) = deadline {
+        if now_epoch_ms() >= at {
+            release_because("deadline");
+            return;
+        }
+    }
+    if let Some(floor) = floor {
+        let (pct, on_ac, _) = crate::battery::cached();
+        if !on_ac && pct.is_some_and(|p| p <= floor) {
+            release_because("floor");
+        }
+    }
+}
+
+fn start_watchdog() {
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    STARTED.call_once(|| {
+        std::thread::spawn(|| loop {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            check_rails();
+        });
+    });
+}
+
+/// The session as every surface sees it (bar snapshot, panel, hover card).
+/// Cheap: in-memory reads only. Mirrored by `AwakeState` in @launcharr/core.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AwakeStatus {
+pub struct AwakeState {
     pub armed: bool,
     pub display: bool,
     pub disks: bool,
     /// Seconds since arming; 0 when not armed.
     pub elapsed_seconds: u64,
-    /// "Also keeping this Mac awake" — every *other* process holding a
-    /// sleep-preventing assertion.
+    pub until_epoch_ms: Option<i64>,
+    pub battery_floor: Option<u8>,
+    /// The TypeScript session descriptor, stored verbatim at arm time.
+    pub spec: Option<String>,
+    /// Why the last session ended on its own ("deadline" | "floor"), until
+    /// the next arm. User releases clear it — nothing surprising happened.
+    pub released: Option<String>,
+}
+
+/// Cheap in-memory snapshot; rails are re-checked inline so a passed deadline
+/// never renders as still-armed between watchdog ticks.
+pub fn state() -> AwakeState {
+    check_rails();
+    let released = RELEASED.lock().unwrap().map(str::to_owned);
+    match &*SESSION.lock().unwrap() {
+        Some(s) => AwakeState {
+            armed: true,
+            display: s.display,
+            disks: s.disks,
+            elapsed_seconds: s.since.elapsed().as_secs(),
+            until_epoch_ms: s.until_epoch_ms,
+            battery_floor: s.battery_floor,
+            spec: s.spec.clone(),
+            released,
+        },
+        None => AwakeState {
+            released,
+            ..AwakeState::default()
+        },
+    }
+}
+
+/// What the panel renders: the state plus the "also keeping this Mac awake"
+/// list.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AwakeStatus {
+    pub state: AwakeState,
+    /// Every *other* process holding a sleep-preventing assertion.
     pub others: Vec<OtherHolder>,
 }
 
@@ -201,10 +307,6 @@ pub struct OtherHolder {
 /// Snapshot for the panel / hover card. Spawns `pmset` for the "others" list —
 /// call on panel or card open only, **never on the bar tick**.
 pub fn status() -> AwakeStatus {
-    let (armed, display, disks, elapsed_seconds) = match &*SESSION.lock().unwrap() {
-        Some(s) => (true, s.display, s.disks, s.since.elapsed().as_secs()),
-        None => (false, false, false, 0),
-    };
     let others = Command::new("/usr/bin/pmset")
         .args(["-g", "assertions"])
         .output()
@@ -212,10 +314,7 @@ pub fn status() -> AwakeStatus {
         .map(|out| parse_assertions(&String::from_utf8_lossy(&out.stdout), std::process::id()))
         .unwrap_or_default();
     AwakeStatus {
-        armed,
-        display,
-        disks,
-        elapsed_seconds,
+        state: state(),
         others,
     }
 }
@@ -371,16 +470,43 @@ Kernel Assertions: 0x100=MAGICWAKE
         assert_eq!(parse_hms("a:b:c"), None);
     }
 
+    /// Tests below share the global SESSION — serialize them.
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
     #[test]
     fn arm_and_release_round_trip() {
+        let _guard = TEST_LOCK.lock().unwrap();
         // Real assertions against this Mac — create, observe, release. Cheap
         // and side-effect-free beyond the seconds the test holds them.
-        arm(false, false).expect("arm");
-        let s = status();
+        arm(
+            false,
+            false,
+            None,
+            None,
+            Some("{\"until\":{\"kind\":\"manual\"}}".into()),
+        )
+        .expect("arm");
+        let s = state();
         assert!(s.armed);
         assert!(!s.display);
+        assert_eq!(s.spec.as_deref(), Some("{\"until\":{\"kind\":\"manual\"}}"));
         release();
-        assert!(!status().armed);
+        assert!(!state().armed);
+        assert_eq!(state().released, None);
+    }
+
+    #[test]
+    fn passed_deadline_releases_and_records_why() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        arm(false, false, Some(now_epoch_ms() - 1), None, None).expect("arm");
+        // state() re-checks rails inline — no watchdog tick needed.
+        let s = state();
+        assert!(!s.armed);
+        assert_eq!(s.released.as_deref(), Some("deadline"));
+        // The next arm clears the reason.
+        arm(false, false, None, None, None).expect("arm");
+        assert_eq!(state().released, None);
+        release();
     }
 
     #[test]

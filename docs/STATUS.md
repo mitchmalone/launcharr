@@ -116,13 +116,14 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 ## In progress / next (ROADMAP B2–B4, P1)
 
 - **`awake` keep-alive sessions** (plans/active/awake.md — retire Amphetamine +
-  Caffeinated): **slice A shipped** — `power.rs` holds `IOPMAssertionCreateWithName`
-  assertions in-process (release on drop/quit/crash), `pmset -g assertions` parsed into
-  the "also keeping this Mac awake" list (verified against this Mac — it lists
-  Amphetamine), `awake_arm`/`awake_release`/`awake_status` IPC (DECISIONS 2026-08-16),
-  and the `caffeinate`/`decaffeinate` slugs (the `pkill -x caffeinate` footgun) deleted.
-  **Manual measurement outstanding**: lid closed on AC while armed (needs a human lid).
-  Next: slice B, the panel + grammar.
+  Caffeinated): **slices A–D shipped** — in-process assertions (`power.rs`, release on
+  drop/quit/crash), `awake ⏎` panel (form: what stays on / until / rails, two-keystroke
+  arm), grammar (`awake 2h`, `awake until 6pm`, `awake while agents`, `awake off`),
+  trigger reducer in `@launcharr/core/awake` (agents/app/power/ssid/display/busy, all
+  hysteresed, exhaustively tested), Rust watchdog rails (deadline + battery floor), bar
+  coffee cell + hover card with the "also keeping this Mac awake" list. Four `awake_*`
+  IPC commands total (DECISIONS 2026-08-16 ×2). **Outstanding**: real-agent-run
+  acceptance test, lid-closed-on-AC measurement (needs a human lid), slice E deferred.
 - Panel tenants: `sysinfo`, then **settings migrated off the native window** (the big
   one); drill-down panel menu once 3 tenants exist.
 - Bar: per-workspace app hints; bluetooth glyph (audio + battery shipped 2026-08-16);

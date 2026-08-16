@@ -3,6 +3,7 @@ import {
   BatteryFull,
   BatteryLow,
   BatteryMedium,
+  Coffee,
   Wifi,
   WifiOff,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ import {
 } from './format'
 import type {
   AgentSession,
+  AwakeHolder,
   BarHoverApi,
   BarSnapshot,
   BatteryDetail,
@@ -460,6 +462,113 @@ export function BarBatteryCell({
     >
       <Icon {...ICON_PROPS} />
       {pct}%
+    </BarHoverCell>
+  )
+}
+
+/* ---- awake ------------------------------------------------------------ */
+
+/**
+ * The keep-awake card: what stays on, how the session ends, and who else is
+ * holding the Mac awake. All strings arrive as props — the words are product
+ * copy owned by @launcharr/core/awake, composed by each consumer.
+ */
+export function BarAwakeCard({
+  armed,
+  holdLabel,
+  endsLabel,
+  elapsed,
+  remaining,
+  others,
+  cardRef,
+}: {
+  armed: boolean
+  /** e.g. "Mac awake, screen can sleep". */
+  holdLabel: string | null
+  /** e.g. "until agents idle". */
+  endsLabel: string | null
+  /** e.g. "42m". */
+  elapsed: string | null
+  /** e.g. "1h 18m left", for deadline sessions. */
+  remaining: string | null
+  others: AwakeHolder[]
+  cardRef?: (el: HTMLElement | null) => void
+}) {
+  return (
+    <BarCard variant="awake" cardRef={cardRef}>
+      <BarCardTitle>Awake</BarCardTitle>
+      {armed ? (
+        <>
+          {holdLabel && <BarCardLine>{holdLabel}</BarCardLine>}
+          <BarCardDim>
+            {[endsLabel, elapsed && `on ${elapsed}`, remaining]
+              .filter(Boolean)
+              .join(' · ')}
+          </BarCardDim>
+        </>
+      ) : (
+        <BarCardDim>sleeping normally</BarCardDim>
+      )}
+      {others.length > 0 && (
+        <>
+          <BarCardSection>Also keeping this Mac awake</BarCardSection>
+          {others.map((h) => (
+            <BarCardLine key={h.app} className="bar-awake-holder">
+              <span>{h.app}</span>
+              <span className="bar-awake-holder-time">
+                {formatHold(h.seconds)}
+              </span>
+            </BarCardLine>
+          ))}
+        </>
+      )}
+      <BarCardHint>
+        {armed ? 'click cell to turn off' : 'awake ⏎ to start'}
+      </BarCardHint>
+    </BarCard>
+  )
+}
+
+/** "4h 12m" / "22m" / "40s" for the holders list. */
+export function formatHold(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.round(seconds / 60)
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`
+}
+
+/**
+ * The awake cell: a coffee cup, dim while the Mac sleeps normally, lit while
+ * a session holds it awake. Clicking an armed cell releases the session —
+ * the same promise the panel's ⏎ makes.
+ */
+export function BarAwakeCell({
+  armed,
+  timeLabel,
+  hover,
+  cardHeight = 150,
+  onRelease,
+  card,
+}: {
+  armed: boolean
+  /** Compact elapsed/remaining shown next to the icon while armed. */
+  timeLabel?: string | null
+  hover: BarHoverApi
+  cardHeight?: number
+  onRelease?: () => void
+  card?: ReactNode
+}) {
+  return (
+    <BarHoverCell
+      id="awake"
+      cardHeight={cardHeight}
+      hover={hover}
+      className={armed ? 'bar-cell bar-awake-on' : 'bar-cell bar-awake-off'}
+      wrapperClassName="bar-awake"
+      onClick={armed ? onRelease : undefined}
+      card={card}
+    >
+      <Coffee {...ICON_PROPS} />
+      {armed && timeLabel ? timeLabel : null}
     </BarHoverCell>
   )
 }

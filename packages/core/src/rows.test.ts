@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  awakeRows,
   draftRows,
   launchRows,
   panelRows,
@@ -167,5 +168,28 @@ describe('panelRows', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]!.title).toBe('Wi-Fi')
     expect(rows[0]!.enter).toEqual({ kind: 'open-panel', panel: 'wifi' })
+  })
+})
+
+describe('awakeRows', () => {
+  it('a duration arms with the end condition in the title', () => {
+    const rows = awakeRows('2h')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.title).toBe('Mac stays awake for 2h')
+    expect(rows[0]!.enter).toEqual({
+      kind: 'awake-arm',
+      until: { kind: 'timer', minutes: 120 },
+    })
+  })
+
+  it('off releases', () => {
+    expect(awakeRows('off')[0]!.enter).toEqual({ kind: 'awake-release' })
+  })
+
+  it('unparseable args fall back to opening the panel', () => {
+    expect(awakeRows('sideways')[0]!.enter).toEqual({
+      kind: 'open-panel',
+      panel: 'awake',
+    })
   })
 })

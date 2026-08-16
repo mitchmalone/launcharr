@@ -34,6 +34,27 @@ export interface BatteryDetail {
   powerMode: 'low' | 'automatic' | 'high' | null
 }
 
+/** Mirrors AwakeState in power.rs — the keep-awake session as the bar sees it. */
+export interface AwakeBarState {
+  armed: boolean
+  display: boolean
+  disks: boolean
+  elapsedSeconds: number
+  untilEpochMs: number | null
+  batteryFloor: number | null
+  /** Serialized AwakeSpec (@launcharr/core/awake), stored verbatim by Rust. */
+  spec: string | null
+  /** Why the last session ended on its own ("deadline" | "floor"). */
+  released: string | null
+}
+
+/** Another process keeping the Mac awake (mirrors OtherHolder in power.rs). */
+export interface AwakeHolder {
+  app: string
+  seconds: number
+  display: boolean
+}
+
 /** One 1 Hz push from bar.rs. */
 export interface BarSnapshot {
   workspaces: string[]
@@ -46,6 +67,8 @@ export interface BarSnapshot {
   /** null → no TRMNL token, cell hidden; pct null → API error state. */
   trmnl: { pct: number | null; name: string | null } | null
   agents: AgentSession[]
+  /** Optional so fixtures without a keep-awake session stay valid. */
+  awake?: AwakeBarState | null
 }
 
 /**

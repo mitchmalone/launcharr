@@ -320,3 +320,42 @@
 .bar-right .bar-danger {
   color: var(--danger, #f85149);
 }
+
+/* ---- awake ------------------------------------------------------------ */
+
+/* Dim while sleeping normally — the one cell whose resting state is
+ * deliberately quiet; lit (accent) is the unmissable "armed" signal the
+ * plan's crash-risk note asks for. */
+.bar-right .bar-awake-off {
+  color: var(--dim, #8b90a5);
+}
+
+.bar-right .bar-awake-on {
+  color: var(--accent, #9db2ff);
+}
+
+.bar-awake {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Card lines inherit the agent-state green by default — awake's are plain. */
+.bar-awake-card .bar-card-line {
+  color: var(--fg, #dde1f0);
+}
+
+.bar-awake-card {
+  right: 0;
+  min-width: 240px;
+}
+
+.bar-awake-holder {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bar-awake-holder-time {
+  color: var(--dim, #8b90a5);
+  font-variant-numeric: tabular-nums;
+}

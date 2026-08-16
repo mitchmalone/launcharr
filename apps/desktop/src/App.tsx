@@ -1,8 +1,10 @@
+import { untilDeadline } from '@launcharr/core/awake'
 import { parseInput } from '@launcharr/core/grammar'
 import {
   type QuicklinkDraft,
   type Row,
   type RowEnter,
+  awakeRows,
   clipRows,
   draftRows,
   emojiRows,
@@ -25,6 +27,7 @@ import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { parseAskLine } from './lib/ask'
+import { awakeWatchTick, freshAwakeMemory } from './lib/awake'
 import {
   type Config,
   DEFAULT_AGENTS_CONFIG,
@@ -35,6 +38,7 @@ import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
 import { AudioPanelContainer } from './panels/AudioPanelContainer'
+import { AwakePanelContainer } from './panels/AwakePanelContainer'
 import { ClipboardPanelContainer } from './panels/ClipboardPanelContainer'
 import { DnsPanelContainer } from './panels/DnsPanelContainer'
 import { HelpPanelContainer } from './panels/HelpPanelContainer'
@@ -55,6 +59,7 @@ const PANEL_MODE_HEIGHT = 480
 const PANEL_COMPONENTS: Record<string, React.FC<{ onClose: () => void }>> = {
   agents: AgentsPanelContainer,
   usage: UsagePanelContainer,
+  awake: AwakePanelContainer,
   wifi: WifiPanelContainer,
   dns: DnsPanelContainer,
   audio: AudioPanelContainer,
@@ -144,6 +149,20 @@ export default function App() {
   const [draft, setDraft] = useState<QuicklinkDraft | null>(null)
   const [altHeld, setAltHeld] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Awake trigger fallback: the bar window is the primary watcher (it gets
+  // Rust-pushed snapshots, immune to WebKit timer throttling). With the bar
+  // off, this window watches instead — a slow interval is fine: every
+  // release condition has a grace window far longer than one tick, and the
+  // deadline/battery rails live in Rust regardless.
+  const awakeMem = useRef(freshAwakeMemory())
+  useEffect(() => {
+    if (config.bar.enabled) return
+    const id = setInterval(() => {
+      awakeWatchTick(awakeMem.current).catch(console.error)
+    }, 10_000)
+    return () => clearInterval(id)
+  }, [config.bar.enabled])
 
   const browsers = useMemo(
     () =>
@@ -295,7 +314,10 @@ export default function App() {
           path: id,
           hint: p.hint,
           icon: null,
-          aliases: [id],
+          aliases: [
+            id,
+            ...(PANEL_INFO.find((info) => info.id === id)?.aliases ?? []),
+          ],
         })),
     [config],
   )
@@ -312,6 +334,10 @@ export default function App() {
         )
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
+        // `awake 2h` arms straight from the prompt; bare `awake` opens the panel.
+        if (parsed.trigger === 'awake' && parsed.args.trim()) {
+          return awakeRows(parsed.args)
+        }
         const panel = panelEnabled(parsed.trigger, config)
           ? PANELS[parsed.trigger]
           : undefined
@@ -401,6 +427,27 @@ export default function App() {
           setPanelMode(enter.panel)
           setRaw('')
           setSelected(0)
+          break
+        case 'awake-arm':
+          // The grammar's defaults: screen sleeps, no drives, 20% floor —
+          // the panel is where anything else gets chosen.
+          invoke('awake_arm', {
+            display: false,
+            disks: false,
+            untilEpochMs: untilDeadline(enter.until, new Date()),
+            batteryFloor: 20,
+            spec: JSON.stringify({
+              screen: false,
+              disks: false,
+              until: enter.until,
+              floor: 20,
+            }),
+          }).catch(console.error)
+          invoke('hide_panel').catch(console.error)
+          break
+        case 'awake-release':
+          invoke('awake_release').catch(console.error)
+          invoke('hide_panel').catch(console.error)
           break
         case 'add-quicklink':
           setDraft({ url: enter.url, name: '', step: 'name' })
