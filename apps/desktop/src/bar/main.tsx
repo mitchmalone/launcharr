@@ -1,5 +1,13 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import {
+  BatteryCharging,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -33,6 +41,14 @@ interface BarSnapshot {
   trmnl: { pct: number | null; name: string | null } | null
   agents: AgentSession[]
 }
+
+/** Lucide icons in bar cells, sized to the 12px monospace strip. Custom
+ * Lucide-style brand icons (24×24 viewBox, 2px stroke) take the same props. */
+const ICON_PROPS = {
+  size: 14,
+  strokeWidth: 2.2,
+  'aria-hidden': true,
+} as const
 
 const AGENT_GLYPHS: Record<string, string> = {
   working: '●',
@@ -394,9 +410,12 @@ function Bar() {
               className={`bar-cell ${snap.wifi.online ? '' : 'bar-danger'}`}
               title={snap.wifi.ssid ?? undefined}
             >
-              {snap.wifi.online
-                ? `◠ ${snap.wifi.ssid ?? 'SSID hidden'}`
-                : '◠ Offline'}
+              {snap.wifi.online ? (
+                <Wifi {...ICON_PROPS} />
+              ) : (
+                <WifiOff {...ICON_PROPS} />
+              )}
+              {snap.wifi.online ? (snap.wifi.ssid ?? 'SSID hidden') : 'Offline'}
             </span>
           )
         )
@@ -412,18 +431,32 @@ function Bar() {
             </span>
           )
         )
-      case 'battery':
-        return snap?.batteryPct != null ? (
-          <span key={id} className={batteryClass}>
-            {snap.charging || snap.onAc ? '↯' : '▮'} {snap.batteryPct}%
-          </span>
-        ) : (
-          snap?.onAc && (
-            <span key={id} className="bar-cell">
-              ↯ AC
-            </span>
+      case 'battery': {
+        if (snap?.batteryPct == null) {
+          return (
+            snap?.onAc && (
+              <span key={id} className="bar-cell">
+                <BatteryCharging {...ICON_PROPS} />
+                AC
+              </span>
+            )
           )
+        }
+        const BatteryIcon =
+          snap.charging || snap.onAc
+            ? BatteryCharging
+            : snap.batteryPct >= 75
+              ? BatteryFull
+              : snap.batteryPct >= 35
+                ? BatteryMedium
+                : BatteryLow
+        return (
+          <span key={id} className={batteryClass}>
+            <BatteryIcon {...ICON_PROPS} />
+            {snap.batteryPct}%
+          </span>
         )
+      }
       default:
         return null
     }

@@ -60,6 +60,22 @@ describe('launchRows', () => {
     expect(launchRows('', ITEMS, {}, GOOGLE)).toEqual([])
     expect(launchRows('   ', ITEMS, {}, GOOGLE)).toEqual([])
   })
+
+  it('panel items fuzzy-match like apps and Enter opens the panel', () => {
+    const usage: IndexItem = {
+      id: 'panel:usage',
+      name: 'Usage',
+      kind: 'panel',
+      path: 'usage',
+      hint: 'token monitor ▸',
+      icon: null,
+      aliases: ['usage'],
+    }
+    const rows = launchRows('usag', [...ITEMS, usage], {}, GOOGLE)
+    expect(rows[0]!.title).toBe('Usage')
+    expect(rows[0]!.glyph).toBe('▤')
+    expect(rows[0]!.enter).toEqual({ kind: 'open-panel', panel: 'usage' })
+  })
 })
 
 describe('quicklinkRows', () => {

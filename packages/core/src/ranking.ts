@@ -14,13 +14,14 @@ const ALIAS_FACTOR = 0.9
 export const MAX_RESULTS = 8
 
 /**
- * Frecency multiplier (PRD §5.3): final = fuzzy × multiplier. Bounded to [1, 1.5) so a weak
- * textual match can never outrank an obviously better one — frecency settles ties and
- * near-ties, it doesn't override the query.
+ * Frecency multiplier: final = fuzzy × multiplier. The signal is launches in the past
+ * 5 days (frecency.rs), and the multiplier is bounded to [1, 2) — enough for a few days
+ * of real use to flip near-ties (`code` → VS Code over Codex once it's the one being
+ * launched), while a genuinely better textual match still wins from more than 2× away.
  */
 export function frecencyMultiplier(frecency: number | undefined): number {
   if (!frecency || frecency <= 0) return 1
-  return 1 + (0.5 * frecency) / (frecency + 5)
+  return 1 + frecency / (frecency + 2)
 }
 
 export function rank(

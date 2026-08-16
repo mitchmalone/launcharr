@@ -85,13 +85,40 @@ pub async fn wifi_known_networks() -> Vec<String> {
 }
 
 #[tauri::command]
-pub async fn wifi_connect(ssid: String) -> CmdResult<()> {
-    crate::wifi::connect(&ssid)
+pub async fn wifi_connect(ssid: String, password: Option<String>) -> CmdResult<()> {
+    crate::wifi::connect(&ssid, password.as_deref())
 }
 
 #[tauri::command]
 pub async fn wifi_set_power(on: bool) -> CmdResult<()> {
     crate::wifi::set_power(on)
+}
+
+/// Slow (system_profiler takes seconds) — async keeps it off the main thread.
+#[tauri::command]
+pub async fn wifi_scan() -> CmdResult<Vec<crate::wifi::ScanNetwork>> {
+    crate::wifi::scan()
+}
+
+/// Audio panel. async — osascript subprocesses and HAL calls stay off main.
+#[tauri::command]
+pub async fn audio_status() -> crate::audio::AudioStatus {
+    crate::audio::status()
+}
+
+#[tauri::command]
+pub async fn audio_set_volume(input: bool, pct: u8) -> CmdResult<()> {
+    crate::audio::set_volume(input, pct)
+}
+
+#[tauri::command]
+pub async fn audio_set_muted(muted: bool) -> CmdResult<()> {
+    crate::audio::set_muted(muted)
+}
+
+#[tauri::command]
+pub async fn audio_set_default(id: u32, input: bool) -> CmdResult<()> {
+    crate::audio::set_default_device(id, input)
 }
 
 /// Bar workspace cell click → focus that aerospace workspace. async: see above.

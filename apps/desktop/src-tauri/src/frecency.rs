@@ -4,19 +4,18 @@ use rusqlite::Connection;
 
 use crate::error::CmdResult;
 
-/// Bucketed half-life decay à la Firefox/zoxide (PRD §5.3): launches within the last hour
-/// count full weight, this day ~three-quarters, this week ~half, this month ~quarter,
-/// older ~tenth. Tuned by feel, not science.
-const HOUR: i64 = 3_600;
+/// Trailing-window count (Mitch, 2026-08-16): the signal is "how often did I launch this
+/// in the past 5 days" — each launch inside the window counts full weight so learned
+/// preference can overtake the default fuzzy order. Older launches keep a small residual
+/// so long-standing favourites still win ties against never-launched items.
 const DAY: i64 = 86_400;
+const WINDOW: i64 = 5 * DAY;
 
 fn weight(age_secs: i64) -> f64 {
-    match age_secs {
-        a if a <= HOUR => 1.0,
-        a if a <= DAY => 0.75,
-        a if a <= 7 * DAY => 0.5,
-        a if a <= 30 * DAY => 0.25,
-        _ => 0.1,
+    if age_secs <= WINDOW {
+        1.0
+    } else {
+        0.1
     }
 }
 
@@ -80,28 +79,28 @@ mod tests {
     }
 
     #[test]
-    fn weight_buckets_decay_monotonically() {
+    fn weight_is_full_inside_the_window_and_residual_beyond() {
         assert_eq!(weight(60), 1.0);
-        assert_eq!(weight(2 * HOUR), 0.75);
-        assert_eq!(weight(3 * DAY), 0.5);
-        assert_eq!(weight(20 * DAY), 0.25);
+        assert_eq!(weight(3 * DAY), 1.0);
+        assert_eq!(weight(5 * DAY), 1.0);
+        assert_eq!(weight(5 * DAY + 1), 0.1);
         assert_eq!(weight(90 * DAY), 0.1);
     }
 
     #[test]
-    fn scores_sum_decayed_launches() {
+    fn scores_count_launches_in_the_window() {
         let conn = mem_db();
         let now = 1_000_000_000;
         record(&conn, "safari", "saf", now - 60).unwrap(); // 1.0
-        record(&conn, "safari", "sa", now - 3 * DAY).unwrap(); // 0.5
+        record(&conn, "safari", "sa", now - 3 * DAY).unwrap(); // 1.0
         record(&conn, "iterm", "it", now - 90 * DAY).unwrap(); // 0.1
         let scores = scores(&conn, now).unwrap();
-        assert!((scores["safari"] - 1.5).abs() < f64::EPSILON);
+        assert!((scores["safari"] - 2.0).abs() < f64::EPSILON);
         assert!((scores["iterm"] - 0.1).abs() < f64::EPSILON);
     }
 
     #[test]
-    fn recent_use_beats_heavy_ancient_use() {
+    fn launches_this_week_beat_heavy_ancient_use() {
         let conn = mem_db();
         let now = 2_000_000_000;
         // 8 ancient launches (0.8) vs one launch today (1.0): today wins.

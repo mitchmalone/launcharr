@@ -178,6 +178,7 @@ export function TextPrompt({
   placeholder,
   sigil,
   autoFocus = false,
+  secret = false,
   onKeyDown,
 }: {
   value: string
@@ -185,6 +186,8 @@ export function TextPrompt({
   placeholder?: string
   sigil?: ReactNode
   autoFocus?: boolean
+  /** Password-style masking (wifi join). */
+  secret?: boolean
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
 }) {
   return (
@@ -192,6 +195,7 @@ export function TextPrompt({
       {sigil && <span className="tui-prompt-sigil">{sigil}</span>}
       <input
         className="tui-prompt-input"
+        type={secret ? 'password' : 'text'}
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}

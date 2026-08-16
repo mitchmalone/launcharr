@@ -226,6 +226,17 @@
   background: var(--_border);
 }
 
+/* Preformatted pane content (clipboard preview): wraps, scrolls, keeps the
+ * panel's mono type. */
+.tui-preview {
+  margin: 0;
+  padding: 6px;
+  font: inherit;
+  color: var(--_fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ---- Prompt ---------------------------------------------------------- */
 
 .tui-prompt {

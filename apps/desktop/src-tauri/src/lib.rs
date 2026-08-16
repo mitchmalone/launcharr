@@ -13,6 +13,7 @@ use tauri_plugin_global_shortcut::ShortcutState;
 
 mod agents;
 mod ask;
+mod audio;
 mod bar;
 mod bar_constrain;
 mod bar_modules;
@@ -20,6 +21,7 @@ mod bookmarks;
 mod clipboard;
 mod commands;
 mod config;
+mod coreaudio;
 mod error;
 mod favicon;
 mod frecency;
@@ -100,6 +102,11 @@ pub fn run() {
             commands::wifi_known_networks,
             commands::wifi_connect,
             commands::wifi_set_power,
+            commands::wifi_scan,
+            commands::audio_status,
+            commands::audio_set_volume,
+            commands::audio_set_muted,
+            commands::audio_set_default,
             commands::resize_panel,
             commands::reindex,
             commands::execute,

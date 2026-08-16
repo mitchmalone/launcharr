@@ -16,14 +16,14 @@ export interface DemoTheme {
 
 export const DEMO_THEMES: Record<string, DemoTheme> = {
   launcharr: {
-    glass: 'rgba(28, 29, 45, 0.96)',
-    border: '#3a3c56',
-    fg: '#e9eaf4',
-    dim: '#8b8dab',
-    accent: '#ff6b8c',
-    sigil: '#ff6b8c',
+    glass: 'rgba(28, 29, 42, 0.96)',
+    border: '#393b54',
+    fg: '#b5b9d9',
+    dim: '#73747c',
+    accent: '#ff176c',
+    sigil: '#ff176c',
     bang: '#d29922',
-    selected: 'rgba(255, 107, 140, 0.14)',
+    selected: 'rgba(181, 185, 217, 0.12)',
   },
   dracula: {
     glass: 'rgba(40, 42, 54, 0.96)',

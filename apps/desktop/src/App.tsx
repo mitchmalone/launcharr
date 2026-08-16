@@ -34,9 +34,13 @@ import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
+import { AudioPanelContainer } from './panels/AudioPanelContainer'
+import { ClipboardPanelContainer } from './panels/ClipboardPanelContainer'
 import { DnsPanelContainer } from './panels/DnsPanelContainer'
+import { HelpPanelContainer } from './panels/HelpPanelContainer'
 import { UsagePanelContainer } from './panels/UsagePanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
+import { PANEL_INFO, panelEnabled } from './panels/registry'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
 const INPUT_HEIGHT = 54
@@ -47,32 +51,28 @@ const SCRIPT_DEBOUNCE_MS = 120
 const PANEL_MODE_HEIGHT = 480
 
 /** The panel registry: trigger word → row copy + container. Adding a tenant
- * is one entry here plus its component (see docs/plans/done/panel-framework). */
+ * is one entry in panels/registry.ts (metadata) plus its component here. */
+const PANEL_COMPONENTS: Record<string, React.FC<{ onClose: () => void }>> = {
+  agents: AgentsPanelContainer,
+  usage: UsagePanelContainer,
+  wifi: WifiPanelContainer,
+  dns: DnsPanelContainer,
+  audio: AudioPanelContainer,
+  clipboard: ClipboardPanelContainer,
+  help: HelpPanelContainer,
+}
+
 const PANELS: Record<
   string,
   { title: string; hint: string; component: React.FC<{ onClose: () => void }> }
-> = {
-  agents: {
-    title: 'Agents',
-    hint: 'coding agent sessions ▸',
-    component: AgentsPanelContainer,
-  },
-  usage: {
-    title: 'Usage',
-    hint: 'token monitor ▸',
-    component: UsagePanelContainer,
-  },
-  wifi: {
-    title: 'Wi-Fi',
-    hint: 'networks & power ▸',
-    component: WifiPanelContainer,
-  },
-  dns: {
-    title: 'DNS',
-    hint: 'network info ▸',
-    component: DnsPanelContainer,
-  },
-}
+> = Object.fromEntries(
+  PANEL_INFO.flatMap((p) => {
+    const component = PANEL_COMPONENTS[p.id]
+    return component
+      ? [[p.id, { title: p.title, hint: p.hint, component }] as const]
+      : []
+  }),
+)
 
 const KNOWN_BROWSERS = [
   'Safari',
@@ -102,13 +102,6 @@ const DEFAULT_CONFIG: Config = {
   themes: {},
   bar: { enabled: false, modules: DEFAULT_BAR_MODULES },
   agents: DEFAULT_AGENTS_CONFIG,
-}
-
-/** Panels gated by settings; anything unlisted is always on. */
-function panelEnabled(id: string, config: Config): boolean {
-  if (id === 'usage') return config.agents.usage
-  if (id === 'agents') return config.agents.monitor
-  return true
 }
 
 function renderSpans(spans: Span[]) {
@@ -280,11 +273,34 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [scriptTrigger, trigger, args])
 
+  // Panel keywords fuzzy-match like apps (`usag` → Usage); an exact token still
+  // dispatches through the grammar's trigger mode before launch mode sees it.
+  const panelItems = useMemo<IndexItem[]>(
+    () =>
+      Object.entries(PANELS)
+        .filter(([id]) => panelEnabled(id, config))
+        .map(([id, p]) => ({
+          id: `panel:${id}`,
+          name: p.title,
+          kind: 'panel' as const,
+          path: id,
+          hint: p.hint,
+          icon: null,
+          aliases: [id],
+        })),
+    [config],
+  )
+
   const rows: Row[] = useMemo(() => {
     if (draft) return draftRows(draft, raw, browsers)
     switch (parsed.mode) {
       case 'launch':
-        return launchRows(parsed.query, index, frecency, config.searchFallback)
+        return launchRows(
+          parsed.query,
+          [...index, ...panelItems],
+          frecency,
+          config.searchFallback,
+        )
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
         const panel = panelEnabled(parsed.trigger, config)
@@ -304,6 +320,7 @@ export default function App() {
   }, [
     parsed,
     index,
+    panelItems,
     frecency,
     clips,
     scriptItems,

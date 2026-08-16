@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-08-16 · `system_profiler SPAirPortDataType` scans wifi with no Location prompt — slowly, with typos
+
+The blocker that shelved wifi scanning in P0 (CoreWLAN wants Location Services) has a
+stock-binary bypass: `system_profiler SPAirPortDataType -json` lists nearby SSIDs,
+security mode, and signal/noise, TCC-silent. Two gotchas: it takes ~7 s (async command,
+spinner, one-shot per keypress — never on the refresh interval), and the JSON's enum
+strings can't be trusted verbatim — this macOS build emits a typo'd
+`pairport_security_mode_wpa3_transition` (missing leading `s`), so the parser treats
+"anything not none/open" as secured instead of matching known values.
+
 ### 2026-08-16 · Hover never reaches an accessory app's panel until you click it
 
 The agent dropdown "opened on click, not hover, and never closed": WKWebView's own

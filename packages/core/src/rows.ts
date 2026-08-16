@@ -55,6 +55,7 @@ function kindGlyph(item: IndexItem): string {
   if (item.kind === 'settings') return '⚙'
   if (item.kind === 'link') return '↗'
   if (item.kind === 'command') return '⏻'
+  if (item.kind === 'panel') return '▤'
   return '⚓︎'
 }
 
@@ -127,7 +128,10 @@ export function launchRows(
       positions,
       icon: item.icon,
       glyph: kindGlyph(item),
-      enter: { kind: 'execute', id: item.id },
+      enter:
+        item.kind === 'panel'
+          ? { kind: 'open-panel', panel: item.path }
+          : { kind: 'execute', id: item.id },
       alt: itemAlt(item),
     })
   }

@@ -29,12 +29,12 @@ describe('frecencyMultiplier', () => {
     expect(frecencyMultiplier(0)).toBe(1)
   })
 
-  it('grows with frecency but is hard-capped below 1.5', () => {
+  it('grows with frecency but is hard-capped below 2', () => {
     const low = frecencyMultiplier(1)
     const high = frecencyMultiplier(1000)
     expect(low).toBeGreaterThan(1)
     expect(high).toBeGreaterThan(low)
-    expect(high).toBeLessThan(1.5)
+    expect(high).toBeLessThan(2)
   })
 })
 
@@ -55,6 +55,17 @@ describe('rank', () => {
       warm.map((r) => r.item.name),
     )
     expect(warm[0]!.item.name).toBe('Spotify')
+  })
+
+  it('a few days of launches flips a near-tie (code → VS Code over Codex)', () => {
+    const editors = [app('Codex'), app('Visual Studio Code')]
+    const cold = rank('code', editors, {})
+    expect(cold[0]!.item.name).toBe('Codex')
+    // Five launches inside the 5-day window (frecency.rs counts 1.0 each).
+    const warm = rank('code', editors, {
+      '/Applications/Visual Studio Code.app': 5,
+    })
+    expect(warm[0]!.item.name).toBe('Visual Studio Code')
   })
 
   it('a weak textual match cannot outrank an obviously better one (PRD §5.3)', () => {

@@ -10,15 +10,15 @@
 
 :root {
   color-scheme: dark;
-  /* Brand palette from the app icon: #1C1D2D ground, #FF6B8C mark. Panel and
-     border are the ground lightened in the same hue family. */
-  --bg: #1c1d2d;
-  --panel: #26283b;
-  --border: #3a3c56;
-  --fg: #e9eaf4;
-  --dim: #8b8dab;
-  --accent: #ff6b8c;
-  --sigil: #ff6b8c;
+  /* Brand palette: #1C1D2A ground, #FF176C mark. Panel and border are the
+     ground lightened in the same hue family. */
+  --bg: #1c1d2a;
+  --panel: #262838;
+  --border: #393b54;
+  --fg: #b5b9d9;
+  --dim: #73747c;
+  --accent: #ff176c;
+  --sigil: #ff176c;
   --danger: #f85149;
 }
 

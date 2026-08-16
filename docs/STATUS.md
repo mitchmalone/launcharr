@@ -59,11 +59,21 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   `agents.askMode` ("Enable agent mode", Settings → Agents, off by default); Esc/Backspace
   return to search, mode keys hop directly. Branch kept for reference.
 - **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the
-  launcher window — `PANELS` registry in App.tsx, breadcrumb prompt, Esc-stack, panels
-  are storied presentational components + thin invoke containers. Tenants: **`wifi ⏎`**
-  (active network pinned, known networks scroll + Enter-connects, `p` power, scan row
-  greyed pending Location Services) and **`dns ⏎`** (interface/IP/router/resolver,
-  MagicDNS note). Wifi commands ×4 in wifi.rs (DECISIONS 2026-08-16).
+  launcher window — metadata in `panels/registry.ts`, components in App.tsx, breadcrumb
+  prompt, Esc-stack, panels are storied presentational components + thin invoke
+  containers. Tenants: **`wifi ⏎`** (pinned active, known networks Enter-connect, `p`
+  power, **`s` scan** via async `system_profiler` — no Location Services, JOURNAL
+  2026-08-16 — with masked-password join for unknown secured networks), **`dns ⏎`**,
+  **`audio ⏎`** (output/input volume sliders ←→, device lists Enter-switches via
+  hand-rolled CoreAudio FFI in coreaudio.rs, `m` mute), **`clipboard ⏎`** (TwoPane:
+  search + history left, preview right, ⌘⌫ delete; `clip` inline rows remain), and
+  **`help ⏎`** (filterable reference: modes, keys, panels, commands, scripts,
+  quicklinks). Wifi commands ×5 + audio ×4 in Rust (DECISIONS 2026-08-16).
+- **2026-08-16 polish wave**: launcharr theme repainted (#1C1D2A ground, #FF176C
+  accent, #B5B9D9/#73747C fg/dim); bar wifi+battery cells use lucide icons (custom
+  Lucide-style brand icons slot into the same `ICON_PROPS`); panel keywords fuzzy-match
+  like apps (`usag` → Usage, panel-kind index items); frecency = launches in past
+  5 days, multiplier cap 2.0 — `code` learns VS Code (DECISIONS 2026-08-16).
 
 ## In progress / next (ROADMAP B2–B4, P1)
 
@@ -83,6 +93,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 
 - Panel focus checklist (only hands): summon → `wifi ⏎` → connect → Esc → Esc → focus
   restored exactly, incl. over a full-screen app.
+- New-panel hands-check (plans/done/omarchy-panels-and-polish.md checklist): wifi `s`
+  scan + secured join, audio slider steps + device switch audibly lands, clipboard
+  copy-on-Enter dismisses, help filter, bar icons legible in all themes.
 - Agent monitoring hands-check: attention pulse visual; bar-cell click / `agents ⏎`
   Enter lands in the right tmux pane (plans/done/agent-monitoring.md field notes).
 - Anything off in daily use → JOURNAL it, next session fixes.

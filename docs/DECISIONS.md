@@ -5,6 +5,41 @@
 
 ---
 
+### 2026-08-16 · Omarchy panel wave: audio + clipboard + help tenants, wifi scan, fuzzy keywords, 5-day ranking
+
+- **Decision (IPC).** Five commands join the surface: `wifi_scan`, `audio_status`,
+  `audio_set_volume`, `audio_set_muted`, `audio_set_default`; `wifi_connect` gains an
+  optional password argument (validated like SSIDs — no leading dash, bounded length).
+- **Decision (wifi scan without Location Services).** The P0 stance "scanning needs the
+  Location opt-in" is reversed without spending a permission: `system_profiler
+SPAirPortDataType -json` reports nearby SSIDs + security + signal with no TCC prompt.
+  It takes ~7 s, so the command is async, one-shot per keypress, spinner in the panel.
+  Joining an unknown secured network gets a masked password step (TextPrompt `secret`).
+- **Decision (audio, no new crates).** Volumes ride `osascript` (`get/set volume`);
+  device enumeration + default switching use the CoreAudio property API via ~5
+  hand-declared FFI calls in `coreaudio.rs` (dedicated unsafe module, safety comment per
+  block) rather than a binding crate. Permission-free on both paths. Volume applies to
+  the default device — same behavior as the hardware volume keys.
+- **Decision (clipboard panel).** `clipboard ⏎` opens a TwoPane tenant (search prompt,
+  history left, full-text preview right) over the existing `clips` backend; `clip`
+  inline rows stay. Text-only, like the store (PRD §5.6) — image capture is a separate
+  weight decision, not taken here.
+- **Decision (help panel).** `help ⏎` renders the command reference (modes, keys,
+  panels, system commands, scripts — `ScriptInfo.description`'s first consumer,
+  quicklinks). Panel metadata moved to `panels/registry.ts` (pure) so help and the
+  keyword items read it without importing the app shell.
+- **Decision (fuzzy keywords).** Panel trigger words become rankable `panel`-kind items
+  (`usag` → Usage) through the same `rank()`; exact tokens still dispatch via the
+  grammar, so invariant 4 stands.
+- **Decision (ranking, Mitch).** The frecency signal becomes "launches in the past
+  5 days" (1.0 in-window, 0.1 residual) and the multiplier cap moves 1.5 → 2.0 so a few
+  days of launching VS Code beats Codex on `code`. This half-reopens the 2026-08-08
+  acronym-vs-prefix worry (JOURNAL) — accepted deliberately: learned preference is now
+  _supposed_ to override the default textual order; watched in daily use.
+- **Also.** launcharr theme repainted (#1C1D2A / #FF176C / #B5B9D9 / #73747C, mirrored
+  in www demo-themes); bar wifi + battery cells draw lucide-react icons (custom
+  Lucide-style brand icons can join with the same `ICON_PROPS`).
+
 ### 2026-08-16 · `?` agent mode ported; `ask` joins the IPC surface; prefix keys become mode switches
 
 - **Decision (IPC).** One command joins the surface: `ask(prompt, continue_conversation)`

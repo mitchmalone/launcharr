@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useEffect, useState } from 'react'
 
-import { WifiPanel, type WifiStatus } from './WifiPanel'
+import { type ScanNetwork, WifiPanel, type WifiStatus } from './WifiPanel'
 
 const REFRESH_MS = 3000
 
@@ -13,6 +13,8 @@ const REFRESH_MS = 3000
 export function WifiPanelContainer({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<WifiStatus | null>(null)
   const [networks, setNetworks] = useState<string[]>([])
+  const [scanned, setScanned] = useState<ScanNetwork[] | null>(null)
+  const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,16 +32,26 @@ export function WifiPanelContainer({ onClose }: { onClose: () => void }) {
   }, [refresh])
 
   const onConnect = useCallback(
-    (ssid: string) => {
+    (ssid: string, password?: string) => {
       setBusy(ssid)
       setError(null)
-      invoke('wifi_connect', { ssid })
+      invoke('wifi_connect', { ssid, password: password ?? null })
         .then(refresh)
         .catch((e) => setError(String(e)))
         .finally(() => setBusy(null))
     },
     [refresh],
   )
+
+  // system_profiler takes seconds; the command is async and one-shot per press.
+  const onScan = useCallback(() => {
+    setScanning(true)
+    setError(null)
+    invoke<ScanNetwork[]>('wifi_scan')
+      .then(setScanned)
+      .catch((e) => setError(String(e)))
+      .finally(() => setScanning(false))
+  }, [])
 
   const onTogglePower = useCallback(() => {
     if (!status) return
@@ -52,9 +64,12 @@ export function WifiPanelContainer({ onClose }: { onClose: () => void }) {
     <WifiPanel
       status={status}
       networks={networks}
+      scanned={scanned}
+      scanning={scanning}
       busy={busy}
       error={error}
       onConnect={onConnect}
+      onScan={onScan}
       onTogglePower={onTogglePower}
       onClose={onClose}
     />

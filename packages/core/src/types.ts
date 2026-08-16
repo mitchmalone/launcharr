@@ -1,4 +1,13 @@
-export type ItemKind = 'app' | 'settings' | 'launcharr' | 'link' | 'command'
+export type ItemKind =
+  | 'app'
+  | 'settings'
+  | 'launcharr'
+  | 'link'
+  | 'command'
+  /** A panel trigger word (wifi, usage…) surfaced as a rankable item so it fuzzy-matches
+   * like an app; `path` carries the trigger word. Exact-token typing still goes through
+   * the grammar's trigger mode. */
+  | 'panel'
 
 export type IndexItem = {
   id: string

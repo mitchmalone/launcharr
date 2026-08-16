@@ -201,6 +201,9 @@ body,
 }
 
 .bar-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--dim, #7f86a5);
 }
 
