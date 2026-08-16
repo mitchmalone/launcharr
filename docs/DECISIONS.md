@@ -5,6 +5,37 @@
 
 ---
 
+### 2026-08-16 · Invariant 10: the site demos the real thing, never a replica
+
+- **Decision.** Anything in `apps/www` depicting the app is **imported** from the shipping
+  code (`packages/tui`, `packages/core`), or **ported from the app source with that source
+  named in a comment**. Inventing a component, or building one from a design mockup, is now
+  an invariant violation. Only genuinely absent data stays fictional — a fake index, fake OS
+  readings — and it's shaped like the real payload. Full text in `AGENTS.md`.
+- **Why (the incident).** The www redesign built its bar strip, agent cells and hover card
+  from the Claude Design export's hardcoded values instead of `bar/bar.css` and
+  `bar/main.tsx`. Mitch caught three errors on sight: the front app and right-side cells
+  rendered `--dim` when `.bar-cell` says **"fg, not dim — the dim tone read too dark against
+  the strip"**; the `working` cell used the site's pink `--cta` instead of the theme accent,
+  so it didn't retint with the theme picker; and the hover card dropped the glyph and
+  relative age, used the wrong tmux line, and sat at the wrong offset. The state key was
+  `blocked` — that's only the display label; the wire name is `attention`.
+- **The sharp edge.** All three facts were decided _that same day_. A design export is a
+  snapshot of a proposal, and this app moves faster than any mockup can track — so a mockup
+  is input to page layout and copy only, never to app-depicting components.
+- **Why it's an invariant, not a preference.** The demo's entire value is that it _is_ the
+  app: the matcher, the panels and the keyboard nav are really running. A replica that
+  drifts is worse than no demo, because it ships a confident lie about the product and the
+  drift stays invisible until someone who knows the app looks at it. This generalises
+  invariant 5 (the matcher is never forked or hand-copied) from the engine to every surface.
+- **Consequence.** A port is a debt, not a resting state: when a ported surface gains a
+  second consumer, extract it into a package. The bar chrome is the live case — it sits in
+  `apps/desktop/src/bar/` with the website now a second consumer, so extracting it into
+  `packages/tui` is queued for Mitch's call.
+- **Also.** `packages/tui` gains a `./themes` entry point (themes are pure data; server
+  components can't import the barrel, which re-exports hook-using components), with the
+  reason recorded in the package's exports map so a tidy-up doesn't fold it back in.
+
 ### 2026-08-16 · Zone board v2: full-width, and retirement replaces show/hide
 
 - **Decision (layout).** The Menubar tab's zone boards deliberately break the settings

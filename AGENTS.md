@@ -80,14 +80,29 @@ it in `docs/DECISIONS.md`.
    exactly. Proven in M0 before anything was built on top.
 7. **The site is fully static.** `output: 'export'` in `apps/www` — no API routes, no
    middleware, no server runtime.
-8. **Design tokens only** in `apps/www`: colors come from the CSS vars in
-   `src/app/globals.css`. Exception: the demo panel's inner chrome is intentionally
-   hard-coded dark — it renders a dark macOS panel in both themes, like a screenshot. Design
-   source of truth is the Claude Design project "Launcharr landing page design"
-   (`02b1ac80-4556-43d7-810b-b5938cc2573e`) — visual changes round-trip through it.
+8. **Design tokens only** in `apps/www`: page colors come from the CSS vars in
+   `src/app/globals.css`, and shadcn/ui's semantic tokens are _mapped onto_ those vars,
+   never imported (DECISIONS 2026-08-16). Exception: the demo renders a dark macOS desktop
+   in both site themes, like a screenshot — but its panel and bar chrome are driven by the
+   app's own theme tokens (`@launcharr/tui/themes`), not hand-typed hex, so the theme
+   picker retints them exactly as the app does. Page-level design source of truth is the
+   Claude Design project "Launcharr landing page design"
+   (`02b1ac80-4556-43d7-810b-b5938cc2573e`) — visual changes round-trip through it, but it
+   never overrides invariant 10 for anything depicting the app.
 9. **Release facts are generated, not authored.** `apps/www/src/lib/release.json` is written
    by `scripts/release.sh` — never hand-edit it. `site.ts` derives version, artifact URLs,
    and install methods from it; site copy is free, release data is not.
+10. **The site demos the real thing — never a replica.** Anything in `apps/www` that depicts
+    the app (panels, rows, the bar, agent cells, themes, keyboard behaviour) is **imported
+    from the shipping code** — `packages/tui`, `packages/core` — or, where that surface
+    doesn't live in a package yet, **ported from the app source with the source file named
+    in a comment**. Never invent a component, and never build one from a design mockup: a
+    mockup is a proposal, the app is the fact, and mockups go stale within hours (proven
+    2026-08-16, DECISIONS). Only genuinely absent data is fictional — a fake index, fake OS
+    readings — and it is shaped like the real payload. **The demo being the actual app is
+    the site's whole novelty; a replica that drifts is worse than no demo at all.** When a
+    port and the app disagree, the app wins. When a ported surface gains a second consumer,
+    extract it into a package instead of keeping two copies.
 
 ## Performance budgets (requirements, not aspirations)
 
