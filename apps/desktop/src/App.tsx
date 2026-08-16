@@ -28,7 +28,7 @@ import { parseAskLine } from './lib/ask'
 import {
   type Config,
   DEFAULT_AGENTS_CONFIG,
-  DEFAULT_BAR_MODULES,
+  DEFAULT_BAR_LAYOUT,
 } from './lib/config'
 import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
@@ -100,7 +100,7 @@ const DEFAULT_CONFIG: Config = {
   indexBookmarks: false,
   theme: 'launcharr',
   themes: {},
-  bar: { enabled: false, modules: DEFAULT_BAR_MODULES },
+  bar: { enabled: false, layout: DEFAULT_BAR_LAYOUT },
   agents: DEFAULT_AGENTS_CONFIG,
 }
 

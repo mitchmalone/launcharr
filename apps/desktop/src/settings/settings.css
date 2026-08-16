@@ -295,6 +295,38 @@ button {
   margin-top: 4px;
 }
 
+/* --- Menubar zone board (drag between/within alignment zones). --- */
+
+.zoneboard {
+  display: grid;
+  gap: 8px;
+}
+
+.zonecol {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 120px;
+}
+
+.zonehead {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0 2px 8px;
+}
+
+.zoneempty {
+  color: var(--dim);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+  padding: 14px 0;
+  /* Keep dragenter targeting the column, not this hint. */
+  pointer-events: none;
+}
+
 /* --- Menubar widget arranger (drag to reorder). --- */
 
 .modrow {

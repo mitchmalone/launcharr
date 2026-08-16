@@ -5,6 +5,21 @@
 
 ---
 
+### 2026-08-16 · Bar layout becomes explicit zones (left / center / right)
+
+- **Decision.** The clock-anchored flat module list (same day, below) lasted hours:
+  Mitch's verdict was that ordering alone can't express alignment. `bar.layout` is now
+  `BarZones { left, center, right }` — every module lives in a zone, ordered within
+  it, and the clock is an ordinary module. `bar.notchedLayout` is the same shape;
+  notched displays render no center zone (camera housing), and when the field is
+  absent the arrangement derives from `layout` with center folded into the head of
+  right. Legacy `modules`/`notchedModules` migrate at load (split at the clock,
+  exactly the old renderer's behavior) and stop being written.
+- **UI.** Settings → Menubar is a zone board: one column per zone (three main, two
+  notched), drag between and within columns, per-module show/hide. Missing modules
+  normalize into their default zone; on notched boards center-homed modules fold
+  into right so nothing becomes unreachable.
+
 ### 2026-08-16 · Notch profiles + arranger; bar disable hides, never destroys
 
 - **Decision (notch).** Notch detection is automatic per display —

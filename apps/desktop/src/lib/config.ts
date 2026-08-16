@@ -30,27 +30,68 @@ export type Config = {
 
 export type BarConfig = {
   enabled: boolean
-  /** Ordered widgets, left→right; `clock` is the center anchor. */
-  modules: BarModule[]
-  /** Optional separate arrangement for notched displays; absent → `modules`. */
-  notchedModules?: BarModule[] | null
+  /** Alignment zones (mirrors BarZones in config.rs): every module lives in
+   * left, center, or right, ordered within its zone. Clock is ordinary. */
+  layout: BarZones
+  /** Notched displays: left/right only (the camera housing owns the center);
+   * absent → derived from `layout` via `notchedZones`. */
+  notchedLayout?: BarZones | null
 }
 
 export type BarModule = { id: string; enabled: boolean }
+export type BarZones = {
+  left: BarModule[]
+  center: BarModule[]
+  right: BarModule[]
+}
+
+export type ZoneName = 'left' | 'center' | 'right'
+export const ZONE_NAMES: ZoneName[] = ['left', 'center', 'right']
+
+const module = (id: string): BarModule => ({ id, enabled: true })
+
+/** Default arrangement; also decides which zone a newly shipped widget joins. */
+export const DEFAULT_BAR_LAYOUT: BarZones = {
+  left: ['workspaces', 'agents', 'frontApp'].map(module),
+  center: [module('clock')],
+  right: ['wifi', 'trmnl', 'battery'].map(module),
+}
 
 /** Same normalization everywhere (bar renderer + settings): drop unknown ids,
- * append known-but-missing ids as enabled so new widgets appear on update. */
-export function normalizeBarModules(list: BarModule[]): BarModule[] {
+ * append known-but-missing ids enabled into their default zone (falling back
+ * to right, where new status widgets belong). */
+export function normalizeBarZones(zones: BarZones): BarZones {
   const known = new Set<string>(BAR_MODULE_IDS)
-  const listed = list.filter((m) => known.has(m.id))
-  const listedIds = new Set(listed.map((m) => m.id))
-  return [
-    ...listed,
-    ...BAR_MODULE_IDS.filter((id) => !listedIds.has(id)).map((id) => ({
-      id: id as string,
-      enabled: true,
-    })),
-  ]
+  const seen = new Set<string>()
+  const out: BarZones = { left: [], center: [], right: [] }
+  for (const zone of ZONE_NAMES) {
+    for (const m of zones[zone]) {
+      if (known.has(m.id) && !seen.has(m.id)) {
+        seen.add(m.id)
+        out[zone].push(m)
+      }
+    }
+  }
+  for (const id of BAR_MODULE_IDS) {
+    if (seen.has(id)) continue
+    const home =
+      ZONE_NAMES.find((z) => DEFAULT_BAR_LAYOUT[z].some((m) => m.id === id)) ??
+      'right'
+    out[home].push(module(id))
+  }
+  return out
+}
+
+/** The arrangement a notched display uses: the explicit one when set, else
+ * the main layout — normalized, then center folded into the head of the right
+ * zone (a notched bar has no center; the camera housing owns it). */
+export function notchedZones(bar: BarConfig): BarZones {
+  const base = normalizeBarZones(bar.notchedLayout ?? bar.layout)
+  return {
+    left: base.left,
+    center: [],
+    right: [...base.center, ...base.right],
+  }
 }
 
 export type AgentsConfig = {
@@ -72,7 +113,7 @@ export type AgentsConfig = {
   codexCreds: boolean
 }
 
-/** Default widget order; mirrored in config.rs (BAR_MODULE_IDS). */
+/** Every widget the bar knows (TS-only; Rust just stores zones). */
 export const BAR_MODULE_IDS = [
   'workspaces',
   'agents',
@@ -82,11 +123,6 @@ export const BAR_MODULE_IDS = [
   'trmnl',
   'battery',
 ] as const
-
-export const DEFAULT_BAR_MODULES = BAR_MODULE_IDS.map((id) => ({
-  id: id as string,
-  enabled: true,
-}))
 
 export const DEFAULT_AGENTS_CONFIG: AgentsConfig = {
   monitor: false,

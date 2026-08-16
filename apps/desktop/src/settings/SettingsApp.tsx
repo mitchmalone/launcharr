@@ -15,7 +15,13 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { type BarModule, type Config, normalizeBarModules } from '../lib/config'
+import {
+  type BarZones,
+  type Config,
+  type ZoneName,
+  normalizeBarZones,
+  notchedZones,
+} from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
 import HotkeyRecorder from './HotkeyRecorder'
 import iconUrl from './launcharr.svg'
@@ -521,66 +527,112 @@ const MODULE_LABELS: Record<string, string> = {
   workspaces: 'Workspaces (Aerospace)',
   agents: 'Agent monitors',
   frontApp: 'Active app',
-  clock: 'Clock (center anchor)',
+  clock: 'Clock',
   wifi: 'Wi-Fi',
   trmnl: 'TRMNL battery',
   battery: 'Battery',
 }
 
-/** Drag-to-reorder widget list with per-module on/off. Pure HTML5 DnD —
- * reorders live as the drag passes over rows, commits through onChange. */
-function ModuleArranger({
-  modules,
+const ZONE_LABELS: Record<ZoneName, string> = {
+  left: 'Left',
+  center: 'Center',
+  right: 'Right',
+}
+
+/** One column per alignment zone; modules drag between and within columns,
+ * with per-module show/hide. Pure HTML5 DnD — the list reorders live as the
+ * drag passes over rows, commits through onChange. */
+function ZoneBoard({
+  zones,
+  zoneNames,
   onChange,
 }: {
-  modules: BarModule[]
-  onChange: (next: BarModule[]) => void
+  zones: BarZones
+  zoneNames: ZoneName[]
+  onChange: (next: BarZones) => void
 }) {
   const [dragId, setDragId] = useState<string | null>(null)
-  const overRow = (targetId: string) => {
-    if (!dragId || dragId === targetId) return
-    const from = modules.findIndex((m) => m.id === dragId)
-    const to = modules.findIndex((m) => m.id === targetId)
-    if (from < 0 || to < 0) return
-    const next = modules.slice()
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved as BarModule)
+
+  const without = (id: string): BarZones => ({
+    left: zones.left.filter((m) => m.id !== id),
+    center: zones.center.filter((m) => m.id !== id),
+    right: zones.right.filter((m) => m.id !== id),
+  })
+  const dragged = () =>
+    [...zones.left, ...zones.center, ...zones.right].find(
+      (m) => m.id === dragId,
+    )
+  /** Drop the dragged module into `zone`, before `beforeId` (or at the end). */
+  const placeAt = (zone: ZoneName, beforeId: string | null) => {
+    const moved = dragged()
+    if (!moved || moved.id === beforeId) return
+    const next = without(moved.id)
+    const list = next[zone]
+    const at = beforeId ? list.findIndex((m) => m.id === beforeId) : -1
+    list.splice(at < 0 ? list.length : at, 0, moved)
     onChange(next)
   }
+
   return (
-    <div>
-      {modules.map((m) => (
+    <div
+      className="zoneboard"
+      style={{ gridTemplateColumns: `repeat(${zoneNames.length}, 1fr)` }}
+    >
+      {zoneNames.map((zone) => (
         <div
-          key={m.id}
-          className={`modrow ${m.enabled ? '' : 'modrow-off'} ${m.id === dragId ? 'modrow-dragging' : ''}`}
-          draggable
-          onDragStart={(e) => {
-            setDragId(m.id)
-            e.dataTransfer.effectAllowed = 'move'
-          }}
-          onDragEnter={() => overRow(m.id)}
+          key={zone}
+          className="zonecol"
           onDragOver={(e) => e.preventDefault()}
-          onDragEnd={() => setDragId(null)}
+          onDragEnter={(e) => {
+            // Only when entering the column's empty space, not a row.
+            if (e.target === e.currentTarget) placeAt(zone, null)
+          }}
           onDrop={(e) => {
             e.preventDefault()
             setDragId(null)
           }}
         >
-          <GripVertical size={14} className="grip" aria-hidden />
-          <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
-          <label className="check" title={m.enabled ? 'shown' : 'hidden'}>
-            <input
-              type="checkbox"
-              checked={m.enabled}
-              onChange={(e) =>
-                onChange(
-                  modules.map((x) =>
-                    x.id === m.id ? { ...x, enabled: e.target.checked } : x,
-                  ),
-                )
-              }
-            />
-          </label>
+          <div className="zonehead">{ZONE_LABELS[zone]}</div>
+          {zones[zone].map((m) => (
+            <div
+              key={m.id}
+              className={`modrow ${m.enabled ? '' : 'modrow-off'} ${m.id === dragId ? 'modrow-dragging' : ''}`}
+              draggable
+              onDragStart={(e) => {
+                setDragId(m.id)
+                e.dataTransfer.effectAllowed = 'move'
+              }}
+              onDragEnter={(e) => {
+                e.stopPropagation()
+                placeAt(zone, m.id)
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnd={() => setDragId(null)}
+            >
+              <GripVertical size={14} className="grip" aria-hidden />
+              <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
+              <label className="check" title={m.enabled ? 'shown' : 'hidden'}>
+                <input
+                  type="checkbox"
+                  checked={m.enabled}
+                  onChange={(e) => {
+                    const flip = (list: typeof zones.left) =>
+                      list.map((x) =>
+                        x.id === m.id ? { ...x, enabled: e.target.checked } : x,
+                      )
+                    onChange({
+                      left: flip(zones.left),
+                      center: flip(zones.center),
+                      right: flip(zones.right),
+                    })
+                  }}
+                />
+              </label>
+            </div>
+          ))}
+          {zones[zone].length === 0 && (
+            <div className="zoneempty">drop here</div>
+          )}
         </div>
       ))}
     </div>
@@ -588,10 +640,10 @@ function ModuleArranger({
 }
 
 function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
-  const modules = normalizeBarModules(config.bar.modules)
-  const notched = config.bar.notchedModules
-    ? normalizeBarModules(config.bar.notchedModules)
-    : null
+  const layout = normalizeBarZones(config.bar.layout)
+  // Normalized + center-folded, so every module stays reachable on a board
+  // that has no center column.
+  const notched = config.bar.notchedLayout ? notchedZones(config.bar) : null
   return (
     <>
       <Row label="Menubar">
@@ -613,13 +665,12 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
       <hr />
       <Row label="Widgets">
         <p className="hint">
-          Drag to reorder, left → right; the checkbox shows or hides a widget.
-          Everything before the clock sits on the left, everything after it on
-          the right.
+          Drag widgets between the zones; the checkbox shows or hides one.
         </p>
-        <ModuleArranger
-          modules={modules}
-          onChange={(next) => set('bar', { ...config.bar, modules: next })}
+        <ZoneBoard
+          zones={layout}
+          zoneNames={['left', 'center', 'right']}
+          onChange={(next) => set('bar', { ...config.bar, layout: next })}
         />
       </Row>
       <hr />
@@ -631,22 +682,25 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
             onChange={(e) =>
               set('bar', {
                 ...config.bar,
-                // Seeded from the main arrangement; unchecking falls back.
-                notchedModules: e.target.checked ? modules : null,
+                // Seeded from what a notched display shows today (center
+                // folded into right); unchecking falls back to that derivation.
+                notchedLayout: e.target.checked
+                  ? notchedZones(config.bar)
+                  : null,
               })
             }
           />
           Separate arrangement for notched displays
         </label>
         <p className="hint">
-          The camera housing eats the center, so notched bars render the clock
-          at the head of the right cluster instead of mid-strip.
+          Notched displays have no center zone — the camera housing owns it.
         </p>
         {notched && (
-          <ModuleArranger
-            modules={notched}
+          <ZoneBoard
+            zones={notched}
+            zoneNames={['left', 'right']}
             onChange={(next) =>
-              set('bar', { ...config.bar, notchedModules: next })
+              set('bar', { ...config.bar, notchedLayout: next })
             }
           />
         )}

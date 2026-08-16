@@ -75,12 +75,14 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   from scan dBm, speaker/headphones/mic device glyphs); panel keywords fuzzy-match
   like apps (`usag` → Usage, panel-kind index items); frecency = launches in past
   5 days, multiplier cap 2.0 — `code` learns VS Code (DECISIONS 2026-08-16).
-- **Notch profiles + arranger** (DECISIONS 2026-08-16): per-display notch detection
-  (`NSScreen.safeAreaInsets`, notch.rs), optional `bar.notchedModules` second
-  arrangement (clock joins the right cluster under a notch), Settings → Menubar
-  drag-to-reorder with per-module show/hide for both profiles. Bar disable now
-  hides panels instead of destroying (destroy = SIGABRT, JOURNAL 2026-08-16);
-  tmux layout cache keeps only successes so agent borders survive cold start.
+- **Notch profiles + zone layouts** (DECISIONS 2026-08-16 ×2): per-display notch
+  detection (`NSScreen.safeAreaInsets`, notch.rs); `bar.layout` is explicit zones
+  (left/center/right, clock ordinary) with optional `bar.notchedLayout` (no center
+  zone; absent → derived, center folds into right head); legacy flat lists migrate
+  at load. Settings → Menubar is a drag zone board (columns per zone, show/hide per
+  module, both profiles). Bar disable now hides panels instead of destroying
+  (destroy = SIGABRT, JOURNAL 2026-08-16); tmux layout cache keeps only successes
+  so agent borders survive cold start.
 
 ## In progress / next (ROADMAP B2–B4, P1)
 

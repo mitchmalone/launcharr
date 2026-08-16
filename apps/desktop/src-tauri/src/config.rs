@@ -33,15 +33,71 @@ pub struct Link {
 #[serde(default, rename_all = "camelCase")]
 pub struct BarConfig {
     pub enabled: bool,
-    /// Ordered widget list, rendered left→right. `clock` is the center anchor:
-    /// modules before it sit left, after it sit right. Unknown ids are ignored;
-    /// known ids missing from the list are appended enabled (forward compat).
-    pub modules: Vec<BarModule>,
-    /// Optional separate arrangement for notched displays (the camera housing
-    /// eats the center, so those bars render the clock in the right cluster).
-    /// None → notched displays use `modules` too.
+    /// Explicit alignment zones (2026-08-16, replacing the clock-anchored flat
+    /// list): every module lives in left, center, or right, ordered within its
+    /// zone. The clock is an ordinary module.
+    pub layout: BarZones,
+    /// Optional separate arrangement for notched displays — left and right
+    /// only (the camera housing owns the center). None → derived from
+    /// `layout` with center modules folded into the head of the right zone.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub notched_modules: Option<Vec<BarModule>>,
+    pub notched_layout: Option<BarZones>,
+    /// Legacy flat lists (pre-zones), read once for migration, never written.
+    #[serde(skip_serializing)]
+    modules: Option<Vec<BarModule>>,
+    #[serde(skip_serializing)]
+    notched_modules: Option<Vec<BarModule>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct BarZones {
+    pub left: Vec<BarModule>,
+    pub center: Vec<BarModule>,
+    pub right: Vec<BarModule>,
+}
+
+impl BarConfig {
+    /// Fold pre-zone configs (`modules` split at the clock anchor,
+    /// `notchedModules`) into zones. Runs at load; the next write persists the
+    /// migrated shape and drops the legacy keys.
+    pub fn migrate_legacy(&mut self) {
+        if let Some(flat) = self.modules.take() {
+            // A missing `layout` key deserializes to the default zones
+            // (struct-level serde default) — that's the "not customized yet"
+            // sentinel the legacy list may overwrite.
+            if self.layout == BarConfig::default().layout {
+                self.layout = zones_from_flat(&flat);
+            }
+        }
+        if let Some(flat) = self.notched_modules.take() {
+            if self.notched_layout.is_none() {
+                let z = zones_from_flat(&flat);
+                self.notched_layout = Some(BarZones {
+                    left: z.left,
+                    center: Vec::new(),
+                    right: [z.center, z.right].concat(),
+                });
+            }
+        }
+    }
+}
+
+/// Legacy order → zones: modules before `clock` sit left, `clock` centers,
+/// the rest sit right (exactly the old renderer's split).
+fn zones_from_flat(flat: &[BarModule]) -> BarZones {
+    let clock_at = flat.iter().position(|m| m.id == "clock");
+    match clock_at {
+        Some(i) => BarZones {
+            left: flat[..i].to_vec(),
+            center: vec![flat[i].clone()],
+            right: flat[i + 1..].to_vec(),
+        },
+        None => BarZones {
+            left: flat.to_vec(),
+            ..Default::default()
+        },
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,29 +107,24 @@ pub struct BarModule {
     pub enabled: bool,
 }
 
-/// Every widget the bar knows, in default order. The settings UI and the
-/// frontend renderer both normalize against this list.
-pub const BAR_MODULE_IDS: [&str; 7] = [
-    "workspaces",
-    "agents",
-    "frontApp",
-    "clock",
-    "wifi",
-    "trmnl",
-    "battery",
-];
+// The full widget-id list lives TS-side (lib/config.ts BAR_MODULE_IDS) —
+// only the renderer and settings normalize against it; Rust just stores zones.
 
 impl Default for BarConfig {
     fn default() -> Self {
+        let module = |id: &str| BarModule {
+            id: id.into(),
+            enabled: true,
+        };
         Self {
             enabled: false,
-            modules: BAR_MODULE_IDS
-                .iter()
-                .map(|id| BarModule {
-                    id: (*id).into(),
-                    enabled: true,
-                })
-                .collect(),
+            layout: BarZones {
+                left: ["workspaces", "agents", "frontApp"].map(module).to_vec(),
+                center: vec![module("clock")],
+                right: ["wifi", "trmnl", "battery"].map(module).to_vec(),
+            },
+            notched_layout: None,
+            modules: None,
             notched_modules: None,
         }
     }
@@ -230,10 +281,11 @@ pub fn load_or_create() -> CmdResult<(Config, bool)> {
     let raw = fs::read_to_string(&path)?;
     // A broken hand-edit must not brick the launcher: fall back to defaults —
     // but say so, or a typo silently reverts every setting (found 2026-08-15).
-    let parsed = serde_json::from_str(&raw).unwrap_or_else(|e| {
+    let mut parsed: Config = serde_json::from_str(&raw).unwrap_or_else(|e| {
         eprintln!("[launcharr] config.json unreadable, using defaults: {e}");
         Config::default()
     });
+    parsed.bar.migrate_legacy();
     Ok((parsed, false))
 }
 
@@ -323,6 +375,34 @@ mod tests {
                 .unwrap();
         assert_eq!(cfg.theme, "dracula");
         assert!(cfg.themes.contains_key("mine"));
+    }
+
+    #[test]
+    fn legacy_bar_modules_migrate_to_zones_split_at_clock() {
+        let mut cfg: Config = serde_json::from_str(
+            r#"{"bar":{"enabled":true,
+                "modules":[
+                    {"id":"agents","enabled":true},
+                    {"id":"clock","enabled":true},
+                    {"id":"battery","enabled":false}],
+                "notchedModules":[
+                    {"id":"clock","enabled":true},
+                    {"id":"battery","enabled":true}]}}"#,
+        )
+        .unwrap();
+        cfg.bar.migrate_legacy();
+        assert_eq!(cfg.bar.layout.left[0].id, "agents");
+        assert_eq!(cfg.bar.layout.center[0].id, "clock");
+        assert_eq!(cfg.bar.layout.right[0].id, "battery");
+        assert!(!cfg.bar.layout.right[0].enabled);
+        // Migrated config no longer serializes legacy keys.
+        let out = serde_json::to_string(&cfg).unwrap();
+        assert!(!out.contains("\"modules\""));
+        // Notched folds center into the head of right — no center zone.
+        let notched = cfg.bar.notched_layout.unwrap();
+        assert!(notched.left.is_empty() && notched.center.is_empty());
+        assert_eq!(notched.right[0].id, "clock");
+        assert_eq!(notched.right[1].id, "battery");
     }
 
     #[test]

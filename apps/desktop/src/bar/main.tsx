@@ -11,7 +11,13 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import { type Config, normalizeBarModules } from '../lib/config'
+import {
+  type BarZones,
+  type Config,
+  DEFAULT_BAR_LAYOUT,
+  normalizeBarZones,
+  notchedZones,
+} from '../lib/config'
 import { applyTheme } from '../lib/themes'
 import './bar.css'
 
@@ -272,14 +278,11 @@ declare global {
 }
 const NOTCHED = window.__notched === true
 
-/** This display's module list: the notched arrangement when present and this
- * bar sits under a notch, else the main one — normalized like config.rs. */
-function normalizeModules(
-  cfg: Config | null,
-): { id: string; enabled: boolean }[] {
-  const list =
-    (NOTCHED ? cfg?.bar.notchedModules : null) ?? cfg?.bar.modules ?? []
-  return normalizeBarModules(list)
+/** This display's zones: the notched arrangement (explicit or derived) when
+ * this bar sits under a notch, else the main layout — normalized. */
+function displayZones(cfg: Config | null): BarZones {
+  const bar = cfg?.bar ?? { enabled: false, layout: DEFAULT_BAR_LAYOUT }
+  return NOTCHED ? notchedZones(bar) : normalizeBarZones(bar.layout)
 }
 
 /**
@@ -458,32 +461,33 @@ function Bar() {
           </span>
         )
       }
+      case 'clock':
+        return (
+          <span key={id} className="bar-clock">
+            {clock}
+          </span>
+        )
       default:
         return null
     }
   }
 
-  const modules = normalizeModules(cfg)
-  const clockIdx = modules.findIndex((m) => m.id === 'clock')
-  const enabled = (list: { id: string; enabled: boolean }[]) =>
+  // Zones are explicit (Settings → Menubar board); a notched display renders
+  // no center zone — the camera housing owns it.
+  const zones = displayZones(cfg)
+  const render = (list: { id: string; enabled: boolean }[]) =>
     list.filter((m) => m.enabled).map((m) => moduleNode(m.id))
-  const left = enabled(clockIdx < 0 ? modules : modules.slice(0, clockIdx))
-  const right = enabled(clockIdx < 0 ? [] : modules.slice(clockIdx + 1))
-  const showClock = clockIdx >= 0 && (modules[clockIdx]?.enabled ?? false)
-
-  // Under a notch the absolute center is the camera housing — the clock joins
-  // the head of the right cluster instead of anchoring the middle.
+  const center = render(zones.center)
   return (
     <div className="bar">
       <div className="bar-left">
         <span className="bar-logo">❯</span>
-        {left}
+        {render(zones.left)}
       </div>
-      {showClock && !NOTCHED && <div className="bar-center">{clock}</div>}
-      <div className="bar-right">
-        {showClock && NOTCHED && <span className="bar-clock">{clock}</span>}
-        {right}
-      </div>
+      {!NOTCHED && center.length > 0 && (
+        <div className="bar-center">{center}</div>
+      )}
+      <div className="bar-right">{render(zones.right)}</div>
     </div>
   )
 }
