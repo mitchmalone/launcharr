@@ -28,7 +28,7 @@ export const SOURCE_INSTALL_COMMANDS = [
   'git clone git@github.com:mitchmalone/launcharr.git',
   'cd launcharr',
   'pnpm install',
-  'pnpm tauri build',
-  'cp -R src-tauri/target/release/bundle/macos/launcharr.app /Applications/',
+  'pnpm --filter @launcharr/desktop tauri build',
+  'cp -R apps/desktop/src-tauri/target/release/bundle/macos/launcharr.app /Applications/',
   'open /Applications/launcharr.app',
 ]

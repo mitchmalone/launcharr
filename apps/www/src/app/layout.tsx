@@ -16,15 +16,18 @@ const ibmPlexSans = IBM_Plex_Sans({
   variable: '--font-ibm-plex-sans',
 })
 
+const TITLE = 'launcharr — the keyboard control surface for macOS'
+const DESCRIPTION =
+  'A macOS launcher that dresses up as a shell prompt, plus a menubar replacement, keyboard-driven TUI panels and agent monitoring. Hit ⌥Space and run your Mac without touching the mouse. Free and open source.'
+
 export const metadata: Metadata = {
-  title: 'launcharr — an app launcher for pirates',
-  description:
-    'A macOS app launcher that behaves like a shell prompt. Hit ⌥Space, type into a REPL, launch an app or fling a command at your terminal. Free and open source.',
+  title: TITLE,
+  description: DESCRIPTION,
   metadataBase: new URL('https://launcharr.com'),
   openGraph: {
-    title: 'launcharr — an app launcher for pirates',
+    title: TITLE,
     description:
-      'A macOS app launcher that behaves like a shell prompt. Free and open source.',
+      'A macOS launcher that dresses up as a shell prompt — plus the bar, TUI panels and agent monitoring. Free and open source.',
     images: ['/og.png'],
   },
 }

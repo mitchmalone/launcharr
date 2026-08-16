@@ -1,27 +1,50 @@
 import {
+  AppWindow,
   ArrowUpRight,
+  Bot,
   ChevronRight,
   ClipboardList,
   FileCode2,
-  HardDrive,
+  Gauge,
+  MessageCircleQuestion,
+  Palette,
+  PanelTop,
+  Play,
   Settings,
   ShieldCheck,
   SquareTerminal,
   Star,
   Tag,
   Terminal,
-  WifiOff,
 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
+import { AgentSpotlight } from '@/components/agent-spotlight'
+import { BarStrip } from '@/components/bar-strip'
 import { GithubIcon, XIcon } from '@/components/brand-icons'
-import { DemoChips, DemoPanel, DemoProvider } from '@/components/demo-panel'
-import { DesktopDemo } from '@/components/desktop-demo'
+import { Demo } from '@/components/demo/demo'
 import { InstallTabs } from '@/components/install-tabs'
 import { SiteHeader } from '@/components/site-header'
-import { GITHUB_URL, RELEASE, VERSION } from '@/lib/site'
+import { Badge } from '@/components/ui/badge'
+import { ButtonLink } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { AGENT_STATES } from '@/lib/demo-data'
+import { GITHUB_URL, RELEASE, RELEASES_URL, VERSION } from '@/lib/site'
 
 const MONO_CODE = 'font-mono text-(--fg)'
+const SECTION = 'mx-auto max-w-[1080px] px-8'
+const EYEBROW =
+  'm-0 text-[13px] font-medium uppercase tracking-[0.14em] text-(--dim)'
+const PROSE = 'font-sans text-[17px] leading-[1.6] text-(--body) text-pretty'
+const CARD_BODY = 'font-sans text-sm leading-[1.6] text-(--muted)'
 
 const FEATURES = [
   {
@@ -50,7 +73,7 @@ const FEATURES = [
     icon: (
       <FileCode2 size={22} strokeWidth={1.75} className="text-(--accent)" />
     ),
-    title: 'Hackable in TypeScript',
+    title: 'Hackable in any language',
     body: (
       <>
         Drop an executable in{' '}
@@ -100,179 +123,465 @@ const FEATURES = [
       </>
     ),
   },
+  {
+    icon: <PanelTop size={22} strokeWidth={1.75} className="text-(--cta)" />,
+    milestone: true,
+    title: 'The bar',
+    body: (
+      <>
+        An Omarchy-flat menubar replacement: no boxes, dim glyphs, one solid
+        block on the active workspace. ~19&nbsp;MB marginal memory, themed by
+        the same tokens as the launcher.
+      </>
+    ),
+  },
+  {
+    icon: <AppWindow size={22} strokeWidth={1.75} className="text-(--cta)" />,
+    milestone: true,
+    title: 'TUI panels in the launcher',
+    body: (
+      <>
+        <code className={MONO_CODE}>wifi ⏎</code>,{' '}
+        <code className={MONO_CODE}>dns ⏎</code>,{' '}
+        <code className={MONO_CODE}>usage ⏎</code> and more — keyboard-driven
+        panels inside the launcher window. Esc walks back; focus returns exactly
+        where it was.
+      </>
+    ),
+  },
+  {
+    icon: <Bot size={22} strokeWidth={1.75} className="text-(--green)" />,
+    milestone: true,
+    title: 'Agent monitoring',
+    body: (
+      <>
+        Claude and Codex sessions as bar cells, boxed by tmux session, ordered
+        by tab. Blocked breathes red; click a cell to jump straight to the pane.
+      </>
+    ),
+  },
+  {
+    icon: <Gauge size={22} strokeWidth={1.75} className="text-(--dim)" />,
+    milestone: true,
+    title: 'Token usage, locally',
+    body: (
+      <>
+        <code className={MONO_CODE}>usage ⏎</code> parses agent journals on
+        disk: tokens by day and model, plus opt-in account limits with reset
+        countdowns. No token refresh, ever.
+      </>
+    ),
+  },
+  {
+    icon: (
+      <MessageCircleQuestion
+        size={22}
+        strokeWidth={1.75}
+        className="text-(--dim)"
+      />
+    ),
+    milestone: true,
+    title: '? agent mode',
+    body: (
+      <>
+        Press <code className={MONO_CODE}>?</code> and ask — streamed answers
+        from your own <code className={MONO_CODE}>claude</code> or{' '}
+        <code className={MONO_CODE}>codex</code> CLI in a caged child process.
+        Off by default.
+      </>
+    ),
+  },
+  {
+    icon: <Palette size={22} strokeWidth={1.75} className="text-(--dim)" />,
+    title: '14 themes, JSON overlays',
+    body: (
+      <>
+        From gruvbox to rose-pine, launcher and bar together. Custom themes are
+        plain JSON token overlays in{' '}
+        <code className={MONO_CODE}>config.json</code>.
+      </>
+    ),
+  },
+  {
+    icon: (
+      <ShieldCheck size={22} strokeWidth={1.75} className="text-(--green)" />
+    ),
+    title: 'Zero permissions, opt-in everything',
+    body: (
+      <>
+        No Accessibility, no Full Disk Access, no telemetry, no update pings.
+        The launcher core's only network call is user-initiated: fetching a
+        favicon the moment you add a quicklink.
+      </>
+    ),
+  },
 ]
 
+/** Every number here traces to a measurement in docs/JOURNAL.md or docs/ROADMAP.md. */
 const STATS = [
-  { value: '~90MB', caption: 'resident while idling invisibly' },
-  { value: '<100ms', caption: 'summon budget — measured in single-digit ms' },
-  { value: '0', caption: 'permissions granted, network requests made' },
-  { value: '8', caption: 'results max — ⌘1–⌘8 jumps straight to one' },
+  { value: '3.7ms', label: 'measured summon — the budget is 100ms' },
+  { value: '~96MB', label: 'main-process RSS while idling invisibly' },
+  { value: '+19MB', label: 'marginal memory for the whole bar' },
+  { value: '0', label: 'permissions launcharr asks you to grant' },
 ]
 
-const PRIVACY = [
+const BAR_MODULES = [
   {
-    icon: ShieldCheck,
-    title: 'No Accessibility. No Full Disk Access.',
-    body: "The only prompts you'll ever see are macOS's standard Automation consents — the first terminal hand-off, the first Finder command.",
+    name: 'workspaces',
+    body: 'Aerospace workspaces, clickable and hotkey-tracked. The solid block is where you are.',
   },
   {
-    icon: WifiOff,
-    title: 'Zero network, one exception.',
-    body: "Core makes no requests. The exception is user-initiated: fetching a site's favicon at the moment you add it as a quicklink. No telemetry, no phoning home.",
+    name: 'agents',
+    body: 'Claude/Codex session cells, boxed by tmux session. Hover for the task; click to jump.',
   },
   {
-    icon: HardDrive,
-    title: 'Clipboard history stays local.',
-    body: '200 text items on disk under your own home directory. Concealed types — password-manager clips — are never recorded.',
+    name: 'front app',
+    body: 'The focused application, dim and truncated at 32ch. Never shouts.',
+  },
+  {
+    name: 'clock',
+    body: 'An ordinary module that usually sits in the center zone — move it wherever you like.',
+  },
+  {
+    name: 'wifi · trmnl · battery',
+    body: 'Right-zone glyph cells. Alert states go amber, then red. Fail-soft: a module with no data hides, never errors.',
+  },
+  {
+    name: 'yours (module API)',
+    body: 'A data-driven, any-language emitter API is on the v0.5 roadmap — same contract philosophy as scripts.',
   },
 ]
 
-const SECTION_H2 =
-  'text-[13px] font-medium uppercase tracking-[0.14em] text-(--dim)'
+const COMPARISON = {
+  columns: ['launcharr', 'Raycast', 'Alfred', 'Sketchybar'],
+  rows: [
+    [
+      'feels like',
+      'a shell prompt',
+      'a polished app',
+      'a polished app',
+      'a status bar',
+    ],
+    [
+      'extensions',
+      'any executable in a folder',
+      'React + a store',
+      'workflows',
+      'shell plugins',
+    ],
+    ['menubar replacement', 'yes — bar + launcher', 'no', 'no', 'bar only'],
+    [
+      'license',
+      'MIT, open source',
+      'closed, freemium',
+      'closed, paid Powerpack',
+      'open source',
+    ],
+  ],
+}
+
+const ROADMAP = [
+  ['done', 'TUI kit', 'panels, rows, hotkeys, themes'],
+  ['done', 'Bar spike', '~19MB marginal — gate passed'],
+  ['done', 'Panel framework', 'wifi ⏎ · dns ⏎ and five more'],
+  ['done', 'tui workbench', 'story-driven state coverage'],
+  ['wip', 'Bar core', 'daily driver; placement config pending'],
+  ['wip', 'Agent monitoring', 'shipped; module API pending'],
+  ['todo', 'Aerospace wrap', 'tiling without seeing a .toml'],
+  ['todo', 'Settings into panels', 'the native window retires'],
+] as const
+
+const MARK = {
+  done: { glyph: '✓', className: 'text-(--green)' },
+  wip: { glyph: '◐', className: 'text-(--amber)' },
+  todo: { glyph: '○', className: 'text-(--dim2)' },
+}
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-(--bg) text-(--fg)">
       <SiteHeader />
 
-      <section className="mx-auto grid max-w-[1080px] justify-items-start gap-7 px-8 pb-14 pt-[88px]">
-        <Image
-          src="/menubar-icon.png"
-          alt=""
-          width={92}
-          height={92}
-          className="-mb-1.5 [filter:var(--logo)]"
-        />
-        <div className="inline-flex items-center gap-2.5 rounded-full border border-(--border) px-3.5 py-1.5 text-xs text-(--dim)">
-          <span className="h-1.5 w-1.5 rounded-full bg-(--green)" />
+      {/* ---- hero ---- */}
+      <section
+        className={`${SECTION} grid justify-items-start gap-[26px] pb-10 pt-[72px]`}
+      >
+        <Badge variant="eyebrow">
+          <span className="size-1.5 rounded-full bg-(--green)" />
           macOS · Apple Silicon · free &amp; open source
-        </div>
-        <h1 className="max-w-[16ch] text-balance text-[42px] font-bold leading-[1.04] tracking-[-0.035em] sm:text-[60px]">
-          An app launcher for pirates.
+        </Badge>
+        <h1 className="m-0 max-w-[17ch] text-[clamp(2.25rem,7vw,3.625rem)] font-bold leading-[1.05] tracking-[-0.035em] text-balance">
+          The keyboard control surface for macOS.
         </h1>
-        <p className="max-w-[62ch] text-pretty font-sans text-[19px] leading-[1.6] text-(--body)">
-          Alfred and Raycast dress up as polished macOS utilities. launcharr
-          dresses up as a shell prompt: hit{' '}
-          <kbd className="rounded-[5px] border border-(--border) border-b-2 px-1.5 py-px font-mono text-[15px] text-(--fg)">
+        <p
+          className={`m-0 max-w-[64ch] font-sans text-[19px] leading-[1.6] text-(--body) text-pretty`}
+        >
+          launcharr started as an app launcher that dresses up as a shell
+          prompt. It has kept growing: a full menubar replacement in the Omarchy
+          mold, keyboard-driven TUI panels, agent monitoring, and a grammar you
+          extend by dropping executables in a folder. Hit{' '}
+          <kbd className="rounded-[5px] border border-b-2 border-(--border) px-1.5 py-px text-[15px] text-(--fg)">
             ⌥Space
-          </kbd>
-          , type into something that behaves like a REPL, and either launch an
-          app or fling a command at your terminal without breaking flow.
+          </kbd>{' '}
+          and run your Mac without touching the mouse.
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <a
-            href={RELEASE.artifacts ? RELEASE.artifacts.dmg.url : '#install'}
-            className="inline-flex items-center gap-[9px] rounded-[7px] bg-(--cta) px-5 py-3 text-sm font-medium text-(--cta-fg) hover:bg-(--cta-hover) hover:text-(--cta-fg) hover:no-underline"
-          >
-            <Terminal size={16} strokeWidth={2} />
-            {RELEASE.artifacts ? 'Download for Mac' : 'Build from source'}
-          </a>
-          <a
-            href={GITHUB_URL}
-            className="inline-flex items-center gap-[9px] rounded-[7px] border border-(--border) px-5 py-3 text-sm text-(--fg) hover:border-(--accent) hover:text-(--fg) hover:no-underline"
-          >
+          {RELEASE.artifacts ? (
+            <ButtonLink
+              variant="cta"
+              size="lg"
+              href={RELEASE.artifacts.dmg.url}
+            >
+              <Terminal size={16} strokeWidth={2} />
+              Download for Mac
+            </ButtonLink>
+          ) : null}
+          <ButtonLink variant="outline" size="lg" href={GITHUB_URL}>
             <Star size={16} strokeWidth={1.75} />
             Star on GitHub
-          </a>
+          </ButtonLink>
           <span className="text-[12.5px] text-(--dim2)">
-            {RELEASE.artifacts
-              ? `${VERSION} · Apple Silicon${RELEASE.signed ? ' · signed & notarized' : ''}`
-              : `no release binaries yet — ${VERSION}, source only`}
+            {VERSION} · Apple Silicon
+            {RELEASE.signed ? ' · signed & notarized' : null}
           </span>
+        </div>
+
+        {/* welcome video drops in here — placeholder frame until footage exists */}
+        <div className="mt-6 w-full">
+          <div
+            className="flex aspect-video flex-col items-center justify-center gap-[18px] rounded-[14px] border border-(--hair)"
+            style={{
+              boxShadow: 'var(--shadow)',
+              background:
+                'repeating-linear-gradient(-45deg, #11131d 0, #11131d 14px, #14161f 14px, #14161f 28px)',
+            }}
+          >
+            <span className="inline-flex size-[68px] items-center justify-center rounded-full border border-[#393b54] bg-[rgba(28,29,42,0.8)] text-(--cta)">
+              <Play size={26} strokeWidth={2} />
+            </span>
+            <span className="text-[12.5px] text-[#7d8590]">
+              welcome video — coming soon
+            </span>
+          </div>
         </div>
       </section>
 
-      <section id="demo" className="mx-auto max-w-[1080px] px-8 pb-24 pt-10">
-        <DemoProvider>
-          <DesktopDemo>
-            <DemoPanel />
-          </DesktopDemo>
-          <DemoChips />
-        </DemoProvider>
+      {/* ---- live demo ---- */}
+      <section id="demo" className={`${SECTION} pb-24 pt-10`}>
+        <h2 className={`${EYEBROW} mb-6`}>
+          This is not a screenshot — type in it
+        </h2>
+        <Demo />
       </section>
 
-      <section id="features" className="mx-auto max-w-[1080px] px-8 pb-24">
-        <h2 className={`${SECTION_H2} mb-6`}>What it does</h2>
+      {/* ---- features ---- */}
+      <section id="features" className={`${SECTION} pb-24`}>
+        <h2 className={`${EYEBROW} mb-6`}>What it does</h2>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-px overflow-hidden rounded-xl border border-(--hair) bg-(--hair)">
           {FEATURES.map((f) => (
             <div
               key={f.title}
               className="grid content-start gap-2.5 bg-(--bg) px-6 py-[26px]"
             >
-              {f.icon}
-              <h3 className="text-[15px] font-semibold">{f.title}</h3>
-              <p className="font-sans text-sm leading-[1.6] text-(--muted)">
-                {f.body}
-              </p>
+              {f.milestone ? (
+                <div className="flex items-center justify-between">
+                  {f.icon}
+                  <Badge variant="milestone">V0.5</Badge>
+                </div>
+              ) : (
+                f.icon
+              )}
+              <h3 className="m-0 text-[15px] font-semibold">{f.title}</h3>
+              <p className={`m-0 ${CARD_BODY}`}>{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
+      {/* ---- stats ---- */}
       <section className="border-y border-(--hair) bg-(--bg2)">
-        <div className="mx-auto grid max-w-[1080px] grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-10 px-8 py-14">
+        <div
+          className={`${SECTION} grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-10 py-14`}
+        >
           {STATS.map((s) => (
-            <div key={s.caption} className="grid gap-2">
-              <span className="text-[38px] font-bold tracking-[-0.03em] text-(--fg)">
+            <div key={s.label} className="grid gap-2">
+              <span className="text-[38px] font-bold tracking-[-0.03em]">
                 {s.value}
               </span>
-              <span className="text-[13px] text-(--muted)">{s.caption}</span>
+              <span className="text-[13px] text-(--muted)">{s.label}</span>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[1080px] items-start gap-16 px-8 py-24 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="grid gap-4">
-          <h2 className={SECTION_H2}>Permissions &amp; privacy</h2>
-          <p className="text-pretty font-sans text-[17px] leading-[1.6] text-(--body)">
-            Most launchers ask for the keys to the whole machine. launcharr asks
-            for none of them, and the design is built so it never has to.
+      {/* ---- the bar ---- */}
+      <section id="bar" className={`${SECTION} py-24`}>
+        <div className="mb-7 grid max-w-[70ch] gap-4">
+          <h2 className={EYEBROW}>The bar — your menubar, replaced</h2>
+          <p className={`m-0 ${PROSE}`}>
+            One flat 30px strip, inspired by Omarchy: no boxes, dim glyphs, a
+            solid block marking the active workspace. Modules live in explicit{' '}
+            <code className={MONO_CODE}>left</code> /{' '}
+            <code className={MONO_CODE}>center</code> /{' '}
+            <code className={MONO_CODE}>right</code> zones under{' '}
+            <code className={MONO_CODE}>bar.layout</code>, and notched displays
+            get their own arrangement. Rust pushes snapshots at 1&nbsp;Hz — the
+            webview is a pure listener.
           </p>
         </div>
-        <div className="grid gap-px overflow-hidden rounded-xl border border-(--hair) bg-(--hair)">
-          {PRIVACY.map(({ icon: Icon, title, body }) => (
-            <div
-              key={title}
-              className="grid grid-cols-[20px_minmax(0,1fr)] gap-x-3.5 gap-y-1.5 bg-(--bg) px-6 py-[22px]"
-            >
-              <Icon
-                size={20}
-                strokeWidth={1.75}
-                className="row-span-2 text-(--green)"
-              />
-              <h3 className="text-sm font-semibold">{title}</h3>
-              <p className="font-sans text-sm leading-[1.6] text-(--muted)">
-                {body}
-              </p>
+        <BarStrip />
+        <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-px overflow-hidden rounded-xl border border-(--hair) bg-(--hair)">
+          {BAR_MODULES.map((m) => (
+            <div key={m.name} className="grid gap-1.5 bg-(--bg) px-[22px] py-5">
+              <span className="text-[13px] font-semibold">{m.name}</span>
+              <span className="font-sans text-[13px] leading-[1.55] text-(--muted)">
+                {m.body}
+              </span>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="install" className="mx-auto max-w-[1080px] px-8 pb-24">
-        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-6">
-          <h2 className={SECTION_H2}>Install</h2>
-          <span className="text-[12.5px] text-(--dim2)">
-            Apple Silicon · requires Rust stable + pnpm
-          </span>
+      {/* ---- agent monitoring ---- */}
+      <section id="agents" className="border-t border-(--hair) bg-(--bg2)">
+        <div
+          className={`${SECTION} grid items-start gap-16 py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]`}
+        >
+          <div className="grid gap-4">
+            <h2 className={EYEBROW}>Agent monitoring</h2>
+            <p className={`m-0 ${PROSE}`}>
+              If you run coding agents in tmux all day, the bar is their status
+              board. Every session is one glyph, grouped by tmux session and
+              ordered by tab. Hover a cell for the task and state; click it and
+              launcharr drops you into the exact pane.
+            </p>
+            <div className="mt-2 grid gap-2.5 text-[13px]">
+              {(['blocked', 'working', 'done', 'idle'] as const).map(
+                (state) => {
+                  const s = AGENT_STATES[state]
+                  return (
+                    <div key={state} className="flex items-center gap-3">
+                      <span
+                        style={{
+                          color: s.color,
+                          animation:
+                            state === 'blocked'
+                              ? 'bar-agent-breathe 1.6s ease-in-out infinite'
+                              : undefined,
+                        }}
+                      >
+                        {s.glyph}
+                      </span>
+                      <span className="min-w-[12ch] text-(--fg)">
+                        {s.label}
+                      </span>
+                      <span className="text-(--muted)">{s.blurb}</span>
+                    </div>
+                  )
+                },
+              )}
+            </div>
+          </div>
+          <AgentSpotlight />
         </div>
-        <InstallTabs />
-        <p className="mt-[18px] max-w-[74ch] text-pretty font-sans text-sm leading-[1.7] text-(--muted)">
-          First run: the panel appears once with the hint line, a default config
-          is written to{' '}
-          <code className={MONO_CODE}>~/.config/launcharr/config.json</code>,
-          and launcharr registers as a login item (toggleable in settings).
-          Signed releases are tracked in{' '}
-          <a href={`${GITHUB_URL}/blob/main/docs/RELEASING.md`}>
-            docs/RELEASING.md
-          </a>
-          .
+      </section>
+
+      {/* ---- comparison ---- */}
+      <section id="compare" className={`${SECTION} py-24`}>
+        <h2 className={`${EYEBROW} mb-6`}>Picking a launcher</h2>
+        <div className="overflow-hidden rounded-xl border border-(--hair)">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead />
+                {COMPARISON.columns.map((c, i) => (
+                  <TableHead
+                    key={c}
+                    className={i === 0 ? 'font-bold text-(--fg)' : undefined}
+                  >
+                    {c}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {COMPARISON.rows.map(([label, ...cells]) => (
+                <TableRow key={label}>
+                  <TableCell>{label}</TableCell>
+                  {cells.map((cell, i) => (
+                    <TableCell
+                      key={i}
+                      className={i === 0 ? 'text-(--fg)' : undefined}
+                    >
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <p className="mt-3.5 text-[12.5px] text-(--dim2)">
+          All fine tools, and all of them do things launcharr doesn&rsquo;t.
+          This table is about temperament, not superiority.
         </p>
       </section>
 
+      {/* ---- install ---- */}
+      <section id="install" className={`${SECTION} pb-24`}>
+        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-6">
+          <h2 className={EYEBROW}>Install</h2>
+          <span className="text-[12.5px] text-(--dim2)">
+            Apple Silicon · {VERSION}
+            {RELEASE.signed ? ' signed & notarized' : null}
+          </span>
+        </div>
+        <InstallTabs />
+        <p className="mt-[18px] max-w-[74ch] font-sans text-sm leading-[1.7] text-(--muted) text-pretty">
+          First run: the panel appears once with the hint line, a default config
+          is written to{' '}
+          <code className={MONO_CODE}>~/.config/launcharr/config.json</code>,
+          and launcharr registers as a login item (toggleable in settings). The
+          bar is off by default — flip{' '}
+          <code className={MONO_CODE}>bar.enabled</code> when you&rsquo;re ready
+          to retire your menubar.
+        </p>
+      </section>
+
+      {/* ---- roadmap ---- */}
+      <section id="roadmap" className="border-t border-(--hair) bg-(--bg2)">
+        <div
+          className={`${SECTION} grid items-start gap-16 py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]`}
+        >
+          <div className="grid gap-4">
+            <h2 className={EYEBROW}>Building in the open — v0.5</h2>
+            <p className={`m-0 ${PROSE}`}>
+              v0.5 is the release where launcharr becomes a control surface:
+              bar, panels, agents. It&rsquo;s in daily use now and lands piece
+              by piece. Explicit non-goals hold: no file search, no snippets,{' '}
+              <em>not a distro</em> — bar + launcher + config, each
+              independently toggleable.
+            </p>
+          </div>
+          <div className="grid gap-3 rounded-xl border border-(--hair) bg-(--bg) px-6 py-[22px] text-[13px]">
+            {ROADMAP.map(([state, title, note]) => (
+              <div key={title} className="flex gap-3">
+                <span className={`min-w-[1.2em] ${MARK[state].className}`}>
+                  {MARK[state].glyph}
+                </span>
+                <span className="text-(--fg)">{title}</span>
+                <span className="ml-auto text-right text-(--dim)">{note}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---- footer ---- */}
       <footer className="border-t border-(--hair)">
-        <div className="mx-auto flex max-w-[1080px] flex-wrap items-center justify-between gap-6 px-8 py-10">
+        <div
+          className={`${SECTION} flex flex-wrap items-center justify-between gap-6 py-10`}
+        >
           <div className="flex items-center gap-3.5">
             <Image
               src="/menubar-icon.png"
@@ -282,7 +591,7 @@ export default function Home() {
               className="opacity-75 [filter:var(--logo)]"
             />
             <span className="text-[13px] text-(--dim2)">
-              launcharr {VERSION} — because the apps won&apos;t launch
+              launcharr {VERSION} — because the apps won&rsquo;t launch
               themselves. Yarr.
             </span>
           </div>
@@ -294,15 +603,15 @@ export default function Home() {
               <GithubIcon size={15} />
               github
             </a>
-            <a
-              href={`${GITHUB_URL}/blob/main/docs/SCRIPTS.md`}
+            <Link
+              href="/docs"
               className="inline-flex items-center gap-[7px] text-(--dim) hover:text-(--fg) hover:no-underline"
             >
               <FileCode2 size={15} strokeWidth={1.75} />
               scripts api
-            </a>
+            </Link>
             <a
-              href={`${GITHUB_URL}/releases`}
+              href={RELEASES_URL}
               className="inline-flex items-center gap-[7px] text-(--dim) hover:text-(--fg) hover:no-underline"
             >
               <Tag size={15} strokeWidth={1.75} />

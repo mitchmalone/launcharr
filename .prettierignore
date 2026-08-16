@@ -3,6 +3,8 @@ dist/
 .next/
 out/
 *.gen.ts
+# Regenerated (unformatted) by every `next build`; the file itself says not to edit it.
+apps/www/next-env.d.ts
 docs/STANDARDS.md
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/

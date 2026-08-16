@@ -1,0 +1,206 @@
+/**
+ * Mock payloads for the website demo. Shapes mirror what the app's Rust side pushes
+ * (wifi.rs, usage.rs, the agent socket monitor) so the demo panels are the real
+ * `@launcharr/tui` components fed plausible data — the website has no OS behind it.
+ *
+ * Nothing here is engine logic: grammar, matching and ranking all run in
+ * `@launcharr/core` (invariant 5). This file is data only.
+ */
+
+/** The panel registry, mirrored from the app's `src/panels/registry.ts`. */
+export const PANEL_INFO = [
+  { id: 'agents', title: 'Agents', hint: 'coding agent sessions ▸' },
+  { id: 'usage', title: 'Usage', hint: 'token monitor ▸' },
+  { id: 'wifi', title: 'Wi-Fi', hint: 'networks & power ▸' },
+  { id: 'dns', title: 'DNS', hint: 'network info ▸' },
+  { id: 'audio', title: 'Audio', hint: 'volume & devices ▸' },
+  { id: 'clipboard', title: 'Clipboard', hint: 'history & search ▸' },
+  { id: 'help', title: 'Help', hint: 'commands & keys ▸' },
+] as const
+
+export type PanelId = (typeof PANEL_INFO)[number]['id']
+
+/** Panels the demo actually drives; the rest explain themselves and point at the app. */
+export const INTERACTIVE_PANELS: PanelId[] = ['wifi', 'dns', 'usage']
+
+export const WIFI = {
+  status: {
+    iface: 'en0',
+    ssid: 'Blackbeard 5G',
+    ip: '192.168.1.42',
+    router: '192.168.1.1',
+    dns: '100.100.100.100',
+  },
+  known: ['Blackbeard 5G', 'Blackbeard', "Crow's Nest", 'Tortuga Guest'],
+  scanned: [
+    { ssid: 'NETGEAR-7C', secured: true },
+    { ssid: "Dead Man's Wifi", secured: true },
+    { ssid: 'xfinitywifi', secured: false },
+  ],
+}
+
+export type UsageProvider = {
+  label: string
+  limits: { name: string; pct: number; resets: string }[]
+  days: { label: string; tokens: number }[]
+  models: { model: string; tokens: number }[]
+}
+
+export const USAGE: Record<'claude' | 'codex', UsageProvider> = {
+  claude: {
+    label: 'Claude Code',
+    limits: [
+      { name: '5h window', pct: 59, resets: 'resets in 2h' },
+      { name: 'Weekly', pct: 34, resets: 'resets in 4d' },
+      { name: 'Weekly (Opus)', pct: 12, resets: 'resets in 4d' },
+    ],
+    days: [
+      { label: 'Sun', tokens: 61.2e6 },
+      { label: 'Mon', tokens: 148.4e6 },
+      { label: 'Tue', tokens: 94.1e6 },
+      { label: 'Wed', tokens: 212.7e6 },
+      { label: 'Thu', tokens: 176.3e6 },
+      { label: 'Fri', tokens: 118.9e6 },
+      { label: 'Today', tokens: 87.5e6 },
+    ],
+    models: [
+      { model: 'claude-sonnet-4-5', tokens: 611.4e6 },
+      { model: 'claude-opus-4-1', tokens: 236.2e6 },
+      { model: 'claude-haiku-4-5', tokens: 51.5e6 },
+    ],
+  },
+  codex: {
+    label: 'Codex',
+    limits: [{ name: 'Weekly', pct: 8, resets: 'resets in 6d' }],
+    days: [
+      { label: 'Sun', tokens: 4.1e6 },
+      { label: 'Mon', tokens: 12.6e6 },
+      { label: 'Tue', tokens: 0 },
+      { label: 'Wed', tokens: 22.9e6 },
+      { label: 'Thu', tokens: 8.3e6 },
+      { label: 'Fri', tokens: 15.2e6 },
+      { label: 'Today', tokens: 3.8e6 },
+    ],
+    models: [{ model: 'gpt-5-codex', tokens: 66.9e6 }],
+  },
+}
+
+export function fmtTokens(n: number): string {
+  const s = (v: number, u: string) => v.toFixed(1).replace(/\.0$/, '') + u
+  if (n >= 1e9) return s(n / 1e9, 'B')
+  if (n >= 1e6) return s(n / 1e6, 'M')
+  if (n >= 1e3) return s(n / 1e3, 'k')
+  return String(n)
+}
+
+export type AgentState = 'blocked' | 'working' | 'done' | 'idle'
+
+/** Bar cell appearance per state — mirrors the bar's agent module. */
+export const AGENT_STATES: Record<
+  AgentState,
+  { glyph: string; color: string; label: string; blurb: string }
+> = {
+  blocked: {
+    glyph: '◉',
+    color: '#ff2d2d',
+    label: 'blocked',
+    blurb: 'needs you — breathes until you look',
+  },
+  working: {
+    glyph: '●',
+    color: 'var(--cta)',
+    label: 'working',
+    blurb: 'agent is mid-task',
+  },
+  done: {
+    glyph: '●',
+    color: '#00b0ff',
+    label: 'done · unread',
+    blurb: 'finished; marks read when you jump',
+  },
+  idle: {
+    glyph: '○',
+    color: '#00c853',
+    label: 'idle',
+    blurb: 'session open, nothing running',
+  },
+}
+
+export type Agent = {
+  id: string
+  group: string
+  state: AgentState
+  title: string
+  line1: string
+  line2: string
+}
+
+export const AGENTS: Agent[] = [
+  {
+    id: 'a1',
+    group: 'fable',
+    state: 'working',
+    title: 'refactor ranking tie-break',
+    line1: 'reading packages/core/src/ranking.ts',
+    line2: 'fable · tab 1 · core',
+  },
+  {
+    id: 'a2',
+    group: 'fable',
+    state: 'blocked',
+    title: 'release v0.5.0 — awaiting approval',
+    line1: 'permission needed: scripts/release.sh',
+    line2: 'fable · tab 2 · release',
+  },
+  {
+    id: 'a3',
+    group: 'www',
+    state: 'done',
+    title: 'usage panel — tests green',
+    line1: '14 passed, 0 failed',
+    line2: 'www · tab 1 · panels',
+  },
+  {
+    id: 'a4',
+    group: 'www',
+    state: 'idle',
+    title: 'claude (idle)',
+    line1: 'waiting for a task',
+    line2: 'www · tab 2',
+  },
+]
+
+/** Agents grouped into their tmux-session boxes, in tab order. */
+export const AGENT_GROUPS: Agent[][] = Object.values(
+  AGENTS.reduce<Record<string, Agent[]>>((acc, a) => {
+    ;(acc[a.group] ??= []).push(a)
+    return acc
+  }, {}),
+)
+
+/**
+ * Canned `?` answers. The real thing streams from the user's own claude/codex CLI
+ * in a caged child process; a static site has no CLI, so it says so.
+ */
+export const ASK_ANSWERS: { match: RegExp; text: string }[] = [
+  {
+    match: /quicklink/i,
+    text: 'Quicklinks are trigger words bound to URL templates. Type a URL in the panel and choose "Add quicklink…" — you pick a name, a browser, and launcharr fetches the favicon (the one network request the launcher core ever makes, and only because you asked).\n\nA {query} placeholder makes it Raycast-style:\n\n  yt cute otters ⏎   → youtube.com/results?search_query=cute+otters\n  gh tauri ⏎         → github.com/search?q=tauri\n\nA bare trigger opens the site itself. Triggers are whole-word only, so typing "yt" mid-search never hijacks a fuzzy match.',
+  },
+  {
+    match: /script|hack|extend|plugin/i,
+    text: 'Scripts are the plugin API. Drop any executable into ~/.config/launcharr/scripts/ and it joins the grammar — no restart, no manifest file, no store.\n\nThe contract is two invocations:\n\n  <script> manifest      → {"trigger": "lorem", "name": "Lorem ipsum"}\n  <script> query <args>  → {"items": [{"title": …, "action": …}]}\n\nAny language. stderr is ignored; a slow script gets killed, not waited for. lorem, json and ip ship bundled as reference implementations.',
+  },
+  {
+    match: /bar|menubar/i,
+    text: "The bar is launcharr's menubar replacement — an Omarchy-flat strip: no boxes, dim glyphs, one solid block marking the active workspace.\n\nModules live in explicit left / center / right zones under bar.layout in config.json, ordered within each zone. Notched displays get their own arrangement, since the camera housing owns the middle. The whole strip costs ~19 MB marginal memory and is themed by the same tokens as the launcher.",
+  },
+  {
+    match: /.*/,
+    text: 'This is agent mode: press ? and the key flips the mode. In the real app your question streams to your own claude or codex CLI, running as a caged child — empty cwd, no filesystem or exec tools — and the answer renders right here in the panel.\n\nIt\'s off by default (Settings → Agents → "Enable agent mode"). Esc ends the conversation and puts focus back exactly where it was.\n\nThe website demo has no CLI behind it, so you get this canned answer instead. Yarr.',
+  },
+]
+
+export function askAnswer(prompt: string): string {
+  return ASK_ANSWERS.find((a) => a.match.test(prompt))?.text ?? ''
+}

@@ -1,4 +1,8 @@
 @import 'tailwindcss';
+/* The real TUI kit's chrome — the demo panels are the shipping components, not
+   mocks (DECISIONS 2026-08-16). Its colors resolve through --tui-* tokens that
+   the demo sets per theme; without them they'd fall back to the *page* tokens. */
+@import '@launcharr/tui/styles.css';
 
 /* Dark is the default theme; light overrides via next-themes' data-theme attr. */
 :root {
@@ -25,6 +29,8 @@
   --logo: invert(1);
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   --demo-top: #11161d;
+  --danger: #f85149;
+  --radius: 0.5rem;
 }
 
 html[data-theme='light'] {
@@ -51,12 +57,71 @@ html[data-theme='light'] {
   --logo: none;
   --shadow: 0 24px 60px rgba(31, 35, 40, 0.14);
   --demo-top: #ffffff;
+  --danger: #cf222e;
 }
 
 @theme inline {
   --font-mono:
     var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+
+  /* shadcn/ui semantic tokens, MAPPED onto the launcharr palette above rather
+     than imported (DECISIONS 2026-08-16). shadcn's own oklch defaults would
+     fork the design tokens invariant 8 keeps single-source. Note the two
+     vocabularies differ: shadcn's `accent` is a hover surface, ours is the
+     max-contrast foreground — so `bg-accent` (shadcn) and `text-(--accent)`
+     (ours) intentionally resolve to different things. */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--bg);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--cta);
+  --color-primary-foreground: var(--cta-fg);
+  --color-secondary: var(--chip);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--chip);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--chip);
+  --color-accent-foreground: var(--fg);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--bg);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--dim);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* The bar's blocked-agent cell breathes until you look at it. */
+@keyframes bar-agent-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  @keyframes bar-agent-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+  }
 }
 
 body {

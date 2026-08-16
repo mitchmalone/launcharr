@@ -1,4 +1,6 @@
-export type ItemKind = 'app' | 'settings' | 'command' | 'link'
+import { PANEL_INFO } from './demo-data'
+
+export type ItemKind = 'app' | 'settings' | 'command' | 'link' | 'panel'
 
 export type IndexItem = {
   id: string
@@ -8,6 +10,8 @@ export type IndexItem = {
   aliases: string[]
   /** Mock app icon (emoji) shown in the results list. */
   icon?: string
+  /** Panel items carry their trigger word here, as the engine expects. */
+  path?: string
 }
 
 export type Quicklink = {
@@ -314,6 +318,17 @@ export const INDEX: IndexItem[] = [
     hint: 'quicklink',
     aliases: ['repo'],
   },
+  /* Panel triggers are rankable items so they fuzzy-match like apps, exactly as
+     the app indexes them; typing the exact word still goes through the grammar's
+     trigger mode. `path` carries the trigger word (core/types.ts). */
+  ...PANEL_INFO.map((p) => ({
+    id: `panel:${p.id}`,
+    kind: 'panel' as const,
+    name: p.title,
+    hint: p.hint,
+    path: p.id,
+    aliases: [p.id],
+  })),
 ]
 
 export const SEED_FRECENCY: Record<string, number> = {
@@ -347,6 +362,7 @@ export const QUICKLINKS: Quicklink[] = [
   },
 ]
 
-export const TRIGGERS: ReadonlySet<string> = new Set(
-  QUICKLINKS.map((l) => l.trigger),
-)
+export const TRIGGERS: ReadonlySet<string> = new Set([
+  ...QUICKLINKS.map((l) => l.trigger),
+  ...PANEL_INFO.map((p) => p.id),
+])

@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 import { GITHUB_URL, VERSION } from '@/lib/site'
 
@@ -24,24 +25,26 @@ export function SiteHeader() {
         </span>
       </div>
       <nav className="flex items-center gap-5 text-[13px] text-(--dim)">
-        <a
-          href="#demo"
+        {[
+          ['#demo', 'demo'],
+          ['#features', 'features'],
+          ['#bar', 'the bar'],
+          ['#install', 'install'],
+        ].map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            className="hidden text-(--dim) hover:text-(--fg) hover:no-underline lg:block"
+          >
+            {label}
+          </a>
+        ))}
+        <Link
+          href="/docs"
           className="hidden text-(--dim) hover:text-(--fg) hover:no-underline sm:block"
         >
-          demo
-        </a>
-        <a
-          href="#features"
-          className="hidden text-(--dim) hover:text-(--fg) hover:no-underline sm:block"
-        >
-          features
-        </a>
-        <a
-          href="#install"
-          className="hidden text-(--dim) hover:text-(--fg) hover:no-underline sm:block"
-        >
-          install
-        </a>
+          docs
+        </Link>
         <ThemeSwitch />
         <a
           href={GITHUB_URL}

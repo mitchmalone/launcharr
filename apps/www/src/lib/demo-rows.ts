@@ -3,10 +3,12 @@ import {
   type Row as CoreRow,
   emojiRows,
   launchRows,
+  panelRows,
   quicklinkRows,
 } from '@launcharr/core/rows'
 import type { FrecencyMap, IndexItem } from '@launcharr/core/types'
 
+import { PANEL_INFO } from './demo-data'
 import { INDEX, QUICKLINKS, TRIGGERS } from './launch-index'
 
 /**
@@ -24,6 +26,8 @@ export type DemoRow = {
   action: string
   /** Set for index items so the demo can bump frecency on fire. */
   id?: string
+  /** Set for panel rows: Enter opens this panel inside the demo. */
+  openPanel?: string
 }
 
 /** Same shape the app ships as its default searchFallback. */
@@ -34,7 +38,8 @@ const CORE_INDEX: IndexItem[] = INDEX.map((item) => ({
   id: item.id,
   name: item.name,
   kind: item.kind,
-  path: '',
+  // Panel items carry their trigger word; for everything else `path` is display-only fiction.
+  path: item.path ?? '',
   hint: item.hint,
   icon: item.icon ?? null,
   aliases: item.aliases,
@@ -58,6 +63,8 @@ function actionFor(row: CoreRow): string {
       return `copied ${enter.text}`
     case 'add-quicklink':
       return `drafted a quicklink for ${stripScheme(enter.url)}`
+    case 'open-panel':
+      return `opened the ${row.title} panel`
     default:
       return row.title
   }
@@ -73,6 +80,7 @@ function toDemoRow(row: CoreRow): DemoRow {
     positions: row.positions,
     action: actionFor(row),
     id: row.enter.kind === 'execute' ? row.enter.id : undefined,
+    openPanel: row.enter.kind === 'open-panel' ? row.enter.panel : undefined,
   }
 }
 
@@ -82,6 +90,9 @@ export function computeDemoRows(raw: string, frecency: FrecencyMap): DemoRow[] {
   if (parsed.mode === 'bang' || parsed.mode === 'ask') return []
   if (parsed.mode === 'emoji') return emojiRows(parsed.query).map(toDemoRow)
   if (parsed.mode === 'trigger') {
+    const panel = PANEL_INFO.find((p) => p.id === parsed.trigger)
+    if (panel)
+      return panelRows(panel.id, panel.title, panel.hint).map(toDemoRow)
     const link = QUICKLINKS.find((l) => l.trigger === parsed.trigger)
     if (!link) return []
     return quicklinkRows(link, parsed.args).map(toDemoRow)
