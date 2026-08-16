@@ -45,7 +45,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   account limits** from the providers' own usage endpoints (invariant 2 amended,
   DECISIONS 2026-08-16) — Claude 5h/weekly/model-scoped (Fable window live at 59%),
   Codex account-wide weekly (8% vs 5% stale local = the openclaw delta). No token
-  refresh, ever; credential sources selectable per provider in **Settings → Agents**,
+  refresh, ever; credential access is a per-provider **consent toggle** (source order +
+  fallback are code-owned; last-good cache bridges failures with "as of" stamps) in
+  **Settings → Agents**,
   which also gates local monitoring (prune window, show-idle). **Settings → Menubar**:
   bar on/off hot-applied + widget order (`bar.modules`, clock = center anchor).
 - **Panel framework** (P0): trigger words open keyboard-driven TUI panels in the

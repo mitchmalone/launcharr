@@ -104,33 +104,18 @@ static REPORT: Mutex<Option<(Instant, UsageReport)>> = Mutex::new(None);
 static SCANNING: AtomicBool = AtomicBool::new(false);
 
 /// Settings → Agents gates (DECISIONS 2026-08-16): the whole monitor is off
-/// by default, and each provider's account-limit fetch is a separate opt-in.
+/// by default, and credential access is a per-provider consent capability —
+/// the code owns source selection and fallback order, not the user.
 static ENABLED: AtomicBool = AtomicBool::new(false);
-/// 0 = off, 1 = ~/.claude/.credentials.json, 2 = keychain via /usr/bin/security.
-static CLAUDE_SRC: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
-/// 0 = off, 1 = ~/.codex/auth.json.
-static CODEX_SRC: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+static CLAUDE_CREDS: AtomicBool = AtomicBool::new(false);
+static CODEX_CREDS: AtomicBool = AtomicBool::new(false);
 
 /// Apply settings; called at setup and from the config watcher. Drops the
-/// report cache so a source change shows up on the next panel poll.
+/// report cache so a consent change shows up on the next panel poll.
 pub fn configure(cfg: &crate::config::AgentsConfig) {
-    use crate::config::{ClaudeLimitsSource, CodexLimitsSource};
     ENABLED.store(cfg.usage, Ordering::Relaxed);
-    CLAUDE_SRC.store(
-        match cfg.claude_limits {
-            ClaudeLimitsSource::Off => 0,
-            ClaudeLimitsSource::CredentialsFile => 1,
-            ClaudeLimitsSource::Keychain => 2,
-        },
-        Ordering::Relaxed,
-    );
-    CODEX_SRC.store(
-        match cfg.codex_limits {
-            CodexLimitsSource::Off => 0,
-            CodexLimitsSource::AuthFile => 1,
-        },
-        Ordering::Relaxed,
-    );
+    CLAUDE_CREDS.store(cfg.claude_creds, Ordering::Relaxed);
+    CODEX_CREDS.store(cfg.codex_creds, Ordering::Relaxed);
     *REPORT.lock().unwrap() = None;
 }
 #[allow(clippy::type_complexity)]
@@ -433,16 +418,75 @@ fn collect_jsonl(dir: &Path, out: &mut Vec<PathBuf>) {
 
 const SETTINGS_HINT: &str = "account limits off — enable in Settings → Agents";
 
+/// Last successful fetch per provider. Transient failures (offline, expired
+/// token, 500) degrade to these with an "as of" caveat instead of an empty
+/// section — the cheap reliability win that beats growing more auth paths
+/// (DECISIONS 2026-08-16, consent capabilities).
+#[allow(clippy::type_complexity)]
+static LAST_GOOD: Mutex<Option<HashMap<String, (u64, Vec<LimitWindow>)>>> = Mutex::new(None);
+
+/// Fold a fetch outcome with the last-good cache: success refreshes it,
+/// failure serves it (stamped) when present. Pure over the map for tests.
+fn resolve_limits(
+    cache: &mut HashMap<String, (u64, Vec<LimitWindow>)>,
+    key: &str,
+    fetched: Result<Vec<LimitWindow>, String>,
+    now: u64,
+) -> (Vec<LimitWindow>, Option<String>) {
+    let reason = match fetched {
+        Ok(windows) if !windows.is_empty() => {
+            cache.insert(key.into(), (now, windows.clone()));
+            return (windows, None);
+        }
+        Ok(_) => "empty response".to_string(),
+        Err(e) => e,
+    };
+    match cache.get(key) {
+        Some((at, windows)) => (
+            windows.clone(),
+            Some(format!(
+                "as of {} ago — {reason}",
+                fmt_ago(now.saturating_sub(*at))
+            )),
+        ),
+        None => (Vec::new(), Some(reason)),
+    }
+}
+
+fn fmt_ago(secs: u64) -> String {
+    match secs {
+        s if s < 60 => format!("{s}s"),
+        s if s < 3600 => format!("{}m", s / 60),
+        s if s < 86_400 => format!("{}h", s / 3600),
+        s => format!("{}d", s / 86_400),
+    }
+}
+
 fn claude_account_limits(home: &Path) -> (Vec<LimitWindow>, Option<String>) {
-    let token = match CLAUDE_SRC.load(Ordering::Relaxed) {
-        0 => return (Vec::new(), Some(SETTINGS_HINT.into())),
-        1 => claude_token_from_file(&home.join(".claude/.credentials.json")),
-        _ => claude_token_from_keychain(),
-    };
-    let token = match token {
-        Ok(t) => t,
-        Err(note) => return (Vec::new(), Some(note)),
-    };
+    if !CLAUDE_CREDS.load(Ordering::Relaxed) {
+        return (Vec::new(), Some(SETTINGS_HINT.into()));
+    }
+    let fetched = claude_token(home).and_then(|t| claude_fetch(&t));
+    let mut guard = LAST_GOOD.lock().unwrap();
+    let cache = guard.get_or_insert_with(HashMap::new);
+    resolve_limits(cache, "claude", fetched, now_secs())
+}
+
+/// Source order is ours, not the user's (consent capability, not a picker):
+/// the credentials file first when its token is unexpired — a silent read —
+/// else the keychain, whose macOS prompt would re-fire on every scan if it
+/// were first and denied. Failure reasons join so the note explains the chain.
+fn claude_token(home: &Path) -> Result<String, String> {
+    match claude_token_from_file(&home.join(".claude/.credentials.json")) {
+        Ok(token) => Ok(token),
+        Err(file_err) => match claude_token_from_keychain() {
+            Ok(token) => Ok(token),
+            Err(kc_err) => Err(format!("{file_err}; {kc_err}")),
+        },
+    }
+}
+
+fn claude_fetch(token: &str) -> Result<Vec<LimitWindow>, String> {
     let response = ureq::get("https://api.anthropic.com/api/oauth/usage")
         .set("Authorization", &format!("Bearer {token}"))
         .set("anthropic-beta", "oauth-2025-04-20")
@@ -450,27 +494,19 @@ fn claude_account_limits(home: &Path) -> (Vec<LimitWindow>, Option<String>) {
         .timeout(Duration::from_secs(8))
         .call();
     match response {
-        Ok(r) => match r.into_string() {
-            Ok(body) => (parse_claude_limits(&body), None),
-            Err(_) => (
-                Vec::new(),
-                Some("claude limits: unreadable response".into()),
-            ),
-        },
-        Err(ureq::Error::Status(401 | 403, _)) => (
-            Vec::new(),
-            Some("claude token expired — use Claude Code once, then reopen".into()),
-        ),
-        Err(e) => (
-            Vec::new(),
-            Some(format!("claude limits: {}", short_err(&e))),
-        ),
+        Ok(r) => r
+            .into_string()
+            .map(|body| parse_claude_limits(&body))
+            .map_err(|_| "unreadable response".into()),
+        Err(ureq::Error::Status(401 | 403, _)) => {
+            Err("token expired — use Claude Code once, then reopen".into())
+        }
+        Err(e) => Err(short_err(&e)),
     }
 }
 
 fn claude_token_from_file(path: &Path) -> Result<String, String> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|_| "no ~/.claude/.credentials.json — try the keychain source".to_string())?;
+    let raw = std::fs::read_to_string(path).map_err(|_| "no credentials file".to_string())?;
     parse_claude_credentials(&raw)
 }
 
@@ -505,9 +541,7 @@ fn parse_claude_credentials(raw: &str) -> Result<String, String> {
         .ok_or_else(|| "no claudeAiOauth in credentials".to_string())?;
     if let Some(expires_ms) = oauth.get("expiresAt").and_then(|e| e.as_u64()) {
         if expires_ms / 1000 < now_secs() {
-            return Err(
-                "stored claude token expired — try the keychain source in Settings → Agents".into(),
-            );
+            return Err("stored file token expired".into());
         }
     }
     oauth
@@ -586,7 +620,7 @@ fn codex_account_limits(
     home: &Path,
     local: Option<RateLimit>,
 ) -> (Vec<LimitWindow>, Option<String>) {
-    let local_fallback = |note: String| -> (Vec<LimitWindow>, Option<String>) {
+    let local_tier = |note: String| -> (Vec<LimitWindow>, Option<String>) {
         match local {
             Some(l) => (
                 vec![LimitWindow {
@@ -599,13 +633,25 @@ fn codex_account_limits(
             None => (Vec::new(), Some(note)),
         }
     };
-    if CODEX_SRC.load(Ordering::Relaxed) == 0 {
-        return local_fallback(format!("stale local snapshot — {SETTINGS_HINT}"));
+    if !CODEX_CREDS.load(Ordering::Relaxed) {
+        return local_tier(format!("stale local snapshot — {SETTINGS_HINT}"));
     }
-    let creds = match codex_credentials(&home.join(".codex/auth.json")) {
-        Ok(c) => c,
-        Err(note) => return local_fallback(note),
+    let fetched = codex_credentials(&home.join(".codex/auth.json")).and_then(|c| codex_fetch(&c));
+    let (windows, note) = {
+        let mut guard = LAST_GOOD.lock().unwrap();
+        let cache = guard.get_or_insert_with(HashMap::new);
+        resolve_limits(cache, "codex", fetched, now_secs())
     };
+    // Tiering: live fetch → last-good → this device's session snapshot.
+    if windows.is_empty() {
+        if let Some(reason) = note {
+            return local_tier(format!("stale local snapshot — {reason}"));
+        }
+    }
+    (windows, note)
+}
+
+fn codex_fetch(creds: &(String, Option<String>)) -> Result<Vec<LimitWindow>, String> {
     let mut request = ureq::get("https://chatgpt.com/backend-api/wham/usage")
         .set("Authorization", &format!("Bearer {}", creds.0))
         .set("Accept", "application/json")
@@ -615,21 +661,14 @@ fn codex_account_limits(
         request = request.set("ChatGPT-Account-Id", account);
     }
     match request.call() {
-        Ok(r) => match r.into_string() {
-            Ok(body) => {
-                let windows = parse_codex_limits(&body);
-                if windows.is_empty() {
-                    local_fallback("codex limits: empty response".into())
-                } else {
-                    (windows, None)
-                }
-            }
-            Err(_) => local_fallback("codex limits: unreadable response".into()),
-        },
+        Ok(r) => r
+            .into_string()
+            .map(|body| parse_codex_limits(&body))
+            .map_err(|_| "unreadable response".into()),
         Err(ureq::Error::Status(401 | 403, _)) => {
-            local_fallback("codex token expired — run codex once, then reopen".into())
+            Err("token expired — run codex once, then reopen".into())
         }
-        Err(e) => local_fallback(format!("codex limits: {}", short_err(&e))),
+        Err(e) => Err(short_err(&e)),
     }
 }
 
@@ -921,6 +960,39 @@ mod tests {
         );
         assert!(codex_credentials(&dir.join("missing.json")).is_err());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn last_good_cache_bridges_failures() {
+        let mut cache = HashMap::new();
+        let window = |pct: f64| LimitWindow {
+            name: "weekly".into(),
+            used_percent: pct,
+            resets_at: None,
+        };
+        // First failure with an empty cache: nothing to serve, reason surfaces.
+        let (w, note) = resolve_limits(&mut cache, "claude", Err("offline".into()), 1000);
+        assert!(w.is_empty());
+        assert_eq!(note.as_deref(), Some("offline"));
+        // Success populates the cache.
+        let (w, note) = resolve_limits(&mut cache, "claude", Ok(vec![window(31.0)]), 1000);
+        assert_eq!(w.len(), 1);
+        assert!(note.is_none());
+        // Later failure serves the cached windows with an "as of" stamp.
+        let (w, note) = resolve_limits(&mut cache, "claude", Err("offline".into()), 1000 + 840);
+        assert_eq!(w, vec![window(31.0)]);
+        assert_eq!(note.as_deref(), Some("as of 14m ago — offline"));
+        // Providers don't cross-contaminate.
+        let (w, _) = resolve_limits(&mut cache, "codex", Err("offline".into()), 2000);
+        assert!(w.is_empty());
+    }
+
+    #[test]
+    fn formats_ago() {
+        assert_eq!(fmt_ago(45), "45s");
+        assert_eq!(fmt_ago(840), "14m");
+        assert_eq!(fmt_ago(7200), "2h");
+        assert_eq!(fmt_ago(200_000), "2d");
     }
 
     #[test]

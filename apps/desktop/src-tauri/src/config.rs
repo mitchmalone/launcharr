@@ -73,32 +73,14 @@ impl Default for BarConfig {
     }
 }
 
-/// How the usage monitor may read a provider's stored CLI credentials for
-/// account-limit fetches. Everything defaults to `Off`; each step up is an
-/// explicit user choice in Settings → Agents (DECISIONS 2026-08-16).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ClaudeLimitsSource {
-    #[default]
-    Off,
-    /// Read `~/.claude/.credentials.json` (plain file, no prompt).
-    CredentialsFile,
-    /// Read the `Claude Code-credentials` keychain item via /usr/bin/security —
-    /// macOS shows its standard consent prompt on first read.
-    Keychain,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum CodexLimitsSource {
-    #[default]
-    Off,
-    /// Read `~/.codex/auth.json` (plain file, no prompt).
-    AuthFile,
-}
-
 /// Agent integrations: local session monitoring and the usage monitor. All
 /// off by default — a fresh install watches nothing and fetches nothing.
+///
+/// Credential access is a consent *capability*, not a source picker
+/// (DECISIONS 2026-08-16): the user grants "may read the CLI's stored
+/// credentials" per provider and the code owns source selection and fallback
+/// order (usage.rs). An "own sign-in" capability can join later as another
+/// boolean without reshaping config.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AgentsConfig {
@@ -110,10 +92,12 @@ pub struct AgentsConfig {
     pub prune_hours: u32,
     /// The `usage ⏎` token monitor (local journal aggregation).
     pub usage: bool,
-    /// Account rate-limit fetch for Claude (network, opt-in).
-    pub claude_limits: ClaudeLimitsSource,
-    /// Account rate-limit fetch for Codex (network, opt-in).
-    pub codex_limits: CodexLimitsSource,
+    /// May read Claude Code's stored credentials (keychain, then the
+    /// credentials file) to fetch account limits. The keychain read goes via
+    /// /usr/bin/security, so macOS shows its own consent prompt on first use.
+    pub claude_creds: bool,
+    /// May read the Codex CLI's `~/.codex/auth.json` to fetch account limits.
+    pub codex_creds: bool,
 }
 
 impl Default for AgentsConfig {
@@ -123,8 +107,8 @@ impl Default for AgentsConfig {
             show_idle: true,
             prune_hours: 12,
             usage: false,
-            claude_limits: ClaudeLimitsSource::Off,
-            codex_limits: CodexLimitsSource::Off,
+            claude_creds: false,
+            codex_creds: false,
         }
     }
 }

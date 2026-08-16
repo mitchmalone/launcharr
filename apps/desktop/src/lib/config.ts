@@ -43,9 +43,10 @@ export type AgentsConfig = {
   pruneHours: number
   /** The `usage ⏎` token monitor. */
   usage: boolean
-  /** Account rate-limit fetch sources (network, opt-in per provider). */
-  claudeLimits: 'off' | 'credentialsFile' | 'keychain'
-  codexLimits: 'off' | 'authFile'
+  /** Consent capabilities: launcharr may read the CLI's stored credentials
+   * for account-limit fetches; the code owns source selection + fallback. */
+  claudeCreds: boolean
+  codexCreds: boolean
 }
 
 /** Default widget order; mirrored in config.rs (BAR_MODULE_IDS). */
@@ -69,6 +70,6 @@ export const DEFAULT_AGENTS_CONFIG: AgentsConfig = {
   showIdle: true,
   pruneHours: 12,
   usage: false,
-  claudeLimits: 'off',
-  codexLimits: 'off',
+  claudeCreds: false,
+  codexCreds: false,
 }

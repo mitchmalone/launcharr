@@ -446,45 +446,34 @@ function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
             <p className="hint">
               Account limits (“how soon am I rate-limited?”) are computed by the
               providers, so showing them means one HTTPS request to each — using
-              credentials the CLIs already store. Off by default; choose per
-              provider how launcharr may read them. launcharr never refreshes or
-              writes tokens.
+              credentials the CLIs already store. Grant access per provider;
+              launcharr picks the freshest source, falls back automatically, and
+              never refreshes or writes tokens.
             </p>
             <label className="check">
-              Claude limits
-              <select
-                value={agents.claudeLimits}
-                onChange={(e) =>
-                  setAgents({
-                    claudeLimits: e.target
-                      .value as Config['agents']['claudeLimits'],
-                  })
-                }
-              >
-                <option value="off">off — no request, no credentials</option>
-                <option value="credentialsFile">
-                  read ~/.claude/.credentials.json
-                </option>
-                <option value="keychain">
-                  read Claude Code keychain item (macOS will ask)
-                </option>
-              </select>
+              <input
+                type="checkbox"
+                checked={agents.claudeCreds}
+                onChange={(e) => setAgents({ claudeCreds: e.target.checked })}
+              />
+              Claude — may read Claude Code’s stored credentials
             </label>
+            <p className="hint">
+              Credentials file first (silent); keychain when the file is stale —
+              macOS shows its own prompt once.
+            </p>
             <label className="check">
-              Codex limits
-              <select
-                value={agents.codexLimits}
-                onChange={(e) =>
-                  setAgents({
-                    codexLimits: e.target
-                      .value as Config['agents']['codexLimits'],
-                  })
-                }
-              >
-                <option value="off">off — local snapshot only (stale)</option>
-                <option value="authFile">read ~/.codex/auth.json</option>
-              </select>
+              <input
+                type="checkbox"
+                checked={agents.codexCreds}
+                onChange={(e) => setAgents({ codexCreds: e.target.checked })}
+              />
+              Codex — may read <code>~/.codex/auth.json</code>
             </label>
+            <p className="hint">
+              Off = the panel shows this device’s last session snapshot only,
+              which misses usage from your other machines.
+            </p>
           </>
         )}
       </Row>

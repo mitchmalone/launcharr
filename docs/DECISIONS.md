@@ -5,6 +5,22 @@
 
 ---
 
+### 2026-08-16 · Limits credentials: consent capabilities, not source pickers
+
+- **Decision.** The per-provider source _selects_ (same day, below) are replaced by
+  boolean consent toggles — `agents.claudeCreds` / `agents.codexCreds`, "launcharr may
+  read the CLI's stored credentials". Source selection and fallback order belong to the
+  code: Claude tries the credentials file first (silent, expiry-checked) and the
+  keychain second (macOS prompts; last so a denied prompt can't re-fire every scan);
+  Codex tiers live fetch → last-good → this device's session snapshot. A `LAST_GOOD`
+  cache serves stamped stale limits ("as of 14m ago — offline") through transient
+  failures. A future own-sign-in capability can join as another boolean.
+- **Why.** Discussed with Mitch 2026-08-16: users should grant capabilities and get the
+  best available data, not pick implementation details (the file-vs-keychain choice
+  already mispicked once — the file was 5 days stale). Own-OAuth was considered and
+  deferred: it makes launcharr a token custodian for near-zero marginal reliability;
+  the last-good cache buys most of the resilience for a fraction of the surface.
+
 ### 2026-08-16 · Account limits join the usage monitor: opt-in HTTPS, opt-in credentials (invariant 2 amended)
 
 - **Decision.** The usage panel's primary question — "how soon am I limited?" — is
