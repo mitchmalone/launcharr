@@ -40,7 +40,7 @@ import { DnsPanelContainer } from './panels/DnsPanelContainer'
 import { HelpPanelContainer } from './panels/HelpPanelContainer'
 import { UsagePanelContainer } from './panels/UsagePanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
-import { PANEL_INFO, panelEnabled } from './panels/registry'
+import { PANEL_ICONS, PANEL_INFO, panelEnabled } from './panels/registry'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
 const INPUT_HEIGHT = 54
@@ -102,6 +102,15 @@ const DEFAULT_CONFIG: Config = {
   themes: {},
   bar: { enabled: false, modules: DEFAULT_BAR_MODULES },
   agents: DEFAULT_AGENTS_CONFIG,
+}
+
+/** Panel rows draw their lucide icon; everything else keeps its text glyph. */
+function rowGlyph(row: Row): React.ReactNode {
+  if (row.enter.kind === 'open-panel') {
+    const Icon = PANEL_ICONS[row.enter.panel]
+    if (Icon) return <Icon size={16} strokeWidth={2} aria-hidden />
+  }
+  return row.glyph
 }
 
 function renderSpans(spans: Span[]) {
@@ -697,7 +706,7 @@ export default function App() {
               {row.icon ? (
                 <img className="icon" src={convertFileSrc(row.icon)} alt="" />
               ) : (
-                <span className="icon glyph">{row.glyph}</span>
+                <span className="icon glyph">{rowGlyph(row)}</span>
               )}
               <span className="name">
                 {row.title.split('').map((ch, j) => (

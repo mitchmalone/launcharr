@@ -1,3 +1,14 @@
+import {
+  Bot,
+  CircleHelp,
+  ClipboardList,
+  Gauge,
+  Globe,
+  type LucideIcon,
+  Volume2,
+  Wifi,
+} from 'lucide-react'
+
 import type { Config } from '../lib/config'
 
 /**
@@ -20,6 +31,17 @@ export const PANEL_INFO: PanelInfo[] = [
   { id: 'clipboard', title: 'Clipboard', hint: 'history & search ▸' },
   { id: 'help', title: 'Help', hint: 'commands & keys ▸' },
 ]
+
+/** Lucide icon per panel — launcher rows and panel headers share it. */
+export const PANEL_ICONS: Record<string, LucideIcon> = {
+  agents: Bot,
+  usage: Gauge,
+  wifi: Wifi,
+  dns: Globe,
+  audio: Volume2,
+  clipboard: ClipboardList,
+  help: CircleHelp,
+}
 
 /** Panels gated by settings; anything unlisted is always on. */
 export function panelEnabled(id: string, config: Config): boolean {

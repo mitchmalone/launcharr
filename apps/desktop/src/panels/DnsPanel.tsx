@@ -4,6 +4,7 @@
  * Shares the WifiStatus shape (same backing command).
  */
 import { KeyHints, ListRow, Panel, SectionHeader } from '@launcharr/tui'
+import { Globe } from 'lucide-react'
 
 import type { WifiStatus } from './WifiPanel'
 
@@ -17,7 +18,7 @@ export function DnsPanel({
   return (
     <Panel
       autoFocus
-      icon="⇄"
+      icon={<Globe size={17} strokeWidth={2} aria-hidden />}
       title="Network"
       subtitle={
         !status ? 'loading…' : (status.ssid ?? status.iface ?? 'no interface')

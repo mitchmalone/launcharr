@@ -15,6 +15,7 @@ import {
   TwoPane,
   useListNav,
 } from '@launcharr/tui'
+import { ClipboardList } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 export interface ClipboardPanelProps {
@@ -66,7 +67,7 @@ export function ClipboardPanel({
 
   return (
     <Panel
-      icon="⧉"
+      icon={<ClipboardList size={17} strokeWidth={2} aria-hidden />}
       title="Clipboard"
       subtitle={`${clips.length} item${clips.length === 1 ? '' : 's'}`}
       footer={

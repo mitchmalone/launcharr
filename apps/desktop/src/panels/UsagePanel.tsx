@@ -10,6 +10,7 @@ import {
   SectionHeader,
   SegmentedControl,
 } from '@launcharr/tui'
+import { Gauge } from 'lucide-react'
 
 /** Mirrors usage.rs (UsageReport et al). */
 export interface DayUsage {
@@ -101,7 +102,7 @@ export function UsagePanel({
   return (
     <Panel
       autoFocus
-      icon="▤"
+      icon={<Gauge size={17} strokeWidth={2} aria-hidden />}
       title="Usage"
       subtitle={
         scanning

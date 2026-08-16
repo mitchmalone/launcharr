@@ -143,6 +143,15 @@
   color: var(--_accent);
 }
 
+/* Lucide (inline svg) icons sit in the same slots as text glyphs: block +
+ * centered so they don't ride the text baseline. */
+.tui-row-icon > svg,
+.tui-panel-icon > svg,
+.tui-prompt-sigil > svg {
+  display: block;
+  margin: 0 auto;
+}
+
 .tui-row-label {
   flex: 1;
   min-width: 0;
@@ -296,7 +305,9 @@
 /* ---- Slider ---------------------------------------------------------- */
 
 .tui-slider {
-  padding: 8px 0;
+  /* Horizontal padding = half the knob, so the knob stays whole at 0% and
+   * 100% instead of being clipped by the panel body (field bug 2026-08-16). */
+  padding: 8px 7px;
   outline: none;
   touch-action: none;
 }

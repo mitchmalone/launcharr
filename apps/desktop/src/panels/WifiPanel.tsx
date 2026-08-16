@@ -11,7 +11,22 @@ import {
   TextPrompt,
   useListNav,
 } from '@launcharr/tui'
+import { Lock, Search, Wifi, WifiHigh, WifiLow, WifiZero } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useState } from 'react'
+
+/** Row-icon sizing shared by every lucide glyph in the panel. */
+const ROW_ICON = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const
+const HEAD_ICON = { size: 17, strokeWidth: 2, 'aria-hidden': true } as const
+
+/** dBm → bars. Known networks report no signal; they get the full glyph. */
+function strengthIcon(signal: number | null): ReactNode {
+  if (signal == null) return <Wifi {...ROW_ICON} />
+  if (signal >= -55) return <Wifi {...ROW_ICON} />
+  if (signal >= -70) return <WifiHigh {...ROW_ICON} />
+  if (signal >= -85) return <WifiLow {...ROW_ICON} />
+  return <WifiZero {...ROW_ICON} />
+}
 
 export interface WifiStatus {
   iface: string | null
@@ -126,11 +141,12 @@ function NetworkList({
   const networkRow = (
     ssid: string,
     index: number,
-    right: string | undefined,
+    right: ReactNode,
+    icon: ReactNode = <Wifi {...ROW_ICON} />,
   ) => (
     <ListRow
       key={`row-${index}-${ssid}`}
-      icon="◠"
+      icon={icon}
       label={ssid}
       selected={index === nav.index}
       right={busy === ssid ? 'connecting…' : right}
@@ -142,7 +158,7 @@ function NetworkList({
   return (
     <Panel
       autoFocus
-      icon="◠"
+      icon={<Wifi {...HEAD_ICON} />}
       title={status?.ssid ?? 'Wi-Fi'}
       subtitle={subtitle}
       onKeyDown={(e) => {
@@ -183,7 +199,7 @@ function NetworkList({
         </div>
       )}
       <ListRow
-        icon="⌕"
+        icon={<Search {...ROW_ICON} />}
         label={scanning ? 'Scanning…' : 'Scan for networks…'}
         sub={scanned === null && !scanning ? 'press s' : undefined}
         selected={scanIndex === nav.index}
@@ -198,7 +214,16 @@ function NetworkList({
           ) : (
             <div className="tui-scroll">
               {others.map((n, i) =>
-                networkRow(n.ssid, othersBase + i, n.secured ? 'wpa' : 'open'),
+                networkRow(
+                  n.ssid,
+                  othersBase + i,
+                  n.secured ? (
+                    <Lock size={12} strokeWidth={2} aria-hidden />
+                  ) : (
+                    'open'
+                  ),
+                  strengthIcon(n.signal),
+                ),
               )}
             </div>
           )}
@@ -224,7 +249,7 @@ function PasswordStep({
   const [password, setPassword] = useState('')
   return (
     <Panel
-      icon="◠"
+      icon={<Wifi {...HEAD_ICON} />}
       title={ssid}
       subtitle="enter password to join"
       footer={
@@ -240,7 +265,7 @@ function PasswordStep({
       <TextPrompt
         autoFocus
         secret
-        sigil="⚿"
+        sigil={<Lock size={14} strokeWidth={2} aria-hidden />}
         value={password}
         onChange={setPassword}
         placeholder={busy ? 'joining…' : 'Password'}

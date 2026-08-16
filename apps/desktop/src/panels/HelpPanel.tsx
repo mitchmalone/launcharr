@@ -11,6 +11,7 @@ import {
   TextPrompt,
   useListNav,
 } from '@launcharr/tui'
+import { CircleHelp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 export interface HelpEntry {
@@ -53,7 +54,11 @@ export function HelpPanel({ sections, onClose }: HelpPanelProps) {
 
   let cursor = 0
   return (
-    <Panel title="Help" subtitle="everything launcharr answers to">
+    <Panel
+      icon={<CircleHelp size={17} strokeWidth={2} aria-hidden />}
+      title="Help"
+      subtitle="everything launcharr answers to"
+    >
       <TextPrompt
         autoFocus
         value={filter}

@@ -180,7 +180,7 @@ body,
 }
 
 .bar-app {
-  color: var(--dim, #7f86a5);
+  color: var(--fg, #dde1f0);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -204,7 +204,9 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--dim, #7f86a5);
+  /* fg, not dim — the dim tone read too dark against the strip (Mitch,
+   * 2026-08-16); dim stays for truly secondary text. */
+  color: var(--fg, #dde1f0);
 }
 
 /* Module alert states (battery low, TRMNL low, wifi offline). Scoped under

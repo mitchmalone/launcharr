@@ -12,6 +12,20 @@ import {
   Slider,
   useListNav,
 } from '@launcharr/tui'
+import { Headphones, Mic, Speaker, Volume2, VolumeX } from 'lucide-react'
+
+const ROW_ICON = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const
+const HEAD_ICON = { size: 17, strokeWidth: 2, 'aria-hidden': true } as const
+
+/** Best-effort device glyph from its name; mics are mics either way. */
+function deviceIcon(name: string, input: boolean) {
+  if (input) return <Mic {...ROW_ICON} />
+  return /headphone|airpod|pods|buds|headset/i.test(name) ? (
+    <Headphones {...ROW_ICON} />
+  ) : (
+    <Speaker {...ROW_ICON} />
+  )
+}
 
 export interface AudioDevice {
   id: number
@@ -89,7 +103,7 @@ export function AudioPanel({
     return (
       <ListRow
         key={`${input ? 'in' : 'out'}-${device.id}`}
-        icon={input ? '◦' : '▯'}
+        icon={deviceIcon(device.name, input)}
         label={device.name}
         selected={index === nav.index}
         right={isDefault ? '●' : undefined}
@@ -106,6 +120,14 @@ export function AudioPanel({
       <div
         className={index === nav.index ? 'tui-row-selected' : undefined}
         onMouseMove={() => nav.setIndex(index)}
+        // Keep the wrap-around in view: without this, ↓ past the last device
+        // wraps the selection to this slider while the body stays scrolled to
+        // the bottom (found in the field, 2026-08-16).
+        ref={
+          index === nav.index
+            ? (el) => el?.scrollIntoView({ block: 'nearest' })
+            : null
+        }
       >
         <SectionHeader
           label={input ? 'Input' : 'Output'}
@@ -126,7 +148,13 @@ export function AudioPanel({
   return (
     <Panel
       autoFocus
-      icon="◀"
+      icon={
+        status?.outputMuted ? (
+          <VolumeX {...HEAD_ICON} />
+        ) : (
+          <Volume2 {...HEAD_ICON} />
+        )
+      }
       title="Audio"
       subtitle={subtitle}
       onKeyDown={(e) => {
