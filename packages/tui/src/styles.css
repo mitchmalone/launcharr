@@ -358,12 +358,20 @@
   border-color: var(--_frame);
 }
 
-/* Keyboard cursor: an inset accent outline so it reads on top of the active
-   fill too (border-color alone loses to .tui-segment-active). */
-.tui-segment-cursor {
-  outline: 2px solid var(--_accent);
-  outline-offset: -2px;
+/* With a keyboard cursor present, "active" steps back to accent text so the
+   fill means one thing only (where the cursor is). */
+.tui-segmented-cursored .tui-segment-active {
+  background: transparent;
   color: var(--_accent);
+  font-weight: 700;
+}
+
+/* Keyboard cursor = the same selected fill every list row uses, so the strip
+   reads like the rest of the panel; it wins over the active look. */
+.tui-segment-cursor,
+.tui-segment-active.tui-segment-cursor {
+  background: var(--_selected);
+  border-color: var(--_frame);
 }
 
 .tui-segment-dim {

@@ -113,7 +113,10 @@ export function SegmentedControl<T extends string>({
   onHover?: (value: T) => void
 }) {
   return (
-    <div className="tui-segmented" role="radiogroup">
+    <div
+      className={`tui-segmented${cursor !== undefined ? ' tui-segmented-cursored' : ''}`}
+      role="radiogroup"
+    >
       {options.map((opt) => (
         <button
           key={opt.value}
