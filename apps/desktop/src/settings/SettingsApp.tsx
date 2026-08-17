@@ -127,13 +127,15 @@ export default function SettingsApp() {
       {error ? <div className="error-banner">{error}</div> : null}
 
       <main className="content">
-        {tab === 'general' && <GeneralTab config={config} set={set} />}
-        {tab === 'menubar' && <MenubarTab config={config} set={set} />}
-        {tab === 'desktop' && <DesktopTab config={config} set={set} />}
-        {tab === 'agents' && <AgentsTab config={config} set={set} />}
-        {tab === 'quicklinks' && <QuicklinksTab config={config} set={set} />}
-        {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
-        {tab === 'about' && <AboutTab />}
+        <div className="content-inner">
+          {tab === 'general' && <GeneralTab config={config} set={set} />}
+          {tab === 'menubar' && <MenubarTab config={config} set={set} />}
+          {tab === 'desktop' && <DesktopTab config={config} set={set} />}
+          {tab === 'agents' && <AgentsTab config={config} set={set} />}
+          {tab === 'quicklinks' && <QuicklinksTab config={config} set={set} />}
+          {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
+          {tab === 'about' && <AboutTab />}
+        </div>
       </main>
     </div>
   )

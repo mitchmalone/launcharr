@@ -90,10 +90,12 @@ body {
 
 .content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* the scroller spans the window, so the bar hugs its edge */
   padding: 28px 32px 40px;
-  max-width: 640px;
-  width: 100%;
+}
+
+.content-inner {
+  max-width: 576px;
   margin: 0 auto;
 }
 
