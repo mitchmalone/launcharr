@@ -6,6 +6,19 @@
 
 ---
 
+### 2026-08-17 · Loupe capture v2: `CGDisplayCreateImageForRect` + `sharingType = None` — window-list capture skipped Notion
+
+`CGWindowListCreateImage(… OnScreenBelowWindow …)` came back without some apps' windows
+(Notion, an Electron app, was the reported one — likely a window-list/level quirk, not
+worth chasing). Capturing the **display framebuffer** instead
+(`CGDisplayCreateImageForRect(displayID, rectInDisplayPoints)`) returns what is actually
+on screen, every app; the loupe keeps itself out of the picture with
+`[NSWindow setSharingType:NSWindowSharingNone]` (content-protection flag: excluded from
+all screen captures, including our own). Display id = `NSScreen.deviceDescription
+["NSScreenNumber"]`; the rect is display-local points, and the loupe window covers
+exactly that screen, so the webview's `clientX/Y` are already the right coordinates.
+The v1 notes below stay for the coordinate conventions.
+
 ### 2026-08-17 · Loupe capture: `CGWindowListCreateImage` below our own window; points, not pixels
 
 For a magnifier drawn _at_ the cursor, plain display capture sees the loupe itself

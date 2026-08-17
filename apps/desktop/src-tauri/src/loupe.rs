@@ -7,8 +7,12 @@
 //! ask for (invariant 1 amended, DECISIONS 2026-08-17). Not granted → we request it
 //! once and fall back to the system sampler for that pick.
 //!
-//! FFI: CoreGraphics window-list capture + a bitmap context, hand-declared like
+//! FFI: CoreGraphics display capture + a bitmap context, hand-declared like
 //! coreaudio.rs (no crate for a handful of functions). All `unsafe` stays in here.
+//! Capture is the display framebuffer (`CGDisplayCreateImageForRect`) — what is
+//! actually on screen, every app — with the loupe window itself excluded via
+//! `sharingType = NSWindowSharingNone` (the window-list capture skipped some apps,
+//! Notion among them — Mitch, 2026-08-17).
 //! Coordinates: everything is AppKit/CG *points* with the top-left origin of the main
 //! display — Tauri's logical positions on macOS use the same space.
 
@@ -60,8 +64,6 @@ type CGImageRef = *mut c_void;
 type CGContextRef = *mut c_void;
 type CGColorSpaceRef = *mut c_void;
 
-const K_CG_WINDOW_LIST_OPTION_ON_SCREEN_BELOW_WINDOW: u32 = 1 << 2;
-const K_CG_WINDOW_IMAGE_BEST_RESOLUTION: u32 = 1 << 3;
 /// kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big → RGBA bytes.
 const K_CG_BITMAP_RGBA8: u32 = 1 | (4 << 12);
 
@@ -69,12 +71,7 @@ const K_CG_BITMAP_RGBA8: u32 = 1 | (4 << 12);
 extern "C" {
     fn CGPreflightScreenCaptureAccess() -> bool;
     fn CGRequestScreenCaptureAccess() -> bool;
-    fn CGWindowListCreateImage(
-        screen_bounds: CGRect,
-        list_option: u32,
-        window_id: u32,
-        image_option: u32,
-    ) -> CGImageRef;
+    fn CGDisplayCreateImageForRect(display: u32, rect: CGRect) -> CGImageRef;
     fn CGImageGetWidth(image: CGImageRef) -> usize;
     fn CGImageGetHeight(image: CGImageRef) -> usize;
     fn CGImageRelease(image: CGImageRef);
@@ -109,10 +106,8 @@ pub fn request_capture() -> bool {
 /// translate webview coordinates into CG global points.
 #[derive(Clone, Copy)]
 struct Shown {
-    /// Top-left of the covered screen, CG global points.
-    origin: (f64, f64),
-    /// NSWindow number of the loupe panel — capture excludes it and everything above.
-    window_number: u32,
+    /// CGDirectDisplayID of the covered screen; capture rects are display-local points.
+    display: u32,
 }
 
 static SHOWN: std::sync::Mutex<Option<Shown>> = std::sync::Mutex::new(None);
@@ -120,9 +115,9 @@ static SHOWN: std::sync::Mutex<Option<Shown>> = std::sync::Mutex::new(None);
 /// (x, y, width, height) of a screen in CG points, top-left origin.
 type ScreenFrame = (f64, f64, f64, f64);
 
-/// Mouse position + the frame of the screen under it, both as CG points (top-left
-/// origin). AppKit gives bottom-left; the main screen's height flips it.
-fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame)> {
+/// Mouse position + the frame of the screen under it (CG points, top-left origin —
+/// AppKit gives bottom-left; the main screen's height flips it) + its display id.
+fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame, u32)> {
     let mouse = NSEvent::mouseLocation();
     let screens = objc2_app_kit::NSScreen::screens(mtm);
     let main_h = screens.iter().next()?.frame().size.height;
@@ -135,9 +130,14 @@ fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame)> {
     })?;
     let f = screen.frame();
     let top = main_h - (f.origin.y + f.size.height);
+    let key = objc2_foundation::NSString::from_str("NSScreenNumber");
+    let number = screen.deviceDescription().objectForKey(&key)?;
+    // SAFETY: NSScreenNumber is documented as an NSNumber; unsignedIntValue is a plain getter.
+    let display: u32 = unsafe { objc2::msg_send![&*number, unsignedIntValue] };
     Some((
         (mouse.x, main_h - mouse.y),
         (f.origin.x, top, f.size.width, f.size.height),
+        display,
     ))
 }
 
@@ -147,7 +147,7 @@ fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame)> {
 pub fn show(app: &AppHandle, zoom: u32) -> CmdResult<()> {
     let mtm = MainThreadMarker::new()
         .ok_or_else(|| CmdError::Internal("loupe::show off the main thread".into()))?;
-    let ((mx, my), (sx, sy, sw, sh)) =
+    let ((mx, my), (sx, sy, sw, sh), display) =
         mouse_screen(mtm).ok_or_else(|| CmdError::Internal("no screen under the mouse".into()))?;
 
     if app.get_webview_window(LABEL).is_none() {
@@ -196,14 +196,13 @@ pub fn show(app: &AppHandle, zoom: u32) -> CmdResult<()> {
     window.set_position(LogicalPosition::new(sx, sy))?;
 
     let ns_window = window.ns_window()?;
-    // SAFETY: a live NSWindow for the lifetime of `window`; windowNumber is a plain
-    // integer getter.
-    let window_number: isize =
-        unsafe { objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, windowNumber] };
-    *SHOWN.lock().unwrap() = Some(Shown {
-        origin: (sx, sy),
-        window_number: window_number.max(0) as u32,
-    });
+    // SAFETY: a live NSWindow for the lifetime of `window`. NSWindowSharingNone (0)
+    // keeps the loupe out of every screen capture, ours included — that's how the
+    // magnifier avoids seeing itself.
+    unsafe {
+        let _: () = objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, setSharingType: 0usize];
+    }
+    *SHOWN.lock().unwrap() = Some(Shown { display });
 
     // Where the mouse is in the webview's coordinates (so the loupe draws before
     // the first mousemove) plus the configured zoom.
@@ -223,9 +222,9 @@ pub fn hide(app: &AppHandle) {
 }
 
 /// Pixels in a `size`×`size` point square centred on (`x`, `y`) — the webview's
-/// coordinates on the loupe window. Returns `[w u32 LE][h u32 LE][RGBA…]` at native
-/// resolution (retina → 2× the points), captured *below* the loupe window so the
-/// magnifier never sees itself.
+/// coordinates on the loupe window, which are also display-local points. Returns
+/// `[w u32 LE][h u32 LE][RGBA…]` at native resolution (retina → 2× the points), from
+/// the display framebuffer with the loupe window excluded (sharing type none).
 pub fn capture(x: f64, y: f64, size: f64) -> CmdResult<Vec<u8>> {
     let shown = SHOWN
         .lock()
@@ -234,8 +233,8 @@ pub fn capture(x: f64, y: f64, size: f64) -> CmdResult<Vec<u8>> {
     let half = size / 2.0;
     let rect = CGRect {
         origin: CGPoint {
-            x: shown.origin.0 + x - half,
-            y: shown.origin.1 + y - half,
+            x: x - half,
+            y: y - half,
         },
         size: CGSize {
             width: size,
@@ -246,12 +245,7 @@ pub fn capture(x: f64, y: f64, size: f64) -> CmdResult<Vec<u8>> {
     // SAFETY: CG calls with valid arguments; every created object is released below;
     // the bitmap context writes exactly w*h*4 bytes into `out` after the 8-byte header.
     unsafe {
-        let image = CGWindowListCreateImage(
-            rect,
-            K_CG_WINDOW_LIST_OPTION_ON_SCREEN_BELOW_WINDOW,
-            shown.window_number,
-            K_CG_WINDOW_IMAGE_BEST_RESOLUTION,
-        );
+        let image = CGDisplayCreateImageForRect(shown.display, rect);
         if image.is_null() {
             return Err(CmdError::Internal("screen capture returned nothing".into()));
         }

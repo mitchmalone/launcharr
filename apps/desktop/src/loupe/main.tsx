@@ -16,7 +16,7 @@ import './loupe.css'
 
 /** Loupe diameter in points. Zoom (one screen point → N loupe points) arrives with
  * `loupe-open` from config (`colorLoupeZoom`, default 4 — 2 wasn't enough). */
-const DIAMETER = 176
+const DIAMETER = 264 // 176 was too small to aim (Mitch, 2026-08-17)
 
 const hex2 = (n: number) => n.toString(16).padStart(2, '0').toUpperCase()
 
