@@ -10,6 +10,17 @@ if it needs more. Never duplicate global AGENTS.md rules here.
   `recache()` cannot release — icon extraction MUST run in the `--extract-icons` subprocess.
 - `open Foo.app` re-activates a running instance; always `pkill` before relaunching a rebuild.
 
+## TUI kit (`packages/tui`)
+
+- **Keyboard selection must always be scrolled into view — at both ends.** Every selectable
+  kit component passes `revealSelected` as the selected element's ref (`ListRow`,
+  `SegmentedControl` cursor); it does `scrollIntoView(nearest)` and snaps the panel body to
+  the top when the selection is the first thing, so wrap-around from the bottom shows the
+  section header too. Bitten twice (wifi 2026-08-16, aerospace strip 2026-08-17): any new
+  selectable component that skips this ships the same bug.
+- `.tui button` resets are `(0,1,1)`; kit component rules must be at least two classes deep
+  (`.tui-segmented .tui-segment…`) or the reset silently wins (2026-08-17).
+
 ## Tauri / tauri-nspanel
 
 - tauri-nspanel branch is `v2.1`; `tauri_panel!`/`panel_event!` macros; keep event handlers

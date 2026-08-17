@@ -6,6 +6,17 @@
 
 ---
 
+### 2026-08-17 · Wrap-around selection hid the aerospace strip; `.tui button` beat single-class segment rules
+
+Two kit gotchas from the `aerospace ⏎` strip. (1) `SegmentedControl` had no scroll-into-view,
+so wrapping ↑ from the last action left the strip (and its header) above the fold — ListRow
+had the fix from the wifi panel but nothing shared it. Now `revealSelected` in
+primitives.tsx is the one helper every selectable kit component uses (LEARNINGS rule).
+(2) `.tui button { background:none; border:none }` is `(0,1,1)` and had been beating every
+single-class segment rule since the control was written — segments never had border/fill;
+the keyboard cursor only showed on the active segment where a two-class rule applied.
+Segment rules are now scoped under `.tui-segmented`.
+
 ### 2026-08-17 · Quitting AeroSpace dumps every window onto workspace 1; its tray icon can't be hidden by `defaults`
 
 Two facts from one experiment. (1) `osascript quit` + `open -a AeroSpace` reloads fine but

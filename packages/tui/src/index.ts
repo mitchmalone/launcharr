@@ -12,6 +12,7 @@ export {
   KeyHints,
   ListRow,
   Panel,
+  revealSelected,
   SectionHeader,
   TextPrompt,
   TwoPane,

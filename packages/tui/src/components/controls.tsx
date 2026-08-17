@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 
 import { sliderRatio, stepValue } from '../nav/slider'
+import { revealSelected } from './primitives'
 
 /** Square two-state switch (the Omarchy toggle: knob slides left/right). */
 export function Toggle({
@@ -135,6 +136,9 @@ export function SegmentedControl<T extends string>({
             .join(' ')}
           onClick={() => onChange(opt.value)}
           onMouseEnter={onHover ? () => onHover(opt.value) : undefined}
+          ref={
+            cursor !== undefined && opt.value === cursor ? revealSelected : null
+          }
         >
           {opt.label}
         </button>

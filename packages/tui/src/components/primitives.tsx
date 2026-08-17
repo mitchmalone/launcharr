@@ -63,6 +63,27 @@ export function Divider() {
   return <div className="tui-divider" />
 }
 
+/**
+ * Keep the keyboard selection inside the scrolling clip. Rule for every
+ * selectable kit component (ListRow, SegmentedControl cursor, …): call this
+ * from the selected element's ref. `nearest` handles the common case; when the
+ * selection sits at the very top of its scroll container (wrap-around from the
+ * bottom) we scroll the container to 0 so the section header above it shows
+ * too — the highlight "vanishing" at either end was a field bug twice
+ * (wifi 2026-08-16, aerospace strip 2026-08-17).
+ */
+export function revealSelected(el: HTMLElement | null) {
+  if (!el) return
+  el.scrollIntoView({ block: 'nearest' })
+  const scroller = el.closest<HTMLElement>('.tui-panel-body')
+  if (!scroller) return
+  const top =
+    el.getBoundingClientRect().top -
+    scroller.getBoundingClientRect().top +
+    scroller.scrollTop
+  if (top < 48) scroller.scrollTop = 0
+}
+
 /** A selectable row: optional glyph, label (+sub), right-aligned extra. */
 export function ListRow({
   selected = false,
@@ -96,9 +117,7 @@ export function ListRow({
       className={cls}
       onClick={onClick}
       onMouseMove={onHover}
-      // Keyboard selection must never leave the visible clip — the highlight
-      // "vanishing" below the fold was the wifi panel's first field bug.
-      ref={selected ? (el) => el?.scrollIntoView({ block: 'nearest' }) : null}
+      ref={selected ? revealSelected : null}
     >
       {icon && <span className="tui-row-icon">{icon}</span>}
       <span className="tui-row-label">
