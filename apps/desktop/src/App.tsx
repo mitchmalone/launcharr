@@ -10,6 +10,7 @@ import {
   draftRows,
   emojiRows,
   launchRows,
+  loremEntryRow,
   loremRows,
   panelRows,
   quicklinkRows,
@@ -182,6 +183,8 @@ export default function App() {
   const [clips, setClips] = useState<Clip[]>([])
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([])
   const [draft, setDraft] = useState<QuicklinkDraft | null>(null)
+  // `lorem ⏎` opens the volume menu; Esc / Backspace-on-empty backs out.
+  const [loremMenu, setLoremMenu] = useState(false)
   const [altHeld, setAltHeld] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -302,6 +305,7 @@ export default function App() {
         setSelected(0)
         setScriptItems([])
         setDraft(null)
+        setLoremMenu(false)
         setPanelMode(null)
         setToast(null)
         setInputMode('launch')
@@ -316,6 +320,7 @@ export default function App() {
         setRaw('')
         setSelected(0)
         setDraft(null)
+        setLoremMenu(false)
         setPanelMode(null)
         setInputMode('launch')
         setToast(e.payload)
@@ -403,6 +408,7 @@ export default function App() {
 
   const rows: Row[] = useMemo(() => {
     if (draft) return draftRows(draft, raw, browsers)
+    if (loremMenu) return loremRows()
     switch (parsed.mode) {
       case 'launch':
         return launchRows(
@@ -413,7 +419,7 @@ export default function App() {
         )
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
-        if (parsed.trigger === 'lorem') return loremRows()
+        if (parsed.trigger === 'lorem') return loremEntryRow()
         // `awake 2h` arms straight from the prompt; bare `awake` opens the panel.
         if (parsed.trigger === 'awake' && parsed.args.trim()) {
           return awakeRows(parsed.args)
@@ -444,6 +450,7 @@ export default function App() {
     quicklinks,
     isScript,
     draft,
+    loremMenu,
     raw,
     browsers,
   ])
@@ -531,6 +538,11 @@ export default function App() {
           invoke('awake_release').catch(console.error)
           invoke('hide_panel').catch(console.error)
           break
+        case 'lorem-menu':
+          setLoremMenu(true)
+          setRaw('')
+          setSelected(0)
+          break
         case 'lorem': {
           // Generated here, not in the row, so every Enter is a fresh draw.
           const text = generateLorem(enter.volume)
@@ -603,6 +615,7 @@ export default function App() {
       if (
         raw === '' &&
         !draft &&
+        !loremMenu &&
         (e.key === '?' || e.key === '!' || e.key === ':')
       ) {
         const next = e.key === '?' ? 'ask' : e.key === '!' ? 'bang' : 'emoji'
@@ -626,6 +639,10 @@ export default function App() {
           setDraft(null)
           setRaw('')
           setSelected(0)
+        } else if (loremMenu) {
+          setLoremMenu(false)
+          setRaw('lorem')
+          setSelected(0)
         } else if (inputMode !== 'launch') {
           // Esc returns to launch mode (ending any conversation); a second
           // Esc dismisses.
@@ -636,6 +653,12 @@ export default function App() {
         } else {
           invoke('hide_panel').catch(console.error)
         }
+        return
+      }
+      if (e.key === 'Backspace' && raw === '' && loremMenu) {
+        e.preventDefault()
+        setLoremMenu(false)
+        setRaw('lorem')
         return
       }
       // Backspace on an empty prompt backs out of the mode, like deleting the
@@ -707,6 +730,7 @@ export default function App() {
       raw,
       config,
       toast,
+      loremMenu,
       resetAsk,
       patchLastTurn,
     ],
@@ -721,22 +745,26 @@ export default function App() {
 
   const sigil = draft
     ? '+'
-    : parsed.mode === 'ask'
-      ? '?'
-      : parsed.mode === 'emoji'
-        ? ':'
-        : parsed.mode === 'bang'
-          ? config.bangSigil
-          : config.sigil
+    : loremMenu
+      ? '¶'
+      : parsed.mode === 'ask'
+        ? '?'
+        : parsed.mode === 'emoji'
+          ? ':'
+          : parsed.mode === 'bang'
+            ? config.bangSigil
+            : config.sigil
   const placeholder = draft
     ? draft.step === 'name'
       ? 'name this quicklink…'
       : 'choose a browser (↑↓ then ⏎)'
-    : askActive
-      ? askBusy
-        ? 'waiting for the answer…'
-        : 'ask a follow-up… (Esc ends)'
-      : 'Search for apps and commands…'
+    : loremMenu
+      ? 'how much lorem? (↑↓ then ⏎)'
+      : askActive
+        ? askBusy
+          ? 'waiting for the answer…'
+          : 'ask a follow-up… (Esc ends)'
+        : 'Search for apps and commands…'
 
   if (panelMode) {
     return (

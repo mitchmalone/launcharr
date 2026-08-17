@@ -40,7 +40,9 @@ export type RowEnter =
   | { kind: 'open-panel'; panel: string }
   | { kind: 'awake-arm'; until: AwakeUntil }
   | { kind: 'awake-release' }
-  /** Built-in `lorem`: generate at Enter time (fresh every copy) and confirm with a toast. */
+  /** Built-in `lorem`, step one: Enter on the keyword opens the volume menu. */
+  | { kind: 'lorem-menu' }
+  /** Step two: generate at Enter time (fresh every copy) and confirm with a toast. */
   | { kind: 'lorem'; volume: LoremVolume }
 
 /** ⌥⏎ per item kind: apps reveal in Finder, links copy their URL. */
@@ -303,8 +305,23 @@ export function clipRows(args: string, clips: Clip[]): Row[] {
   }))
 }
 
-/** `lorem` trigger: the five volumes, in the ticket's order. Args are ignored on
- * purpose — the volume is a choice, not a number to remember. */
+/** `lorem` typed: one row; Enter opens the volume menu (Mitch, 2026-08-17: the
+ * keyword confirms first, then you choose). */
+export function loremEntryRow(): Row[] {
+  return [
+    {
+      key: 'lorem',
+      title: 'Lorem ipsum',
+      hint: 'placeholder text ▸',
+      positions: [],
+      icon: null,
+      glyph: '¶',
+      enter: { kind: 'lorem-menu' },
+    },
+  ]
+}
+
+/** The volume menu: five rows in the ticket's order. */
 export function loremRows(): Row[] {
   return LOREM_VOLUMES.map((v) => ({
     key: `lorem-${v.id}`,

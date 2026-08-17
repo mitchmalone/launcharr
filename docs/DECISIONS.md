@@ -25,8 +25,10 @@
 
 - **Decision.** `@launcharr/core/lorem`: rng-injectable generator (Title / 1 sentence /
   2 sentences / Paragraph / 2 paragraphs; the classic opening survives as a paragraph's
-  first sentence, everything else is drawn from the vocabulary), `loremRows` in rows.ts,
-  generation at Enter time so every copy is a fresh draw, toast confirms. `lorem.py`
+  first sentence, everything else is drawn from the vocabulary). Two steps: `lorem`
+  shows one row, **Enter opens the volume menu** (Mitch's feedback the same day — the
+  keyword confirms first), Enter again copies; generation happens at that Enter so every
+  copy is a fresh draw, toast confirms. `lorem.py`
   leaves the bundle (`json-format.py`, `ip.py` remain the reference scripts).
 - **Why.** The ticket wants a picker of volumes and non-repeating text; the built-in
   trigger wins precedence over scripts (like `clip`), so keeping the script would only

@@ -4,6 +4,7 @@ import {
   awakeRows,
   draftRows,
   launchRows,
+  loremEntryRow,
   loremRows,
   panelRows,
   quicklinkRows,
@@ -169,6 +170,14 @@ describe('panelRows', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]!.title).toBe('Wi-Fi')
     expect(rows[0]!.enter).toEqual({ kind: 'open-panel', panel: 'wifi' })
+  })
+})
+
+describe('loremEntryRow', () => {
+  it('one row whose Enter opens the volume menu', () => {
+    const rows = loremEntryRow()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.enter).toEqual({ kind: 'lorem-menu' })
   })
 })
 

@@ -101,7 +101,7 @@ export function buildSections(
       { left: 'clip clear', right: 'wipe clipboard history' },
       {
         left: 'lorem',
-        right: 'placeholder text — title, sentences, paragraphs; ⏎ copies',
+        right: 'placeholder text — ⏎ then pick title, sentences or paragraphs',
       },
       {
         left: 'colorpicker',
