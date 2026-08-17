@@ -86,6 +86,40 @@ body {
   font-size: 12px;
 }
 
+/* --- Sub-tabs: segmented strip at the top of a tab that split into pages. --- */
+
+.subtabs {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin: -8px auto 24px;
+  padding: 3px;
+  width: max-content;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.subtab {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.subtab:hover {
+  color: var(--fg);
+}
+
+.subtab.active {
+  color: var(--fg);
+  background: var(--bg);
+}
+
 /* --- Content: native-settings two-column rows. --- */
 
 .content {
