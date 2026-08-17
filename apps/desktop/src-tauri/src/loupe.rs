@@ -128,10 +128,23 @@ fn log_protected_windows() {
         }
         CFRelease(list);
         if !protected.is_empty() {
-            eprintln!(
-                "[launcharr loupe] windows that block screen capture (render black): {}",
+            let line = format!(
+                "windows that block screen capture (render black): {}",
                 protected.join(", ")
             );
+            eprintln!("[launcharr loupe] {line}");
+            // stderr goes nowhere for a Finder/login launch; keep a breadcrumb.
+            if let Some(home) = dirs::home_dir() {
+                let path = home.join("Library/Logs/launcharr.log");
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                {
+                    use std::io::Write;
+                    let _ = writeln!(f, "loupe: {line}");
+                }
+            }
         }
     }
 }
