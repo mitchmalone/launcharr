@@ -339,13 +339,16 @@
 }
 
 /* ---- Segmented control ----------------------------------------------- */
+/* Every rule is scoped under .tui-segmented: the `.tui button` reset above is
+   (0,1,1) and silently beat single-class segment rules (no border, no fill —
+   found 2026-08-17 via the AeroSpace strip). */
 
 .tui-segmented {
   display: flex;
   gap: 10px;
 }
 
-.tui-segment {
+.tui-segmented .tui-segment {
   flex: 1;
   padding: 9px 12px;
   border: 1px solid var(--_border);
@@ -353,7 +356,7 @@
   text-align: center;
 }
 
-.tui-segment-active {
+.tui-segmented .tui-segment-active {
   background: var(--_selected);
   border-color: var(--_frame);
 }
@@ -366,15 +369,14 @@
   font-weight: 700;
 }
 
-/* Keyboard cursor = the same selected fill every list row uses, so the strip
-   reads like the rest of the panel; it wins over the active look. */
-.tui-segment-cursor,
-.tui-segment-active.tui-segment-cursor {
+/* Keyboard cursor = the same selected fill every list row uses. Declared last
+   at equal specificity so it wins over the active look on the same segment. */
+.tui-segmented .tui-segment-cursor {
   background: var(--_selected);
   border-color: var(--_frame);
 }
 
-.tui-segment-dim {
+.tui-segmented .tui-segment-dim {
   color: var(--_dim);
 }
 
