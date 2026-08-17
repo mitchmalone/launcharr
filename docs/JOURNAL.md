@@ -6,6 +6,20 @@
 
 ---
 
+### 2026-08-17 · HTML5 drag-and-drop is dead in a Tauri window unless the file-drop handler is off
+
+The menubar zone board never worked — not retired→zone, not zone→zone. wry's macOS
+webview swizzles `draggingEntered:` / `draggingUpdated:` / `performDragOperation:` for
+Tauri's file-drop events and, when the handler is on (the default), returns without
+forwarding to WebKit — so the DOM never gets `dragenter`/`dragover`/`drop`, **internal
+drags included** (WebKit routes its own drags through the same NSDraggingDestination
+path). `dragstart` still fires, which is why it looked half-alive. Fix:
+`WebviewWindowBuilder::disable_drag_drop_handler()` on any window that does HTML DnD
+(settings_window.rs). Verified with real mouse events (`cliclick dd/dm/du`) + reading
+config.json back; AX `click` on a WKWebView checkbox does nothing, `cliclick` at its
+AX position does — and only when the process is frontmost, else the click lands on
+whatever's on top.
+
 ### 2026-08-17 · Wrap-around selection hid the aerospace strip; `.tui button` beat single-class segment rules
 
 Two kit gotchas from the `aerospace ⏎` strip. (1) `SegmentedControl` had no scroll-into-view,

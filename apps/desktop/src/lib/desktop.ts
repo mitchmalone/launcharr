@@ -53,6 +53,10 @@ export interface InstallEvent {
   done: boolean | null
 }
 
+/** Mirrors `TomlAction` in desktop.rs — the unmanaged-config hand-offs. */
+export type TomlAction =
+  { kind: 'useExisting' } | { kind: 'saveAs'; toml: string }
+
 export function desktopOf(config: Config): DesktopConfig {
   return normalizeDesktop(config.desktop)
 }

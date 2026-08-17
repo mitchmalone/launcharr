@@ -129,7 +129,7 @@ body {
 }
 
 .content-inner {
-  max-width: 576px;
+  max-width: 656px;
   margin: 0 auto;
 }
 
@@ -258,7 +258,13 @@ label.check {
 
 .buttonrow {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
+}
+
+.buttonrow > button {
+  white-space: nowrap;
 }
 
 /* --- Hotkey recorder pill. --- */

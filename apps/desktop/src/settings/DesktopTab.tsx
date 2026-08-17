@@ -14,9 +14,11 @@ import type { Config } from '../lib/config'
 import {
   type DesktopStatus,
   type InstallEvent,
+  type TomlAction,
   applyDesktop,
   desktopOf,
   desktopStatus,
+  planDesktop,
 } from '../lib/desktop'
 import SubTabs from './SubTabs'
 
@@ -135,7 +137,7 @@ export default function DesktopTab({
           <p className="hint lead">
             launcharr sets up window tiling (AeroSpace) and, if you want them,
             window borders (JankyBorders) — preconfigured, a few knobs here, the
-            whole file yours the moment you flip <code>managed</code> off.
+            whole file yours the moment you stop letting launcharr manage it.
           </p>
 
           <Row label="Tiling">
@@ -199,21 +201,24 @@ export default function DesktopTab({
 
           {desktop.tiling.enabled && (
             <>
-              <Row label="Managed">
+              <Row label="Config">
                 <label className="check">
                   <input
                     type="checkbox"
                     checked={desktop.tiling.managed}
                     onChange={(e) => setTiling({ managed: e.target.checked })}
                   />
-                  launcharr writes{' '}
-                  <code>~/.config/aerospace/aerospace.toml</code>
+                  Let launcharr manage AeroSpace
                 </label>
-                <p className="hint">
-                  Off = you own the file; the knobs below stop applying. Turning
-                  it back on overwrites the file with launcharr&apos;s.
-                </p>
               </Row>
+              {!desktop.tiling.managed && (
+                <TomlRow
+                  status={status}
+                  config={config}
+                  onError={setInstallError}
+                  onDone={refresh}
+                />
+              )}
               {desktop.tiling.managed && (
                 <>
                   <Row label="Modifier">
@@ -262,26 +267,6 @@ export default function DesktopTab({
                     <p className="hint">
                       Workspaces 1–N stay listed even when empty; keys 1–9
                       always work.
-                    </p>
-                  </Row>
-                  <Row label="Always float">
-                    <input
-                      className="wide"
-                      value={desktop.tiling.float.join(', ')}
-                      onChange={(e) =>
-                        setTiling({
-                          float: e.target.value
-                            .split(',')
-                            .map((s) => s.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                      placeholder="com.apple.systempreferences, com.raycast.macos"
-                      spellCheck={false}
-                    />
-                    <p className="hint">
-                      Bundle ids, comma-separated. Finder&apos;s Copy/Info
-                      dialogs float regardless.
                     </p>
                   </Row>
                 </>
@@ -423,6 +408,100 @@ export default function DesktopTab({
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * Unmanaged: the file is yours. Show what's at the canonical path and offer the
+ * two hand-offs — point it at a toml you already keep (symlink), or save
+ * launcharr's config somewhere as a starting point (then it's yours).
+ */
+function TomlRow({
+  status,
+  config,
+  onError,
+  onDone,
+}: {
+  status: DesktopStatus | null
+  config: Config
+  onError: (e: string | null) => void
+  onDone: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const run = (action: TomlAction) => {
+    setBusy(true)
+    onError(null)
+    invoke<string | null>('desktop_toml', { action })
+      .then(() => onDone())
+      .catch((e) => onError(String(e?.detail ?? e)))
+      .finally(() => setBusy(false))
+  }
+  const state = status?.toml
+  const path = status?.tomlPath ?? '~/.config/aerospace/aerospace.toml'
+  return (
+    <Row label="Config file">
+      <p className="hint" style={{ marginTop: 0 }}>
+        {state === 'absent' && (
+          <>
+            Nothing at <code>{path}</code> yet — AeroSpace runs on its defaults.
+          </>
+        )}
+        {state === 'foreign' && (
+          <>
+            <code>{path}</code> is yours; launcharr won&apos;t touch it.
+          </>
+        )}
+        {state === 'managed' && (
+          <>
+            <code>{path}</code> is the last file launcharr wrote — yours now.
+          </>
+        )}
+      </p>
+      <div className="buttonrow">
+        {state !== 'absent' && (
+          <button
+            className="ghost"
+            onClick={() =>
+              invoke('open_path', { target: 'aerospace-toml' }).catch((e) =>
+                onError(String(e?.detail ?? e)),
+              )
+            }
+          >
+            edit
+          </button>
+        )}
+        <button
+          className="ghost"
+          disabled={busy}
+          onClick={() => run({ kind: 'useExisting' })}
+        >
+          use my own config…
+        </button>
+        <button
+          className="ghost"
+          disabled={busy}
+          onClick={() => {
+            const toml = planDesktop({
+              ...config,
+              desktop: {
+                ...desktopOf(config),
+                tiling: { ...desktopOf(config).tiling, managed: true },
+              },
+            }).toml
+            if (toml) run({ kind: 'saveAs', toml })
+          }}
+        >
+          save a copy to edit…
+        </button>
+      </div>
+      <p className="hint">
+        &ldquo;Use my own config&rdquo; symlinks <code>{path}</code> to the file
+        you pick (dotfiles-friendly; anything already there is backed up).
+        &ldquo;Save a copy&rdquo; writes launcharr&apos;s config where you
+        choose and links to it — a starting point that&apos;s yours from then
+        on.
+      </p>
+    </Row>
   )
 }
 

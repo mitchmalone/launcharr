@@ -526,7 +526,7 @@ function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
 }
 
 const MODULE_LABELS: Record<string, string> = {
-  workspaces: 'Workspaces (Aerospace)',
+  workspaces: 'AeroSpace',
   agents: 'Agent monitors',
   frontApp: 'Active app',
   clock: 'Clock',

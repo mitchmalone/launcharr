@@ -29,10 +29,14 @@ pub fn open_tab(app: &AppHandle, tab: Option<&str>) -> CmdResult<()> {
     };
     WebviewWindowBuilder::new(app, "settings", WebviewUrl::App(url.into()))
         .title("launcharr settings")
-        .inner_size(680.0, 720.0)
+        .inner_size(760.0, 720.0)
         .resizable(true)
         .title_bar_style(TitleBarStyle::Overlay)
         .hidden_title(true)
+        // wry's file-drop swizzle swallows every NSDraggingDestination call, so
+        // with it on the DOM never sees dragenter/drop — HTML5 DnD (the menubar
+        // zone board) is dead. Settings takes no file drops; hand DnD to WebKit.
+        .disable_drag_drop_handler()
         .build()
         .map_err(|e| CmdError::Internal(format!("settings window: {e}")))?;
     Ok(())

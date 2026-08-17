@@ -114,6 +114,7 @@ pub fn run() {
             commands::desktop_status,
             commands::desktop_apply,
             commands::desktop_adopt,
+            commands::desktop_toml,
             commands::desktop_install,
             commands::desktop_corner_radius,
             commands::aerospace_workspaces,

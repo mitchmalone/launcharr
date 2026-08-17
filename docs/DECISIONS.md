@@ -5,6 +5,24 @@
 
 ---
 
+### 2026-08-17 · Unmanaged aerospace.toml: `desktop_toml` (use my own / save a copy), file dialogs via osascript
+
+- **Decision.** Settings → Desktop → "Let launcharr manage AeroSpace". Checked: knobs, no
+  file talk. Unchecked: a Config-file row with **edit**, **use my own config…** (pick any
+  toml; the canonical `~/.config/aerospace/aerospace.toml` becomes a symlink to it, anything
+  there first is `.bak-launcharr`'d) and **save a copy to edit…** (launcharr's rendered
+  config written where you choose behind an "exported — yours now" first line, then linked
+  to). One new command, `desktop_toml(action)`, returning the chosen path or null on
+  cancel. Pickers are `osascript 'choose file' / 'choose file name'` — no dialog plugin
+  crate. Re-managing renames a fresh file over the symlink; a user's target is never
+  written through. `open_path` gained the `aerospace-toml` target for **edit**.
+- **Why.** Mitch (0.4 feedback): the managed/unmanaged switch should be one plain sentence,
+  and unchecking should hand you real options rather than prose about a path. Symlinking
+  is how dotfiles users already work; the copy-out is the honest way to "start from
+  launcharr's and make it mine". Also this round: borders ride on tiling (tiling off →
+  borders off, section hidden), Always-float hidden, settings 760px wide, HTML DnD fixed
+  (JOURNAL 2026-08-17).
+
 ### 2026-08-17 · Screenshots panel: three commands; the first grid + scrolling panel
 
 - **Decision.** `ss ⏎` / `screenshots ⏎` opens a newest-first thumbnail grid of the

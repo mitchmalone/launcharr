@@ -236,6 +236,12 @@ pub async fn desktop_adopt() -> CmdResult<String> {
     crate::desktop::adopt()
 }
 
+/// Unmanaged toml helpers: pick a file to symlink to, or save ours somewhere.
+#[tauri::command]
+pub async fn desktop_toml(action: crate::desktop::TomlAction) -> CmdResult<Option<String>> {
+    crate::desktop::toml_action(action)
+}
+
 #[tauri::command]
 pub async fn desktop_install(app: AppHandle, dep: crate::deps::Dep) -> CmdResult<()> {
     crate::deps::install(app, dep)
@@ -479,6 +485,15 @@ pub fn write_config(config: Config) -> CmdResult<()> {
 pub fn open_path(target: String) -> CmdResult<()> {
     let path = match target.as_str() {
         "config" => crate::config::config_path(),
+        // The unmanaged aerospace.toml (Settings → Desktop "edit"): in a text editor.
+        "aerospace-toml" => {
+            let path = crate::desktop::aerospace_toml_path();
+            std::process::Command::new("open")
+                .arg("-t")
+                .arg(path)
+                .spawn()?;
+            return Ok(());
+        }
         "scripts" => {
             let dir = crate::scripts::scripts_dir();
             std::fs::create_dir_all(&dir)?;
