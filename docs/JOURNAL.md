@@ -6,6 +6,20 @@
 
 ---
 
+### 2026-08-17 · TCC grants die with every ad-hoc dev build — sign local builds, and never launch the binary from a shell
+
+Three feedback rounds on the color loupe changed nothing on Mitch's screen: every pick
+was Apple's sampler. Two causes, both TCC. (1) `pnpm tauri build` without
+`APPLE_SIGNING_IDENTITY` ad-hoc signs, and TCC keys a Screen Recording grant to the code
+signing requirement — a fresh cdhash per rebuild, so `CGPreflightScreenCaptureAccess`
+goes false and `CGRequestScreenCaptureAccess` returns false _without re-prompting_
+(the stale entry exists). Fix: sign dev builds with the Developer ID (stable csreq),
+`tccutil reset ScreenCapture com.mitchmalone.launcharr` once, grant again. (2) Launching
+`Contents/MacOS/launcharr` from a tmux shell to capture stderr makes the terminal the
+_responsible process_ for TCC — grants to launcharr.app don't apply. Use `open -g -a`
+and read `~/Library/Logs/launcharr.log` breadcrumbs (one line per pick: which picker,
+why, zoom/size, capture-blocking windows) instead of stderr.
+
 ### 2026-08-17 · Loupe capture v2: `CGDisplayCreateImageForRect` + `sharingType = None` — window-list capture skipped Notion
 
 `CGWindowListCreateImage(… OnScreenBelowWindow …)` came back without some apps' windows

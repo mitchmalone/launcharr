@@ -127,24 +127,31 @@ fn log_protected_windows() {
             }
         }
         CFRelease(list);
-        if !protected.is_empty() {
-            let line = format!(
+        breadcrumb(&if protected.is_empty() {
+            "no window blocks screen capture".to_owned()
+        } else {
+            format!(
                 "windows that block screen capture (render black): {}",
                 protected.join(", ")
-            );
-            eprintln!("[launcharr loupe] {line}");
-            // stderr goes nowhere for a Finder/login launch; keep a breadcrumb.
-            if let Some(home) = dirs::home_dir() {
-                let path = home.join("Library/Logs/launcharr.log");
-                if let Ok(mut f) = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(path)
-                {
-                    use std::io::Write;
-                    let _ = writeln!(f, "loupe: {line}");
-                }
-            }
+            )
+        });
+    }
+}
+
+/// stderr goes nowhere for a Finder/login launch; `~/Library/Logs/launcharr.log` keeps
+/// a one-line breadcrumb per picker event so "which picker did I get and why" is
+/// answerable after the fact.
+pub fn breadcrumb(line: &str) {
+    eprintln!("[launcharr loupe] {line}");
+    if let Some(home) = dirs::home_dir() {
+        let path = home.join("Library/Logs/launcharr.log");
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            use std::io::Write;
+            let _ = writeln!(f, "{} loupe: {line}", crate::frecency::now_secs());
         }
     }
 }
@@ -262,6 +269,9 @@ pub fn show(app: &AppHandle, zoom: u32, size: u32) -> CmdResult<()> {
         let _: () = objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, setSharingType: 0usize];
     }
     *SHOWN.lock().unwrap() = Some(Shown { display });
+    breadcrumb(&format!(
+        "loupe shown: zoom {zoom}× size {size}pt display {display} screen {sw}×{sh}"
+    ));
     log_protected_windows();
 
     // Where the mouse is in the webview's coordinates (so the loupe draws before

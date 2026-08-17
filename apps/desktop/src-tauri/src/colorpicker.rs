@@ -31,17 +31,19 @@ pub fn pick(app: &AppHandle) {
             if crate::loupe::capture_allowed() {
                 match crate::loupe::show(&handle, zoom, size) {
                     Ok(()) => return,
-                    Err(e) => eprintln!(
-                        "[launcharr] loupe failed, falling back to the system sampler: {e}"
-                    ),
+                    Err(e) => crate::loupe::breadcrumb(&format!(
+                        "loupe failed, falling back to the system sampler: {e}"
+                    )),
                 }
             } else {
                 // The toggle asked for it: prompt (once) and use the sampler meanwhile.
-                let _ = crate::loupe::request_capture();
-                eprintln!(
-                    "[launcharr] Screen Recording not granted yet — using Apple's color sampler this time"
-                );
+                let prompted = crate::loupe::request_capture();
+                crate::loupe::breadcrumb(&format!(
+                    "Screen Recording not granted (preflight false, request → {prompted}) — Apple's sampler this time"
+                ));
             }
+        } else {
+            crate::loupe::breadcrumb("toggle off — Apple's sampler");
         }
         system_sampler(&handle);
     });
