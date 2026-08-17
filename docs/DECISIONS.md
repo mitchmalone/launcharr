@@ -10,7 +10,7 @@
 - **Decision.** Same-day feedback: Apple's sampler zooms too hard to aim ("decrease
   intensity… try a zoom of 2") and exposes no magnification knob, so `colorpicker` now
   opens **our own loupe** (`loupe.rs` + `src/loupe/`): a transparent non-activating key
-  panel over the mouse's screen; the webview draws a 264pt magnifier (default **4×**, 2–8 in
+  panel over the mouse's screen; the webview draws a 264pt magnifier (default **8×**, 2–8 in
   Settings) from pixels Rust captures with `CGDisplayCreateImageForRect` — the loupe
   window's `sharingType = None` keeps it out of the frame (JOURNAL 2026-08-17 for the
   window-list attempt that skipped Notion), shows the centre pixel's hex, click picks / Esc cancels / losing key cancels.

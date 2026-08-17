@@ -15,14 +15,14 @@ import './loupe.css'
  */
 
 /** Zoom (one screen point → N loupe points) and diameter (points) arrive with
- * `loupe-open` from config (`colorLoupeZoom` default 4, `colorLoupeSize` default 352). */
+ * `loupe-open` from config (`colorLoupeZoom` default 8, `colorLoupeSize` default 264). */
 
 const hex2 = (n: number) => n.toString(16).padStart(2, '0').toUpperCase()
 
 function Loupe() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
-  const zoom = useRef(4)
-  const [diameter, setDiameter] = useState(352)
+  const zoom = useRef(8)
+  const [diameter, setDiameter] = useState(264)
   const [hex, setHex] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
@@ -120,8 +120,8 @@ function Loupe() {
   useEffect(() => {
     const un = listen<[number, number, number, number]>('loupe-open', (e) => {
       const p = { x: e.payload[0], y: e.payload[1] }
-      zoom.current = e.payload[2] || 4
-      setDiameter(e.payload[3] || 352)
+      zoom.current = e.payload[2] || 8
+      setDiameter(e.payload[3] || 264)
       drawn.current = null
       setHex(null)
       wanted.current = p

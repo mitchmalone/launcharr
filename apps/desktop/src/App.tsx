@@ -127,8 +127,8 @@ const DEFAULT_CONFIG: Config = {
   agents: DEFAULT_AGENTS_CONFIG,
   desktop: undefined,
   colorLoupe: false,
-  colorLoupeZoom: 4,
-  colorLoupeSize: 352,
+  colorLoupeZoom: 8,
+  colorLoupeSize: 264,
 }
 
 /** Panel rows draw their lucide icon; everything else keeps its text glyph. */

@@ -217,10 +217,10 @@ pub struct Config {
     /// is the only thing that ever asks) instead of Apple's permission-free sampler.
     /// Default off (invariant 1).
     pub color_loupe: bool,
-    /// Loupe magnification (one screen point → N loupe points). 2 was "not zoomed in
-    /// enough" (Mitch, 2026-08-17); 4 is the default, the settings offer 2–8.
+    /// Loupe magnification (one screen point → N loupe points). Default 8 (Mitch,
+    /// 2026-08-17, after seeing the real thing); the settings offer 2–8.
     pub color_loupe_zoom: u32,
-    /// Loupe diameter in points (default 352 — "50% larger" then some, Mitch 2026-08-17).
+    /// Loupe diameter in points (default 264, Mitch 2026-08-17).
     pub color_loupe_size: u32,
 }
 
@@ -243,8 +243,8 @@ impl Default for Config {
             agents: AgentsConfig::default(),
             desktop: serde_json::Value::Object(Default::default()),
             color_loupe: false,
-            color_loupe_zoom: 4,
-            color_loupe_size: 352,
+            color_loupe_zoom: 8,
+            color_loupe_size: 264,
         }
     }
 }

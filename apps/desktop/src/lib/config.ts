@@ -34,9 +34,9 @@ export type Config = {
   /** `colorpicker` opens the launcharr loupe (2×) — needs Screen Recording, so it is
    * opt-in and the toggle is what triggers the prompt; off = Apple's sampler. */
   colorLoupe: boolean
-  /** Loupe magnification, 2–8 (default 4). */
+  /** Loupe magnification, 2–8 (default 8). */
   colorLoupeZoom: number
-  /** Loupe diameter in points (default 352). */
+  /** Loupe diameter in points (default 264). */
   colorLoupeSize: number
 }
 
