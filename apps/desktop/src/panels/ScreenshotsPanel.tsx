@@ -106,8 +106,8 @@ export function ScreenshotsPanel({
               label: 'move',
             },
             { keys: '↵', label: 'copy file' },
-            { keys: '⌘↵', label: 'reveal' },
-            { keys: '⌘⇧↵', label: 'open' },
+            { keys: '⌘ ↵', label: 'reveal' },
+            { keys: '⌘ ⇧ ↵', label: 'open' },
             { keys: 'esc', label: 'back' },
           ]}
         />
