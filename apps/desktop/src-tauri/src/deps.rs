@@ -32,11 +32,12 @@ impl Dep {
         }
     }
     /// The `brew install` arguments; AeroSpace's cask lives in nikitabobko's tap,
-    /// which brew auto-taps for a fully qualified name.
+    /// which brew auto-taps for a fully qualified name; borders likewise (felixkratz/formulae,
+    /// not homebrew-core).
     fn brew_args(self) -> &'static [&'static str] {
         match self {
             Dep::Aerospace => &["install", "--cask", "nikitabobko/tap/aerospace"],
-            Dep::Borders => &["install", "borders"],
+            Dep::Borders => &["install", "felixkratz/formulae/borders"],
         }
     }
 }

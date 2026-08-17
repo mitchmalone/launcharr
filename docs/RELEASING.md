@@ -78,7 +78,7 @@ quarantine.
 `depends_on cask: "nikitabobko/tap/aerospace"` — a structural line in
 `Casks/launcharr.rb` that CI's version/sha `sed` leaves alone; edit it in the tap when the
 dependency changes. JankyBorders is **not** a dependency (GPL-3, opt-in): the app installs
-it via `brew install borders` from Settings → Desktop when asked. dmg/zip installs get the
+it via `brew install felixkratz/formulae/borders` from Settings → Desktop when asked. dmg/zip installs get the
 same in-app install offer for AeroSpace. Nothing is ever vendored.
 
 ## One-time setup

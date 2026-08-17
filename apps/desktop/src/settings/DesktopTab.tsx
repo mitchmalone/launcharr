@@ -286,7 +286,7 @@ export default function DesktopTab({
               what="JankyBorders"
               dep="borders"
               brew={status?.brew ?? false}
-              command="brew install borders"
+              command="brew install felixkratz/formulae/borders"
               installing={installing}
               line={installLine}
               onInstall={install}

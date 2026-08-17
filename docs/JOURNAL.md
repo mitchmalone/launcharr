@@ -31,7 +31,7 @@ trusting config. CornerFix-style dylib injection was the alternative — rejecte
 Checked before designing the desktop layer: AeroSpace MIT, JankyBorders GPL-3.0. Spawning
 `borders` as a process and installing it via `brew` carry no obligations; bundling the
 binary in `launcharr.app` is distribution (source offer, GPL text, grey area at best) and
-porting its SkyLight code would make launcharr a derivative. Hence: `brew install borders`
+porting its SkyLight code would make launcharr a derivative. Hence: `brew install felixkratz/formulae/borders`
 from Settings → Desktop, flags rendered from the theme, no `bordersrc`, `killall borders`
 before we spawn ours to clear strays from a crash (no PDEATHSIG on macOS; `RunEvent::Exit`
 covers orderly quit).
