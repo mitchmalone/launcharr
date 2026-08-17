@@ -13,10 +13,13 @@ import type { AgentSession, BarSnapshot } from '@launcharr/tui'
 export const PANEL_INFO = [
   { id: 'agents', title: 'Agents', hint: 'coding agent sessions ▸' },
   { id: 'usage', title: 'Usage', hint: 'token monitor ▸' },
+  { id: 'awake', title: 'Awake', hint: 'keep-alive sessions ▸' },
   { id: 'wifi', title: 'Wi-Fi', hint: 'networks & power ▸' },
   { id: 'dns', title: 'DNS', hint: 'network info ▸' },
   { id: 'audio', title: 'Audio', hint: 'volume & devices ▸' },
   { id: 'clipboard', title: 'Clipboard', hint: 'history & search ▸' },
+  { id: 'screenshots', title: 'Screenshots', hint: 'latest captures ▸' },
+  { id: 'aerospace', title: 'AeroSpace', hint: 'workspaces & tiling ▸' },
   { id: 'help', title: 'Help', hint: 'commands & keys ▸' },
 ] as const
 

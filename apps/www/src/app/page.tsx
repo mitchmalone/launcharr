@@ -3,10 +3,12 @@ import {
   AppWindow,
   ArrowUpRight,
   Bot,
+  Camera,
   ChevronRight,
   ClipboardList,
   FileCode2,
   Gauge,
+  LayoutGrid,
   MessageCircleQuestion,
   Palette,
   PanelTop,
@@ -194,6 +196,32 @@ const FEATURES = [
     ),
   },
   {
+    icon: <LayoutGrid size={22} strokeWidth={1.75} className="text-(--cta)" />,
+    milestone: true,
+    title: 'The desktop layer',
+    body: (
+      <>
+        Tiling via AeroSpace with a config launcharr writes for you — a
+        modifier, gaps, workspaces, done. Opt-in JankyBorders in your
+        theme&rsquo;s accent, and the pre-Tahoe window corners back if you want
+        them. Flip <em>manage</em> off and the toml is yours.
+      </>
+    ),
+  },
+  {
+    icon: <Camera size={22} strokeWidth={1.75} className="text-(--cta)" />,
+    milestone: true,
+    title: 'Screenshots to your agent',
+    body: (
+      <>
+        <code className={MONO_CODE}>ss ⏎</code> — a grid of your latest
+        captures, newest first. Enter puts the file on the clipboard;{' '}
+        <code className={MONO_CODE}>⌘V</code> into Claude, Cursor or a browser.
+        The whole feature is <code className={MONO_CODE}>⌘Space ss ⏎ ⌘V</code>.
+      </>
+    ),
+  },
+  {
     icon: <Palette size={22} strokeWidth={1.75} className="text-(--dim)" />,
     title: '14 themes, JSON overlays',
     body: (
@@ -284,12 +312,12 @@ const COMPARISON = {
 
 const ROADMAP = [
   ['done', 'TUI kit', 'panels, rows, hotkeys, themes'],
-  ['done', 'Bar spike', '~19MB marginal — gate passed'],
-  ['done', 'Panel framework', 'wifi ⏎ · dns ⏎ and five more'],
-  ['done', 'tui workbench', 'story-driven state coverage'],
-  ['wip', 'Bar core', 'daily driver; placement config pending'],
-  ['wip', 'Agent monitoring', 'shipped; module API pending'],
-  ['todo', 'Aerospace wrap', 'tiling without seeing a .toml'],
+  ['done', 'The bar', 'daily driver; zones, notch profiles, hover cards'],
+  ['done', 'Panel framework', 'wifi ⏎ · dns ⏎ · ss ⏎ and eight more'],
+  ['done', 'Agent monitoring', 'cells, tmux groups, usage ⏎, ? mode'],
+  ['done', 'Desktop layer', 'AeroSpace managed, borders, corners — v0.4'],
+  ['todo', 'Module API', 'any-language bar emitters — plugins'],
+  ['todo', 'Multi-display', 'per-monitor bar + notch detection'],
   ['todo', 'Settings into panels', 'the native window retires'],
 ] as const
 
@@ -546,11 +574,14 @@ export default function Home() {
           className={`${SECTION} grid items-start gap-16 py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]`}
         >
           <div className="grid gap-4">
-            <h2 className={EYEBROW}>Building in the open — v0.5</h2>
+            <h2 className={EYEBROW}>
+              Building in the open — v0.4 shipped, v0.5 next
+            </h2>
             <p className={`m-0 ${PROSE}`}>
-              v0.5 is the release where launcharr becomes a control surface:
-              bar, panels, agents. It&rsquo;s in daily use now and lands piece
-              by piece. Explicit non-goals hold: no file search, no snippets,{' '}
+              v0.4 is where launcharr became a control surface: bar, panels,
+              agents, the desktop layer — all in daily use. v0.5 is the plugin
+              release: a module API for the bar, multi-display, settings inside
+              the panels. Explicit non-goals hold: no file search, no snippets,{' '}
               <em>not a distro</em> — bar + launcher + config, each
               independently toggleable.
             </p>

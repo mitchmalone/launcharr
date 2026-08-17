@@ -36,34 +36,51 @@ README/RELEASING. Ship blocked only on signing (Mitch's Apple Developer ID).
 Record: `plans/done/v1.2-release-core.md`. Deferred by choice: file search (mdfind route
 documented), dx pack (tmux/projects/ssh/ports — see 2026-08-09 brainstorm in git history).
 
-## v0.5 — the bar (decided 2026-08-15, DECISIONS entry)
+## v0.4 — the control surface ✅ (released 2026-08-17)
 
-launcharr grows a menubar replacement and wrapped Aerospace integration; launcher, bar,
-and Aerospace are independently toggleable. Not a distro — bar + launcher + config only.
+Decided 2026-08-15 as "v0.5 — the bar" (DECISIONS entry); renumbered at release because
+0.4 shipped it all: launcharr grows a menubar replacement, TUI panels, agent monitoring
+and a wrapped AeroSpace desktop layer; launcher, bar, and tiling are independently
+toggleable. Not a distro — bar + launcher + config only. Record: docs/releases/v0.4.0.md.
 
 - **B0 — TUI kit.** ✅ (2026-08-15) `packages/tui`: Omarchy-inspired component library
   with keyboard-nav logic TDD'd. _Exit met: bar + panels compose from the kit._
 - **B1 — Bar spike (gate).** ✅ (2026-08-15) _Exit met: ~19 MB marginal (shared WebKit
   pool) — gate PASSED; numbers in plans/done/v0.5-tui-kit-and-bar-spike.md._
-- **B2 — Bar core.** 🔄 Bar is Mitch's daily menubar (Sketchybar retired 2026-08-16;
-  wifi/battery/clock modules live; TRMNL removed 2026-08-17, returns as a plugin). Remaining: placement config, notched
-  profiles, multi-display, app hints, event-driven front-app.
-  _Exit (Sketchybar off) met; config surface pending._
-- **B3 — Aerospace wrap.** Vendored pinned binary, generated opinionated config,
-  process supervision, adopt-or-stop migration. _Exit: fresh Mac gets working tiling
-  without ever seeing an aerospace.toml._
-- **B4 — Panels + modules.** 🔄 Agent bar module + `agents ⏎` panel live (2026-08-16,
-  plans/done/agent-monitoring.md): Rust socket monitor speaks the old wire protocol,
-  Claude hooks repointed, Go daemon booted out. Remaining: general module API
-  (data-driven, any-language emitters); rich TUI panels on bar items.
-  _Exit (sketchybar-agent-status retired) met; module API pending._
-- **P0 — Panel framework + wifi.** ✅ (2026-08-16, plan in plans/done/) `wifi ⏎` and
-  `dns ⏎` live; PANELS registry makes tenants one-entry cheap. _Exit met: connect to a
-  known network, mouse untouched._
-- **P1 — Panel tenants.** System info, then settings migrated off the native window;
-  drill-down panel menu once 2–3 tenants exist. _Exit: settings window retired._
-- **W0 — tui workbench.** ✅ (2026-08-16, plan in plans/done/) Story-driven state
-  coverage, no Storybook dep. _Exit met._
+- **B2 — Bar core.** ✅ Mitch's daily menubar (Sketchybar retired 2026-08-16); zones +
+  drag arranger, notch profiles, battery hover card, wifi SSID, awake cell. Left for
+  v0.5: multi-display, app hints, event-driven front-app, bluetooth glyph.
+- **B3 — Desktop layer.** ✅ (2026-08-17, was "Aerospace wrap") AeroSpace as a cask
+  dependency (never vendored), generated opinionated config with adopt-or-leave and a
+  managed/unmanaged switch (edit / use my own / save a copy), opt-in JankyBorders,
+  corner radius. _Exit met: fresh Mac gets working tiling without seeing a toml._
+- **B4 — Agents.** ✅ Agent bar cells + `agents ⏎` + `usage ⏎` + `?` mode
+  (plans/done/agent-monitoring.md). Module API deferred to v0.5.
+- **P0 — Panel framework + wifi.** ✅ (2026-08-16) `wifi ⏎`, `dns ⏎`; PANELS registry
+  makes tenants one-entry cheap.
+- **P1 — Panel tenants.** ✅ audio, clipboard, awake, aerospace, help, **screenshots**
+  (`ss ⏎`, plans/done/screenshots-panel.md — first grid + scrolling panel). Settings
+  migration deferred to v0.5.
+- **W0 — tui workbench.** ✅ (2026-08-16) Story-driven state coverage, no Storybook dep.
+
+## v0.5 — plugins (next; scope talk pending)
+
+Candidates carried over from v0.4, to be cut down in the 0.5 scope session:
+
+- **Module API** — data-driven, any-language bar emitters ("same contract philosophy as
+  scripts"); TRMNL returns through it. Rich TUI panels on bar items.
+- **Multi-display** — per-monitor bar; notch detection assumes NSScreen order matches
+  monitors (JOURNAL 2026-08-15).
+- **Bar polish** — per-workspace app hints, NSWorkspace-observer front-app, bluetooth
+  glyph. Saved for last by request: Vercel / GitHub Actions / uptime modules.
+- **Settings into panels** — the native window retires (re-decide: 0.4 invested in it).
+  Drill-down panel menu.
+- **awake loose ends** — timed agents-idle release observed end-to-end, lid-closed-on-AC,
+  slice E.
+- **Site/app single-source gaps** — `PANEL_INFO` is hand-mirrored in `apps/www`
+  (invariant 10 smell); extract to a package.
+- **PRD revision pass** — predates the control-surface direction (DECISIONS 2026-08-15 is
+  the scope source until then).
 
 ## v2 horizon (recorded now, built later — PRD §10)
 
@@ -75,12 +92,12 @@ and Aerospace are independently toggleable. Not a distro — bar + launcher + co
 | Signing, notarization, auto-update, public README         | Releasing to the wild                                     |
 | Move matching to Rust                                     | R2 fires: WKWebView can't hold the 16 ms keystroke budget |
 
-## Explicitly not doing (non-goals — load-bearing, PRD §3, amended by v0.5)
+## Explicitly not doing (non-goals — load-bearing, PRD §3, amended by v0.4)
 
 File search, snippets, light mode, Windows/Linux, **anything distro-shaped**. Still true
 for the **launcher core**: zero network, zero permissions. Amended by DECISIONS
-2026-08-15/16 for v0.5: window management arrives _wrapped_ (Aerospace, which brings its
+2026-08-15/16 for v0.4: window management arrives _wrapped_ (Aerospace, which brings its
 own Accessibility grant — launcharr itself still requests nothing), and bar **modules**
 may be credentialed + networked per-module, fail-visible (TRMNL was the first; pulled 2026-08-17 pending the plugin API). The PRD predates
-v0.5 and needs a revision pass — until then DECISIONS 2026-08-15 is the scope source for
+v0.4 and needs a revision pass — until then DECISIONS 2026-08-15 is the scope source for
 bar/panel questions.
