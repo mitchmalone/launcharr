@@ -10,9 +10,7 @@ import {
   LayoutGrid,
   Link2,
   PanelTop,
-  Search,
   Settings,
-  Terminal,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -37,13 +35,11 @@ import iconUrl from './launcharr.svg'
 
 const TABS = [
   { id: 'general', label: 'General', icon: Settings },
-  { id: 'bang', label: 'Bang', icon: Terminal },
-  { id: 'search', label: 'Search', icon: Search },
-  { id: 'links', label: 'Links', icon: Link2 },
-  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
-  { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'menubar', label: 'Menubar', icon: PanelTop },
   { id: 'desktop', label: 'Desktop', icon: LayoutGrid },
+  { id: 'agents', label: 'Agents', icon: Bot },
+  { id: 'quicklinks', label: 'Quicklinks', icon: Link2 },
+  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
 ] as const
 
@@ -132,13 +128,11 @@ export default function SettingsApp() {
 
       <main className="content">
         {tab === 'general' && <GeneralTab config={config} set={set} />}
-        {tab === 'bang' && <BangTab config={config} set={set} />}
-        {tab === 'search' && <SearchTab config={config} set={set} />}
-        {tab === 'links' && <LinksTab config={config} set={set} />}
-        {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
-        {tab === 'agents' && <AgentsTab config={config} set={set} />}
         {tab === 'menubar' && <MenubarTab config={config} set={set} />}
         {tab === 'desktop' && <DesktopTab config={config} set={set} />}
+        {tab === 'agents' && <AgentsTab config={config} set={set} />}
+        {tab === 'quicklinks' && <QuicklinksTab config={config} set={set} />}
+        {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
         {tab === 'about' && <AboutTab />}
       </main>
     </div>
@@ -217,6 +211,27 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
           onChange={(e) => set('bangSigil', e.target.value)}
         />
       </Row>
+      <Row label="Terminal">
+        <select
+          value={config.terminal}
+          onChange={(e) =>
+            set('terminal', e.target.value as Config['terminal'])
+          }
+        >
+          <option value="iTerm2">iTerm2</option>
+          <option value="Terminal">Terminal.app</option>
+        </select>
+      </Row>
+      <Row label="Windows">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={config.bangNewWindow}
+            onChange={(e) => set('bangNewWindow', e.target.checked)}
+          />
+          New window per command
+        </label>
+      </Row>
       <hr />
       <Row label="Hackables">
         <div className="buttonrow">
@@ -243,64 +258,7 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
   )
 }
 
-function BangTab({ config, set }: { config: Config; set: SetFn }) {
-  return (
-    <>
-      <Row label="Terminal">
-        <select
-          value={config.terminal}
-          onChange={(e) =>
-            set('terminal', e.target.value as Config['terminal'])
-          }
-        >
-          <option value="iTerm2">iTerm2</option>
-          <option value="Terminal">Terminal.app</option>
-        </select>
-      </Row>
-      <Row label="Windows">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={config.bangNewWindow}
-            onChange={(e) => set('bangNewWindow', e.target.checked)}
-          />
-          New window per command
-        </label>
-      </Row>
-    </>
-  )
-}
-
-function SearchTab({ config, set }: { config: Config; set: SetFn }) {
-  return (
-    <>
-      <Row label="Fallback search">
-        <input
-          className="wide"
-          value={config.searchFallback}
-          onChange={(e) => set('searchFallback', e.target.value)}
-        />
-        <p className="hint">
-          Opens when nothing matches; <code>{'{query}'}</code> is replaced with
-          your input.
-        </p>
-      </Row>
-      <Row label="Bookmarks">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={config.indexBookmarks}
-            onChange={(e) => set('indexBookmarks', e.target.checked)}
-          />
-          Index browser bookmarks
-        </label>
-        <p className="hint">Chrome-family + Safari; local reads only.</p>
-      </Row>
-    </>
-  )
-}
-
-function LinksTab({ config, set }: { config: Config; set: SetFn }) {
+function QuicklinksTab({ config, set }: { config: Config; set: SetFn }) {
   const setLink = (i: number, patch: Partial<Link>) => {
     const links = config.links.slice()
     links[i] = { ...links[i]!, ...patch }
@@ -351,6 +309,29 @@ function LinksTab({ config, set }: { config: Config; set: SetFn }) {
       >
         + add link
       </button>
+      <hr />
+      <Row label="Fallback search">
+        <input
+          className="wide"
+          value={config.searchFallback}
+          onChange={(e) => set('searchFallback', e.target.value)}
+        />
+        <p className="hint">
+          Opens when nothing matches; <code>{'{query}'}</code> is replaced with
+          your input.
+        </p>
+      </Row>
+      <Row label="Bookmarks">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={config.indexBookmarks}
+            onChange={(e) => set('indexBookmarks', e.target.checked)}
+          />
+          Index browser bookmarks
+        </label>
+        <p className="hint">Chrome-family + Safari; local reads only.</p>
+      </Row>
     </>
   )
 }

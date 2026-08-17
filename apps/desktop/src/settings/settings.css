@@ -44,8 +44,9 @@ body {
 .tabstrip {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   padding: 10px 78px 6px; /* side padding clears the traffic lights */
+  overflow: hidden; /* never spill under the traffic lights */
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   user-select: none;
@@ -57,8 +58,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 64px;
-  padding: 6px 10px;
+  min-width: 0; /* shrink before overflowing the strip */
+  padding: 6px 8px;
   background: transparent;
   border: none;
   border-radius: 8px;
