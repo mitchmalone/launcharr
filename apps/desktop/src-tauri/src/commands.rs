@@ -326,6 +326,7 @@ pub fn execute(
             "launcharr:quit" => app.exit(0),
             "launcharr:settings" => crate::settings_window::open(&app)?,
             "launcharr:reindex" => crate::indexer::refresh(&app),
+            "launcharr:colorpicker" => crate::colorpicker::pick(&app),
             "launcharr:config" => {
                 Command::new("open")
                     .arg(crate::config::config_path())
@@ -420,10 +421,13 @@ pub fn clear_clips(state: State<'_, AppState>) -> CmdResult<()> {
     crate::clipboard::clear(&db)
 }
 
-/// Inline-math Enter: dismiss and copy the result.
+/// Copy-row Enter (inline math, emoji, `lorem`…): copy, and dismiss unless the
+/// frontend wants to flash a confirmation first (`keep_open` — it hides itself).
 #[tauri::command]
-pub fn copy_text(app: AppHandle, text: String) -> CmdResult<()> {
-    panel::hide(&app);
+pub fn copy_text(app: AppHandle, text: String, keep_open: Option<bool>) -> CmdResult<()> {
+    if !keep_open.unwrap_or(false) {
+        panel::hide(&app);
+    }
     crate::clipboard::set_string(&text);
     Ok(())
 }

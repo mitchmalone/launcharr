@@ -1,4 +1,5 @@
 import { agentGlyph, agentStateLabel } from '@launcharr/tui/bar'
+import { GithubIcon, XIcon } from '@launcharr/tui/icons'
 import {
   AppWindow,
   ArrowUpRight,
@@ -26,7 +27,6 @@ import Link from 'next/link'
 import { AgentSpotlight } from '@/components/agent-spotlight'
 import { BarStrip } from '@/components/bar-strip'
 import { BarThemeScope } from '@/components/bar-theme-scope'
-import { GithubIcon, XIcon } from '@/components/brand-icons'
 import { Demo } from '@/components/demo/demo'
 import { InstallTabs } from '@/components/install-tabs'
 import { SiteHeader } from '@/components/site-header'
@@ -83,7 +83,6 @@ const FEATURES = [
         Drop an executable in{' '}
         <code className={MONO_CODE}>~/.config/launcharr/scripts/</code> — its
         trigger word is live before you switch back to the panel.{' '}
-        <code className={MONO_CODE}>lorem</code>,{' '}
         <code className={MONO_CODE}>json</code> and{' '}
         <code className={MONO_CODE}>ip</code> ship bundled.
       </>

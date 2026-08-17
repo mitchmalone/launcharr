@@ -208,7 +208,7 @@ export const ASK_ANSWERS: { match: RegExp; text: string }[] = [
   },
   {
     match: /script|hack|extend|plugin/i,
-    text: 'Scripts are the plugin API. Drop any executable into ~/.config/launcharr/scripts/ and it joins the grammar — no restart, no manifest file, no store.\n\nThe contract is two invocations:\n\n  <script> manifest      → {"trigger": "lorem", "name": "Lorem ipsum"}\n  <script> query <args>  → {"items": [{"title": …, "action": …}]}\n\nAny language. stderr is ignored; a slow script gets killed, not waited for. lorem, json and ip ship bundled as reference implementations.',
+    text: 'Scripts are the plugin API. Drop any executable into ~/.config/launcharr/scripts/ and it joins the grammar — no restart, no manifest file, no store.\n\nThe contract is two invocations:\n\n  <script> manifest      → {"trigger": "uuid", "name": "UUID"}\n  <script> query <args>  → {"items": [{"title": …, "action": …}]}\n\nAny language. stderr is ignored; a slow script gets killed, not waited for. json and ip ship bundled as reference implementations.',
   },
   {
     match: /bar|menubar/i,

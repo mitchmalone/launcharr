@@ -1,3 +1,7 @@
+/**
+ * Brand marks lucide doesn't ship (GitHub, X). Shared by the settings About
+ * tab and the launcharr.com footer — one path, no second copy (invariant 10).
+ */
 type IconProps = {
   size?: number
   className?: string

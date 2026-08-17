@@ -29,6 +29,16 @@ export {
 } from './components/controls'
 export { Calendar } from './components/calendar'
 export {
+  ASK_SPINNER_FRAMES,
+  ASK_THINKING_VERBS,
+  AskMarkdown,
+  AskPinned,
+  AskSpinner,
+  AskSurface,
+  AskThinking,
+} from './components/ask'
+export type { AskTurn } from './components/ask'
+export {
   BUILTIN_THEMES,
   applyTheme,
   isLightColor,

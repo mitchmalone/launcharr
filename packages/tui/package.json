@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "description": "The launcharr TUI kit — Omarchy-inspired terminal-styled React components: panels, menus, hotkey rows, controls, calendar, and the menubar bar. Pure presentation + pure nav logic.",
-  "//exports": "Entry points below '.' exist so React Server Components (apps/www) can import pure modules without pulling the React barrel, which re-exports hook-using components. Don't fold './themes' or './bar' back into '.'.",
+  "//exports": "Entry points below '.' exist so React Server Components (apps/www) can import pure modules without pulling the React barrel, which re-exports hook-using components. Don't fold './themes', './bar' or './icons' back into '.'.",
   "exports": {
     ".": "./src/index.ts",
     "./themes": "./src/themes.ts",
     "./bar": "./src/bar/format.ts",
+    "./icons": "./src/components/brand-icons.tsx",
     "./bar.css": "./src/bar/bar.css",
     "./styles.css": "./src/styles.css"
   },
@@ -17,6 +18,7 @@
     "workbench": "vite --open"
   },
   "dependencies": {
+    "@launcharr/core": "workspace:*",
     "lucide-react": "^1.30.0"
   },
   "peerDependencies": {

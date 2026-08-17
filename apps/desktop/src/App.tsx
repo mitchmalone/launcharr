@@ -1,5 +1,6 @@
 import { untilDeadline } from '@launcharr/core/awake'
 import { parseInput } from '@launcharr/core/grammar'
+import { generateLorem, loremToast } from '@launcharr/core/lorem'
 import {
   type QuicklinkDraft,
   type Row,
@@ -9,6 +10,7 @@ import {
   draftRows,
   emojiRows,
   launchRows,
+  loremRows,
   panelRows,
   quicklinkRows,
   scriptRows,
@@ -20,6 +22,7 @@ import type {
   ScriptInfo,
   ScriptItem,
 } from '@launcharr/core/types'
+import { AskPinned, AskSurface, type AskTurn } from '@launcharr/tui'
 import '@launcharr/tui/styles.css'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -34,7 +37,6 @@ import {
   DEFAULT_BAR_LAYOUT,
 } from './lib/config'
 import { applyDesktop } from './lib/desktop'
-import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
 import { AerospacePanelContainer } from './panels/AerospacePanelContainer'
@@ -61,6 +63,11 @@ const BORDER = 2
 const SCRIPT_DEBOUNCE_MS = 120
 /** Full-panel modes get a fixed tall window. */
 const PANEL_MODE_HEIGHT = 480
+/** How long a "Copied …" confirmation row stays before the panel hides itself. */
+const TOAST_MS = 1100
+/** Rows' worth of height a `?` conversation gets: pinned question in the header,
+ * transcript, follow-up prompt at the bottom (styles.css splits it the same way). */
+const ASK_ROWS = 9
 
 /** The panel registry: trigger word → row copy + container. Adding a tenant
  * is one entry in panels/registry.ts (metadata) plus its component here. */
@@ -129,20 +136,6 @@ function rowGlyph(row: Row): React.ReactNode {
   return row.glyph
 }
 
-function renderSpans(spans: Span[]) {
-  return spans.map((s, i) =>
-    s.code ? (
-      <code key={i}>{s.text}</code>
-    ) : s.bold ? (
-      <strong key={i}>{s.text}</strong>
-    ) : s.italic ? (
-      <em key={i}>{s.text}</em>
-    ) : (
-      <span key={i}>{s.text}</span>
-    ),
-  )
-}
-
 export default function App() {
   const [raw, setRaw] = useState('')
   const [selected, setSelected] = useState(0)
@@ -153,6 +146,18 @@ export default function App() {
   // and must never drive the desktop layer (it would write a toml for a bar-less setup).
   const [configLoaded, setConfigLoaded] = useState(false)
   const [panelMode, setPanelMode] = useState<string | null>(null)
+  // A one-row confirmation ("Copied 2 paragraphs of lorem ipsum") that replaces the
+  // results and hides the panel on its own timer. Rust's `panel::flash` lands here
+  // too, via the `toast` event, for actions that finish after the panel dismissed.
+  const [toast, setToast] = useState<string | null>(null)
+  useEffect(() => {
+    if (toast === null) return
+    const t = setTimeout(() => {
+      setToast(null)
+      invoke('hide_panel').catch(console.error)
+    }, TOAST_MS)
+    return () => clearTimeout(t)
+  }, [toast])
   useEffect(
     () => applyTheme(config.theme, config.themes, 'panel'),
     [config.theme, config.themes],
@@ -211,6 +216,7 @@ export default function App() {
     () =>
       new Set([
         'clip',
+        'lorem',
         ...Object.entries(PANEL_TRIGGERS)
           .filter(([, id]) => id in PANELS && panelEnabled(id, config))
           .map(([word]) => word),
@@ -240,8 +246,10 @@ export default function App() {
     if (inputMode === 'ask' && !config.agents.askMode) setInputMode('launch')
   }, [inputMode, config.agents.askMode])
 
-  // ? mode: streamed transcript, busy flag, whether a session can --continue.
-  const [askText, setAskText] = useState('')
+  // ? mode: the conversation as turns (prompt + streamed answer), busy flag,
+  // whether a session can --continue. The first turn's prompt is pinned in the
+  // header; the transcript scrolls to the newest text on every delta.
+  const [askTurns, setAskTurns] = useState<AskTurn[]>([])
   const [askBusy, setAskBusy] = useState(false)
   const askStarted = useRef(false)
   const askGotDelta = useRef(false)
@@ -249,7 +257,19 @@ export default function App() {
   useEffect(() => {
     const el = askSurfaceRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [askText])
+  }, [askTurns])
+  const resetAsk = useCallback(() => {
+    setAskTurns([])
+    setAskBusy(false)
+    askStarted.current = false
+  }, [])
+  /** Patch the newest turn (deltas, final text, errors, done). */
+  const patchLastTurn = useCallback((patch: (t: AskTurn) => AskTurn) => {
+    setAskTurns((turns) => {
+      const last = turns[turns.length - 1]
+      return last ? [...turns.slice(0, -1), patch(last)] : turns
+    })
+  }, [])
 
   const refetchIndex = useCallback(() => {
     invoke<IndexItem[]>('get_index').then(setIndex).catch(console.error)
@@ -283,13 +303,22 @@ export default function App() {
         setScriptItems([])
         setDraft(null)
         setPanelMode(null)
+        setToast(null)
         setInputMode('launch')
-        setAskText('')
-        setAskBusy(false)
-        askStarted.current = false
+        resetAsk()
         refetchFrecency()
         refetchClips()
         inputRef.current?.focus()
+      }),
+      listen<string>('toast', (e) => {
+        // Fresh slate under the confirmation: whatever was typed before the
+        // panel dismissed is gone, like any other summon.
+        setRaw('')
+        setSelected(0)
+        setDraft(null)
+        setPanelMode(null)
+        setInputMode('launch')
+        setToast(e.payload)
       }),
       listen('index-updated', refetchIndex),
       listen('icons-updated', refetchIndex),
@@ -302,19 +331,29 @@ export default function App() {
         const ev = parseAskLine(e.payload)
         if (ev.delta) {
           askGotDelta.current = true
-          setAskText((t) => t + ev.delta)
+          patchLastTurn((t) => ({ ...t, answer: t.answer + ev.delta }))
         } else if (ev.final && !askGotDelta.current) {
-          setAskText((t) => t + ev.final)
+          patchLastTurn((t) => ({ ...t, answer: t.answer + ev.final }))
         } else if (ev.error) {
-          setAskText((t) => `${t}\n⚠ ${ev.error}`)
+          patchLastTurn((t) => ({ ...t, error: ev.error }))
         }
       }),
-      listen<boolean>('ask-done', () => setAskBusy(false)),
+      listen<boolean>('ask-done', () => {
+        setAskBusy(false)
+        patchLastTurn((t) => ({ ...t, done: true }))
+      }),
     ]
     return () => {
       for (const p of unlisteners) p.then((un) => un())
     }
-  }, [refetchIndex, refetchFrecency, refetchScripts, refetchClips])
+  }, [
+    refetchIndex,
+    refetchFrecency,
+    refetchScripts,
+    refetchClips,
+    resetAsk,
+    patchLastTurn,
+  ])
 
   // Script mode queries the script on a debounce; stale rows stay up meanwhile.
   const isScript = useCallback(
@@ -374,6 +413,7 @@ export default function App() {
         )
       case 'trigger': {
         if (parsed.trigger === 'clip') return clipRows(parsed.args, clips)
+        if (parsed.trigger === 'lorem') return loremRows()
         // `awake 2h` arms straight from the prompt; bare `awake` opens the panel.
         if (parsed.trigger === 'awake' && parsed.args.trim()) {
           return awakeRows(parsed.args)
@@ -408,11 +448,12 @@ export default function App() {
     browsers,
   ])
 
-  const askActive = parsed.mode === 'ask' && (askText.length > 0 || askBusy)
-  const rowCount =
-    parsed.mode === 'ask'
+  const askActive = parsed.mode === 'ask' && askTurns.length > 0
+  const rowCount = toast
+    ? 1
+    : parsed.mode === 'ask'
       ? askActive
-        ? 8
+        ? ASK_ROWS
         : 1
       : parsed.mode === 'bang'
         ? 1
@@ -490,6 +531,13 @@ export default function App() {
           invoke('awake_release').catch(console.error)
           invoke('hide_panel').catch(console.error)
           break
+        case 'lorem': {
+          // Generated here, not in the row, so every Enter is a fresh draw.
+          const text = generateLorem(enter.volume)
+          invoke('copy_text', { text, keepOpen: true }).catch(console.error)
+          setToast(loremToast(enter.volume))
+          break
+        }
         case 'add-quicklink':
           setDraft({ url: enter.url, name: '', step: 'name' })
           setRaw('')
@@ -536,6 +584,13 @@ export default function App() {
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Alt') setAltHeld(true)
+      if (toast) {
+        // The confirmation is read-only; any key just ends it early.
+        e.preventDefault()
+        setToast(null)
+        invoke('hide_panel').catch(console.error)
+        return
+      }
       const move = (delta: number) => {
         e.preventDefault()
         if (rows.length > 0) {
@@ -555,11 +610,7 @@ export default function App() {
           // Agent mode off: `?` is an ordinary character.
         } else if (next !== inputMode) {
           e.preventDefault()
-          if (inputMode === 'ask') {
-            setAskText('')
-            setAskBusy(false)
-            askStarted.current = false
-          }
+          if (inputMode === 'ask') resetAsk()
           setInputMode(next)
           return
         } else {
@@ -578,11 +629,7 @@ export default function App() {
         } else if (inputMode !== 'launch') {
           // Esc returns to launch mode (ending any conversation); a second
           // Esc dismisses.
-          if (inputMode === 'ask') {
-            setAskText('')
-            setAskBusy(false)
-            askStarted.current = false
-          }
+          if (inputMode === 'ask') resetAsk()
           setInputMode('launch')
           setRaw('')
           setSelected(0)
@@ -600,7 +647,7 @@ export default function App() {
         !draft
       ) {
         e.preventDefault()
-        if (inputMode === 'ask' && (askText || askBusy)) return
+        if (inputMode === 'ask' && (askTurns.length > 0 || askBusy)) return
         setInputMode('launch')
         return
       }
@@ -620,13 +667,16 @@ export default function App() {
           const prompt = parsed.prompt.trim()
           if (!prompt || askBusy) return
           askGotDelta.current = false
-          setAskText((t) => `${t ? `${t}\n\n` : ''}❯ ${prompt}\n\n`)
+          setAskTurns((turns) => [
+            ...turns,
+            { prompt, answer: '', done: false },
+          ])
           setAskBusy(true)
           invoke('ask', {
             prompt,
             continueConversation: askStarted.current,
           }).catch((err) => {
-            setAskText((t) => `${t}⚠ ${String(err)}`)
+            patchLastTurn((t) => ({ ...t, error: String(err), done: true }))
             setAskBusy(false)
           })
           askStarted.current = true
@@ -651,11 +701,14 @@ export default function App() {
       clampedSelection,
       enterRow,
       draft,
-      askText,
+      askTurns.length,
       askBusy,
       inputMode,
       raw,
       config,
+      toast,
+      resetAsk,
+      patchLastTurn,
     ],
   )
 
@@ -679,7 +732,11 @@ export default function App() {
     ? draft.step === 'name'
       ? 'name this quicklink…'
       : 'choose a browser (↑↓ then ⏎)'
-    : 'Search for apps and commands…'
+    : askActive
+      ? askBusy
+        ? 'waiting for the answer…'
+        : 'ask a follow-up… (Esc ends)'
+      : 'Search for apps and commands…'
 
   if (panelMode) {
     return (
@@ -697,9 +754,14 @@ export default function App() {
   }
 
   return (
-    <div className={`panel ${parsed.mode}`}>
+    <div className={`panel ${parsed.mode}${askActive ? ' ask-active' : ''}`}>
+      {askActive && (
+        <div className="ask-header">
+          <AskPinned prompt={askTurns[0]?.prompt ?? ''} busy={askBusy} />
+        </div>
+      )}
       <div className="input-row">
-        <span className="sigil">{sigil}</span>
+        <span className="sigil">{askActive ? '❯' : sigil}</span>
         <input
           ref={inputRef}
           className="prompt"
@@ -724,50 +786,13 @@ export default function App() {
         />
       </div>
 
-      {askActive ? (
-        <div className="ask-surface" ref={askSurfaceRef}>
-          <div className="ask-text">
-            {parseMarkdownLite(askText).map((block, i) => {
-              switch (block.kind) {
-                case 'code':
-                  return (
-                    <pre key={i} className="md-code">
-                      {block.text}
-                    </pre>
-                  )
-                case 'heading':
-                  return (
-                    <div key={i} className={`md-h md-h${block.level}`}>
-                      {renderSpans(block.spans)}
-                    </div>
-                  )
-                case 'bullet':
-                  return (
-                    <div
-                      key={i}
-                      className="md-li"
-                      style={{ paddingLeft: 14 + block.indent * 14 }}
-                    >
-                      • {renderSpans(block.spans)}
-                    </div>
-                  )
-                case 'numbered':
-                  return (
-                    <div key={i} className="md-li" style={{ paddingLeft: 14 }}>
-                      {block.marker}. {renderSpans(block.spans)}
-                    </div>
-                  )
-                case 'para':
-                  return (
-                    <div key={i} className="md-p">
-                      {renderSpans(block.spans)}
-                    </div>
-                  )
-              }
-            })}
-            {askBusy ? <span className="md-cursor">▊</span> : null}
-          </div>
+      {toast ? (
+        <div className="row toast-row">
+          <span className="toast-check">✓</span>
+          <span className="toast-text">{toast}</span>
         </div>
+      ) : askActive ? (
+        <AskSurface turns={askTurns} scrollRef={askSurfaceRef} />
       ) : parsed.mode === 'ask' ? (
         <div className="row bang-row">
           <span className="bang-action">ask claude ▸</span>

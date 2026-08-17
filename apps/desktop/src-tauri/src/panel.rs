@@ -87,6 +87,28 @@ pub fn show(app: &AppHandle) {
     );
 }
 
+/// Flash a one-line confirmation ("Copied #FF6B8C to clipboard") without taking key
+/// focus: the panel orders front on the mouse screen, the frontend renders the `toast`
+/// row and hides itself on a short timer. Used after actions that finish while the
+/// panel is already dismissed (the color sampler); a macOS notification would need a
+/// granted permission (invariant 1), this needs none.
+pub fn flash(app: &AppHandle, text: &str) {
+    position_on_mouse_screen(app);
+    let _ = app.emit("toast", text);
+    // Give the webview a beat to swap the stale rows for the toast row before the
+    // window orders front, so no old content flashes.
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        let inner = handle.clone();
+        let _ = handle.run_on_main_thread(move || {
+            if let Ok(panel) = inner.get_webview_panel("main") {
+                panel.show();
+            }
+        });
+    });
+}
+
 pub fn hide(app: &AppHandle) {
     let Ok(panel) = app.get_webview_panel("main") else {
         return;

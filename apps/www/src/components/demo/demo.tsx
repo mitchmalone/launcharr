@@ -1,7 +1,14 @@
 'use client'
 
 import { parseInput } from '@launcharr/core/grammar'
-import { BUILTIN_THEMES, themeNames, themeVars } from '@launcharr/tui'
+import {
+  AskPinned,
+  AskSurface,
+  type AskTurn,
+  BUILTIN_THEMES,
+  themeNames,
+  themeVars,
+} from '@launcharr/tui'
 import { useEffect, useRef, useState } from 'react'
 
 import { type PanelId, askAnswer } from '@/lib/demo-data'
@@ -26,8 +33,6 @@ const SAMPLES = [
   'gh tauri',
 ]
 
-type Ask = { prompt: string; text: string; done: boolean }
-
 /**
  * The interactive demo: a mock desktop with the bar across the top and the
  * launcher panel hanging Spotlight-style below it.
@@ -45,7 +50,9 @@ export function Demo() {
   const [toast, setToast] = useState('')
   const [themeName, setThemeName] = useState('launcharr')
   const [panel, setPanel] = useState<PanelId | null>(null)
-  const [ask, setAsk] = useState<Ask | null>(null)
+  // `?` conversation as turns — the same AskSurface the app renders (invariant 10);
+  // only the answers are canned.
+  const [ask, setAsk] = useState<AskTurn[]>([])
   const [workspace, setWorkspace] = useState('2')
 
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -83,16 +90,32 @@ export function Demo() {
     inputRef.current?.focus()
   }
 
-  /** Types the canned answer out a few characters a frame, like a streamed reply. */
+  const askBusy = ask.some((t) => !t.done)
+  const askActive = isAskMode && ask.length > 0
+  const askScrollRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = askScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [ask])
+
+  /** Adds a turn, "thinks" for a beat, then types the canned answer out a few
+   * characters a frame like a streamed reply. Follow-ups append; the first
+   * question stays pinned in the header. */
   const startAsk = (prompt: string) => {
     const text = askAnswer(prompt)
     clearInterval(stream.current)
-    setAsk({ prompt, text: '', done: false })
-    let i = 0
+    setAsk((turns) => [...turns, { prompt, answer: '', done: false }])
+    let i = -40 // ~640 ms of the thinking state before the first delta
     stream.current = setInterval(() => {
       i += 3
+      if (i < 0) return
       const done = i >= text.length
-      setAsk({ prompt, text: text.slice(0, i), done })
+      setAsk((turns) => {
+        const last = turns[turns.length - 1]
+        return last
+          ? [...turns.slice(0, -1), { ...last, answer: text.slice(0, i), done }]
+          : turns
+      })
       if (done) clearInterval(stream.current)
     }, 16)
   }
@@ -121,9 +144,9 @@ export function Demo() {
     }
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (ask) {
+      if (ask.length > 0) {
         clearInterval(stream.current)
-        setAsk(null)
+        setAsk([])
       }
       setRaw('')
       setSelected(0)
@@ -144,7 +167,10 @@ export function Demo() {
           '⏎ sent to ' + TERMINAL + ' ▸ ' + (parsed.command || 'new window'),
         )
       } else if (isAskMode) {
-        if (parsed.prompt.trim()) startAsk(parsed.prompt.trim())
+        if (parsed.prompt.trim() && !askBusy) {
+          startAsk(parsed.prompt.trim())
+          setRaw('?')
+        }
       } else {
         fire(rows[sel])
       }
@@ -210,7 +236,7 @@ export function Demo() {
               </div>
             ) : (
               <div
-                className="overflow-hidden rounded-[10px] border font-mono"
+                className="flex flex-col overflow-hidden rounded-[10px] border font-mono"
                 style={{
                   boxShadow: 'var(--shadow)',
                   background: theme.glass,
@@ -218,18 +244,40 @@ export function Demo() {
                   color: theme.fg,
                 }}
               >
-                <div className="flex h-[54px] shrink-0 items-center gap-2.5 px-3.5">
+                {/* Once a conversation starts the first question is pinned
+                    up here and the prompt row drops to the bottom (flex order,
+                    so the input keeps focus) — the app's exact arrangement. */}
+                {askActive && (
+                  <div
+                    className="order-0 flex h-[54px] shrink-0 items-center border-b px-3.5"
+                    style={{ borderColor: theme.border }}
+                  >
+                    <AskPinned prompt={ask[0]?.prompt ?? ''} busy={askBusy} />
+                  </div>
+                )}
+                <div
+                  className={`flex h-[54px] shrink-0 items-center gap-2.5 px-3.5 ${askActive ? 'order-2 border-t' : ''}`}
+                  style={askActive ? { borderColor: theme.border } : undefined}
+                >
                   <span
                     className="text-[17px] font-semibold"
                     style={{
                       color: isBang
                         ? theme.bang
-                        : isAskMode
-                          ? theme.accent
-                          : theme.sigil,
+                        : askActive
+                          ? theme.dim
+                          : isAskMode
+                            ? theme.accent
+                            : theme.sigil,
                     }}
                   >
-                    {isBang ? BANG_SIGIL : isAskMode ? '?' : SIGIL}
+                    {isBang
+                      ? BANG_SIGIL
+                      : askActive
+                        ? '❯'
+                        : isAskMode
+                          ? '?'
+                          : SIGIL}
                   </span>
                   <input
                     type="text"
@@ -238,12 +286,23 @@ export function Demo() {
                     spellCheck={false}
                     autoComplete="off"
                     aria-label="launcharr demo prompt"
-                    placeholder="Search for apps and commands…"
+                    placeholder={
+                      askActive
+                        ? askBusy
+                          ? 'waiting for the answer…'
+                          : 'ask a follow-up… (Esc ends)'
+                        : 'Search for apps and commands…'
+                    }
                     onChange={(e) => {
+                      // Leaving ? mode ends the conversation; typing a
+                      // follow-up keeps it.
+                      if (ask.length > 0 && !e.target.value.startsWith('?')) {
+                        clearInterval(stream.current)
+                        setAsk([])
+                      }
                       setRaw(e.target.value)
                       setSelected(0)
                       setToast('')
-                      if (ask) setAsk(null)
                     }}
                     onKeyDown={onKeyDown}
                     className="flex-1 border-none bg-transparent text-base outline-none"
@@ -268,27 +327,15 @@ export function Demo() {
                   </div>
                 )}
 
-                {ask && (
-                  <div className="h-[320px] overflow-y-auto px-4 pb-3.5 pt-2.5">
-                    <div
-                      className="mb-2 text-[13px]"
-                      style={{ color: theme.dim }}
-                    >
-                      ❯ {ask.prompt}
-                    </div>
-                    <p
-                      className="m-0 whitespace-pre-wrap break-words text-[13px] leading-[1.55]"
-                      style={{ color: theme.fg }}
-                    >
-                      {ask.text}
-                      {!ask.done && (
-                        <span style={{ color: theme.accent }}>▊</span>
-                      )}
-                    </p>
-                  </div>
+                {askActive && (
+                  <AskSurface
+                    turns={ask}
+                    className="order-1 h-[306px] shrink-0"
+                    scrollRef={askScrollRef}
+                  />
                 )}
 
-                {isAskMode && !ask && (
+                {isAskMode && ask.length === 0 && (
                   <div
                     className="flex h-10 items-center px-3.5 text-sm italic"
                     style={{ color: theme.dim }}
@@ -379,7 +426,8 @@ export function Demo() {
               type="button"
               onClick={() => {
                 setPanel(null)
-                setAsk(null)
+                clearInterval(stream.current)
+                setAsk([])
                 setRaw(label)
                 setSelected(0)
                 setToast('')

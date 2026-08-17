@@ -6,6 +6,34 @@
 
 ---
 
+### 2026-08-17 · Driving the panel from an agent shell: tray "Summon panel" works, keystrokes don't land
+
+Under tmux/iTerm the shell has no Screen Recording (`screencapture` → "could not create
+image from display") and CGEvent keystrokes (`osascript keystroke`, `cliclick t:`) go to
+the _frontmost app_ (iTerm2), not to the non-activating panel even while it is key —
+one stray `keystroke "a"` landed in an iTerm pane. The tray menu is scriptable
+(`click menu item 1 of menu 1 of menu bar item 1 of menu bar 2 of process "launcharr"`
+= summon; the perf log shows `summon Nµs`), but there's no way to type into the panel
+headlessly, and `set frontmost of process "launcharr"` is refused (accessory app). Net:
+panel-typing flows stay a hands-check; observe native paths via the pasteboard
+(`pbpaste`) or the stderr log when launching the binary directly.
+
+### 2026-08-17 · `NSColorSampler` binding needs three objc2-app-kit features + block2
+
+`NSColorSampler` (objc2-app-kit 0.3) is gated on `NSColorSampler` + `NSColor` +
+`block2`; the RGB component getters additionally need `objc2-core-foundation` (CGFloat).
+All were already in the lock as transitives, so enabling them added no crate. The block is
+`block2::RcBlock::new(move |c: *mut NSColor| …)` passed as `&block`; AppKit retains the
+sampler (and the block) until the session ends, so dropping the local is fine. The
+handler fires on the main thread; the pasteboard write and `panel::flash` are safe there.
+
+### 2026-08-17 · Two "shortcuts" gotchas while removing the tab
+
+The bundled config had a stray `"": ""` under `shortcuts` (from the tab's "+ add") that
+logs `bad custom shortcut ""` on every start — harmless, still there; delete the key by
+hand. And `apps/www/src/lib/launch-index.ts` still lists `shortcuts` as an alias on the
+demo's settings item — the demo config, not the app; left as-is.
+
 ### 2026-08-17 · HTML5 drag-and-drop is dead in a Tauri window unless the file-drop handler is off
 
 The menubar zone board never worked — not retired→zone, not zone→zone. wry's macOS

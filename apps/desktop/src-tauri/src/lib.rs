@@ -20,6 +20,7 @@ mod bar_modules;
 mod battery;
 mod bookmarks;
 mod clipboard;
+mod colorpicker;
 mod commands;
 mod config;
 mod coreaudio;

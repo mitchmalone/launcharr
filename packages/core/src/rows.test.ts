@@ -4,6 +4,7 @@ import {
   awakeRows,
   draftRows,
   launchRows,
+  loremRows,
   panelRows,
   quicklinkRows,
   searchEngineLabel,
@@ -168,6 +169,21 @@ describe('panelRows', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]!.title).toBe('Wi-Fi')
     expect(rows[0]!.enter).toEqual({ kind: 'open-panel', panel: 'wifi' })
+  })
+})
+
+describe('loremRows', () => {
+  it('five volumes in ticket order, each a lorem Enter', () => {
+    const rows = loremRows()
+    expect(rows.map((r) => r.title)).toEqual([
+      'Title',
+      '1 sentence',
+      '2 sentences',
+      'Paragraph',
+      '2 paragraphs',
+    ])
+    expect(rows[4]!.enter).toEqual({ kind: 'lorem', volume: 'paragraphs2' })
+    for (const r of rows) expect(r.hint).toMatch(/copy$/)
   })
 })
 

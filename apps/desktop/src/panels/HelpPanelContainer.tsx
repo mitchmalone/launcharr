@@ -79,7 +79,7 @@ export function buildSections(
     .map((i) => ({ left: keyword(i), right: i.name }))
   const builtins = index
     .filter((i) => i.kind === 'launcharr')
-    .map((i) => ({ left: i.name.toLowerCase(), right: i.name }))
+    .map((i) => ({ left: keyword(i), right: i.name }))
   if (commands.length + builtins.length > 0) {
     sections.push({ label: 'Commands', entries: [...commands, ...builtins] })
   }
@@ -95,10 +95,18 @@ export function buildSections(
   }
 
   sections.push({
-    label: 'Clipboard',
+    label: 'Clipboard & text',
     entries: [
       { left: 'clip', right: 'search clipboard history inline' },
       { left: 'clip clear', right: 'wipe clipboard history' },
+      {
+        left: 'lorem',
+        right: 'placeholder text — title, sentences, paragraphs; ⏎ copies',
+      },
+      {
+        left: 'colorpicker',
+        right: 'sample any pixel with the loupe; ⏎ copies #RRGGBB',
+      },
     ],
   })
 

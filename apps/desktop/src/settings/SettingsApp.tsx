@@ -1,16 +1,19 @@
 import type { Link } from '@launcharr/core/types'
+import { GithubIcon, XIcon } from '@launcharr/tui/icons'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
+  BookOpen,
   Bot,
+  Globe,
   GripVertical,
   Info,
-  Keyboard,
   LayoutGrid,
   Link2,
   PanelTop,
   Settings,
+  Tag,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -24,6 +27,7 @@ import {
 import { applyTheme, themeNames } from '../lib/themes'
 import DesktopTab from './DesktopTab'
 import HotkeyRecorder from './HotkeyRecorder'
+import SubTabs from './SubTabs'
 import iconUrl from './launcharr.svg'
 
 /**
@@ -39,9 +43,15 @@ const TABS = [
   { id: 'desktop', label: 'Desktop', icon: LayoutGrid },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'quicklinks', label: 'Quicklinks', icon: Link2 },
-  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
 ] as const
+
+/** Where launcharr lives on the web — the About tab's links. */
+const SITE_URL = 'https://launcharr.com'
+const DOCS_URL = 'https://launcharr.com/docs'
+const GITHUB_URL = 'https://github.com/mitchmalone/launcharr'
+const RELEASES_URL = `${GITHUB_URL}/releases`
+const X_URL = 'https://x.com/mitchmalone'
 
 type TabId = (typeof TABS)[number]['id']
 
@@ -133,7 +143,6 @@ export default function SettingsApp() {
           {tab === 'desktop' && <DesktopTab config={config} set={set} />}
           {tab === 'agents' && <AgentsTab config={config} set={set} />}
           {tab === 'quicklinks' && <QuicklinksTab config={config} set={set} />}
-          {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
           {tab === 'about' && <AboutTab />}
         </div>
       </main>
@@ -338,189 +347,155 @@ function QuicklinksTab({ config, set }: { config: Config; set: SetFn }) {
   )
 }
 
-function ShortcutsTab({ config, set }: { config: Config; set: SetFn }) {
-  const entries = Object.entries(config.shortcuts)
-  const setEntry = (i: number, keys: string, target: string) => {
-    const next = entries.slice()
-    next[i] = [keys, target]
-    set('shortcuts', Object.fromEntries(next))
-  }
-  return (
-    <>
-      <p className="hint lead">
-        Global hotkeys that launch an indexed item directly, without summoning
-        the panel.
-      </p>
-      {entries.map(([keys, target], i) => (
-        <div className="linkrow" key={i}>
-          <HotkeyRecorder
-            value={keys}
-            onChange={(accel) => setEntry(i, accel ?? '', target)}
-          />
-          <input
-            className="grow"
-            placeholder="item name, e.g. Safari"
-            value={target}
-            onChange={(e) => setEntry(i, keys, e.target.value)}
-          />
-          <button
-            className="ghost"
-            title="remove"
-            onClick={() => {
-              const next = { ...config.shortcuts }
-              delete next[keys]
-              set('shortcuts', next)
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-      <button
-        className="ghost add"
-        onClick={() => set('shortcuts', { ...config.shortcuts, '': '' })}
-      >
-        + add shortcut
-      </button>
-    </>
-  )
-}
+const AGENT_SUBTABS = [
+  { id: 'mode', label: 'Agent mode' },
+  { id: 'local', label: 'Local monitoring' },
+  { id: 'usage', label: 'Usage monitoring' },
+] as const
+type AgentSubTab = (typeof AGENT_SUBTABS)[number]['id']
 
+/** Settings → Agents: three sub-tabs, one per feature the tab used to stack. */
 function AgentsTab({ config, set }: { config: Config; set: SetFn }) {
+  const [sub, setSub] = useState<AgentSubTab>('mode')
   const agents = config.agents
   const setAgents = (patch: Partial<Config['agents']>) =>
     set('agents', { ...agents, ...patch })
   return (
     <>
-      <Row label="Local monitoring">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={agents.monitor}
-            onChange={(e) => setAgents({ monitor: e.target.checked })}
-          />
-          Enable local agent monitoring
-        </label>
-        <p className="hint">
-          Live session states in the bar and the <code>agents ⏎</code> panel.
-          Agents report in over a local socket (Claude Code hooks →{' '}
-          <code>agents.sock</code>); nothing leaves this machine.
-        </p>
-        {agents.monitor && (
-          <>
+      <SubTabs tabs={AGENT_SUBTABS} value={sub} onChange={setSub} />
+      {sub === 'mode' && (
+        <Row label="Agent mode">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={agents.askMode}
+              onChange={(e) => setAgents({ askMode: e.target.checked })}
+            />
+            Enable agent mode
+          </label>
+          <p className="hint">
+            Activates the <code>?</code> command: press <code>?</code> in the
+            launcher to converse with your own agent CLI — your subscription,
+            your credentials. The spawned CLI is caged (empty working dir,
+            tightest tool restrictions it offers); Enter sends, follow-ups keep
+            context, Esc ends the conversation.
+          </p>
+          {agents.askMode && (
             <label className="check">
-              <input
-                type="checkbox"
-                checked={agents.showIdle}
-                onChange={(e) => setAgents({ showIdle: e.target.checked })}
-              />
-              Show idle sessions in the bar
-            </label>
-            <label className="check">
-              Forget sessions after{' '}
-              <input
-                className="tiny"
-                type="number"
-                min={1}
-                max={168}
-                value={agents.pruneHours}
+              Provider
+              <select
+                value={agents.askProvider}
                 onChange={(e) =>
                   setAgents({
-                    pruneHours: Math.max(1, Number(e.target.value) || 12),
+                    askProvider: e.target
+                      .value as Config['agents']['askProvider'],
                   })
                 }
-              />{' '}
-              hours of silence
+              >
+                <option value="claude">claude (Claude Code)</option>
+                <option value="codex">codex (Codex CLI)</option>
+              </select>
             </label>
-          </>
-        )}
-      </Row>
-      <hr />
-      <Row label="Agent mode">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={agents.askMode}
-            onChange={(e) => setAgents({ askMode: e.target.checked })}
-          />
-          Enable agent mode
-        </label>
-        <p className="hint">
-          Activates the <code>?</code> command: press <code>?</code> in the
-          launcher to converse with your own agent CLI — your subscription, your
-          credentials. The spawned CLI is caged (empty working dir, tightest
-          tool restrictions it offers); Enter sends, follow-ups keep context,
-          Esc ends the conversation.
-        </p>
-        {agents.askMode && (
+          )}
+        </Row>
+      )}
+      {sub === 'local' && (
+        <Row label="Local monitoring">
           <label className="check">
-            Provider
-            <select
-              value={agents.askProvider}
-              onChange={(e) =>
-                setAgents({
-                  askProvider: e.target
-                    .value as Config['agents']['askProvider'],
-                })
-              }
-            >
-              <option value="claude">claude (Claude Code)</option>
-              <option value="codex">codex (Codex CLI)</option>
-            </select>
+            <input
+              type="checkbox"
+              checked={agents.monitor}
+              onChange={(e) => setAgents({ monitor: e.target.checked })}
+            />
+            Enable local agent monitoring
           </label>
-        )}
-      </Row>
-      <hr />
-      <Row label="Usage">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={agents.usage}
-            onChange={(e) => setAgents({ usage: e.target.checked })}
-          />
-          Enable agent usage
-        </label>
-        <p className="hint">
-          Activates the <code>usage ⏎</code> token monitor: tokens by day and
-          model, read from the journals Claude Code and Codex already keep
-          locally.
-        </p>
-        {agents.usage && (
-          <>
-            <p className="hint">
-              Account limits (“how soon am I rate-limited?”) are computed by the
-              providers, so showing them means one HTTPS request to each — using
-              credentials the CLIs already store. Grant access per provider;
-              launcharr picks the freshest source, falls back automatically, and
-              never refreshes or writes tokens.
-            </p>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={agents.claudeCreds}
-                onChange={(e) => setAgents({ claudeCreds: e.target.checked })}
-              />
-              Claude — may read Claude Code’s stored credentials
-            </label>
-            <p className="hint">
-              Credentials file first (silent); keychain when the file is stale —
-              macOS shows its own prompt once.
-            </p>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={agents.codexCreds}
-                onChange={(e) => setAgents({ codexCreds: e.target.checked })}
-              />
-              Codex — may read <code>~/.codex/auth.json</code>
-            </label>
-            <p className="hint">
-              Off = the panel shows this device’s last session snapshot only,
-              which misses usage from your other machines.
-            </p>
-          </>
-        )}
-      </Row>
+          <p className="hint">
+            Live session states in the bar and the <code>agents ⏎</code> panel.
+            Agents report in over a local socket (Claude Code hooks →{' '}
+            <code>agents.sock</code>); nothing leaves this machine.
+          </p>
+          {agents.monitor && (
+            <>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={agents.showIdle}
+                  onChange={(e) => setAgents({ showIdle: e.target.checked })}
+                />
+                Show idle sessions in the bar
+              </label>
+              <label className="check">
+                Forget sessions after{' '}
+                <input
+                  className="tiny"
+                  type="number"
+                  min={1}
+                  max={168}
+                  value={agents.pruneHours}
+                  onChange={(e) =>
+                    setAgents({
+                      pruneHours: Math.max(1, Number(e.target.value) || 12),
+                    })
+                  }
+                />{' '}
+                hours of silence
+              </label>
+            </>
+          )}
+        </Row>
+      )}
+      {sub === 'usage' && (
+        <Row label="Usage">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={agents.usage}
+              onChange={(e) => setAgents({ usage: e.target.checked })}
+            />
+            Enable agent usage
+          </label>
+          <p className="hint">
+            Activates the <code>usage ⏎</code> token monitor: tokens by day and
+            model, read from the journals Claude Code and Codex already keep
+            locally.
+          </p>
+          {agents.usage && (
+            <>
+              <p className="hint">
+                Account limits (“how soon am I rate-limited?”) are computed by
+                the providers, so showing them means one HTTPS request to each —
+                using credentials the CLIs already store. Grant access per
+                provider; launcharr picks the freshest source, falls back
+                automatically, and never refreshes or writes tokens.
+              </p>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={agents.claudeCreds}
+                  onChange={(e) => setAgents({ claudeCreds: e.target.checked })}
+                />
+                Claude — may read Claude Code’s stored credentials
+              </label>
+              <p className="hint">
+                Credentials file first (silent); keychain when the file is stale
+                — macOS shows its own prompt once.
+              </p>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={agents.codexCreds}
+                  onChange={(e) => setAgents({ codexCreds: e.target.checked })}
+                />
+                Codex — may read <code>~/.codex/auth.json</code>
+              </label>
+              <p className="hint">
+                Off = the panel shows this device’s last session snapshot only,
+                which misses usage from your other machines.
+              </p>
+            </>
+          )}
+        </Row>
+      )}
     </>
   )
 }
@@ -757,6 +732,26 @@ function AboutTab() {
   useEffect(() => {
     getVersion().then(setVersion).catch(console.error)
   }, [])
+  const open = (url: string) => invoke('open_url', { url }).catch(console.error)
+  const links: { label: string; url: string; icon: React.ReactNode }[] = [
+    {
+      label: 'launcharr.com',
+      url: SITE_URL,
+      icon: <Globe size={15} strokeWidth={1.75} aria-hidden />,
+    },
+    {
+      label: 'docs',
+      url: DOCS_URL,
+      icon: <BookOpen size={15} strokeWidth={1.75} aria-hidden />,
+    },
+    { label: 'github', url: GITHUB_URL, icon: <GithubIcon size={15} /> },
+    {
+      label: 'releases',
+      url: RELEASES_URL,
+      icon: <Tag size={15} strokeWidth={1.75} aria-hidden />,
+    },
+    { label: '@mitchmalone', url: X_URL, icon: <XIcon size={15} /> },
+  ]
   return (
     <div className="about">
       <img className="appicon" src={iconUrl} alt="launcharr icon" />
@@ -764,7 +759,27 @@ function AboutTab() {
         <span className="sigil">❯</span> launcharr
         {version ? ` v${version}` : ''}
       </p>
-      <p className="hint">An app launcher for pirates.</p>
+      <p className="hint">The keyboard control surface for macOS.</p>
+      <p className="hint">
+        An app launcher for pirates — by{' '}
+        <button className="linkish" onClick={() => open(X_URL)}>
+          Mitch Malone
+        </button>
+        .
+      </p>
+      <div className="aboutlinks">
+        {links.map((l) => (
+          <button key={l.url} className="ghost" onClick={() => open(l.url)}>
+            {l.icon}
+            {l.label}
+          </button>
+        ))}
+      </div>
+      <p className="hint aboutfoot">
+        Zero granted permissions, zero network. Your config lives at{' '}
+        <code>~/.config/launcharr/config.json</code>; scripts extend the prompt
+        (see docs). Because the apps won’t launch themselves. Yarr.
+      </p>
     </div>
   )
 }

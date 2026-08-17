@@ -1,9 +1,9 @@
+import { GithubIcon } from '@launcharr/tui/icons'
 import Image from 'next/image'
 import Link from 'next/link'
 
 import { GITHUB_URL } from '@/lib/site'
 
-import { GithubIcon } from './brand-icons'
 import { ThemeSwitch } from './theme-switch'
 
 const SECTIONS = [

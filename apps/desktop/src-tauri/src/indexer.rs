@@ -131,6 +131,11 @@ pub fn scan(links: &[crate::config::Link], include_bookmarks: bool) -> Vec<Index
         ),
         ("reindex", "launcharr — Reindex apps", "reindex"),
         (
+            "colorpicker",
+            "Color Picker",
+            "colorpicker color picker eyedropper hex sample",
+        ),
+        (
             "config",
             "launcharr — Open config",
             "config settings preferences",

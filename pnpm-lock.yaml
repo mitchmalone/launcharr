@@ -158,6 +158,9 @@ importers:
 
   packages/tui:
     dependencies:
+      '@launcharr/core':
+        specifier: workspace:*
+        version: link:../core
       lucide-react:
         specifier: ^1.30.0
         version: 1.30.0(react@19.2.8)

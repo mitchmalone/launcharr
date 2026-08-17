@@ -12,10 +12,23 @@ green: cask 0.4.0, Notion, mitchmalone.com hook; launcharr.com redeployed on the
 commit). launcharr is a keyboard control surface: launcher + bar + panels + agents +
 desktop layer, all in Mitch's daily use. **Next: the v0.5 scope talk** (ROADMAP "v0.5 —
 plugins" lists the carried-over candidates: module API, multi-display, settings-in-
-panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision).
+panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision). **The
+2026-08-17 Notion "Ready" column (6 tickets) landed on main** — see the first bullet
+below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check.
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
+- **Ready-column round, 2026-08-17** (plans/done/ready-column-2026-08-17.md, DECISIONS
+  2026-08-17 ×4): **`colorpicker`** (Apple's `NSColorSampler` loupe → `#RRGGBB` on the
+  pasteboard, Esc copies nothing, zero permissions) and **`lorem`** (built-in, five
+  volumes, semi-random, `lorem.py` retired from the bundle) — both confirm with the new
+  **toast** row (frontend `copy_text keepOpen`, Rust `panel::flash`); **`?` agent mode**
+  redesigned as turns: first question pinned in the header, transcript below, follow-up
+  prompt at the bottom, Claude-style thinking spinner + shimmer verbs — `AskSurface` lives
+  in `@launcharr/tui` and the www demo imports it (images in answers declined: invariant
+  2); **Settings**: Agents → three sub-tabs, Shortcuts tab removed (config key still
+  live), About fleshed out (byline + site/docs/GitHub/releases/X links; brand icons now
+  `@launcharr/tui/icons`).
 - **v1 launcher line (through v0.3.1, signed + released)**: panel/focus dance, index +
   fuzzy + frecency, bang mode, scripts protocol, clipboard, math, quicklinks, emoji,
   settings window, themes, menubar icon, release pipeline + shared tap. Monorepo on the
@@ -155,6 +168,10 @@ panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision).
 
 ## Blocked / waiting on Mitch
 
+- **Ready-column hands-check** (plans/done/ready-column-2026-08-17.md): `colorpicker ⏎`
+  loupe over a full-screen app, click copies + toast, Esc copies nothing; `lorem` → five
+  rows → Enter copies + toast auto-hides with focus returned; `?` conversation keeps the
+  input focused across turns; Settings → Agents sub-tabs / About links open in the browser.
 - **0.4.0 hands-check leftovers** (released; these are the bits only hands can feel):
   Settings → Desktop → uncheck manage → "use my own config…" / "save a copy to edit…"
   dialogs; `ss ⏎` → ⌘V lands in claude.ai _and_ Claude Code; the fresh-profile smoke ran

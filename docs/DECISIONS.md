@@ -5,6 +5,58 @@
 
 ---
 
+### 2026-08-17 · Color picker = Apple's `NSColorSampler`; confirmations are an in-panel toast, never a notification
+
+- **Decision.** `colorpicker` (a `launcharr:` index item, fuzzy-matchable) runs
+  `NSColorSampler` — the system loupe — on the main thread; the pick lands as uppercase
+  sRGB `#RRGGBB` on the pasteboard, Esc copies nothing. No new IPC command: it rides the
+  existing `execute` arm (`colorpicker.rs`, block2 callback). Confirmation is a **toast**:
+  a one-row "✓ Copied …" the panel shows for ~1.1 s and then hides itself. Two feeders:
+  the frontend (`copy_text` gained an optional `keep_open` so the row can show first) and
+  Rust `panel::flash(text)` (`toast` event + `show()` _without_ key, for actions that
+  finish after the panel dismissed — the sampler).
+- **Why.** The sampler needs zero permissions and zero pixels of our own (invariant 1 and
+  the weight budget); a hand-rolled loupe would need Screen Recording. macOS notifications
+  need a granted permission, so the toast primitive is the only confirmation channel that
+  keeps invariant 1 — and it's reusable for every "copied" action. HEX only for now (the
+  ticket's open questions: format + history stay open until real use asks).
+
+### 2026-08-17 · `lorem` is a built-in (five volumes, semi-random); the bundled script retires
+
+- **Decision.** `@launcharr/core/lorem`: rng-injectable generator (Title / 1 sentence /
+  2 sentences / Paragraph / 2 paragraphs; the classic opening survives as a paragraph's
+  first sentence, everything else is drawn from the vocabulary), `loremRows` in rows.ts,
+  generation at Enter time so every copy is a fresh draw, toast confirms. `lorem.py`
+  leaves the bundle (`json-format.py`, `ip.py` remain the reference scripts).
+- **Why.** The ticket wants a picker of volumes and non-repeating text; the built-in
+  trigger wins precedence over scripts (like `clip`), so keeping the script would only
+  shadow it. Site copy and docs examples that used `lorem` as _the_ script example now
+  use a `uuid` example.
+
+### 2026-08-17 · Agent mode surface lives in `@launcharr/tui` (`AskSurface`); markdown-lite in core
+
+- **Decision.** The `?` conversation is turns (`AskTurn[]`); the **first question is
+  pinned in the header** (`AskPinned`, spinner while busy), the transcript scrolls
+  below (`AskSurface`), the follow-up prompt row sits at the bottom — moved there by
+  flex `order`, so the `<input>` never re-mounts and keeps focus. Thinking state is a
+  Claude-style breathing asterisk cycle + a shimmering rotating verb; streaming shows a
+  pulsing block cursor. `parseMarkdownLite` moved from apps/desktop to
+  `@launcharr/core/markdown`; the www demo imports the same components (invariant 10 —
+  the demo's hand-rolled ask block is gone). Brand icons (GitHub, X) moved to
+  `@launcharr/tui/icons` (own entry point: RSC-safe) for the same reason.
+- **Why.** Notion "Agent Mode Feedback". Images in answers were **declined**: rendering
+  remote images means the desktop app fetching over the network (invariant 2), and the
+  caged CLI has no fetch tools anyway — needs an invariant discussion, not a ticket.
+
+### 2026-08-17 · Settings: Agents split into sub-tabs; Shortcuts tab removed; About fleshed out
+
+- **Decision.** Settings → Agents = SubTabs (Agent mode / Local monitoring / Usage
+  monitoring). The Shortcuts tab is gone — `config.shortcuts` and its hot-apply are
+  untouched (hand-edit config.json; may return as a panel). About: byline, links to
+  launcharr.com / docs / GitHub / releases / X, the zero-permissions line.
+- **Why.** Notion tickets ×3 (Mitch, 2026-08-17): the Agents tab had grown three
+  features deep; per-item global hotkeys aren't earning their tab yet.
+
 ### 2026-08-17 · Unmanaged aerospace.toml: `desktop_toml` (use my own / save a copy), file dialogs via osascript
 
 - **Decision.** Settings → Desktop → "Let launcharr manage AeroSpace". Checked: knobs, no

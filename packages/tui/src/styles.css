@@ -556,3 +556,193 @@
   min-height: 0;
   overflow: auto;
 }
+
+/* ---- ? agent mode: pinned question, transcript, thinking states ------- */
+
+/* The header line the app draws in place of the prompt once a conversation
+ * starts: sigil, the first question, a spinner while the CLI works. Height
+ * matches the launcher's input row so the panel doesn't jump. */
+.tui-ask-pinned {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--_fg);
+  font-size: 15px;
+}
+
+.tui-ask-pinned-sigil {
+  color: var(--_accent);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.tui-ask-pinned-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tui-ask-pinned-spinner {
+  font-size: 15px;
+}
+
+.tui-ask {
+  overflow-y: auto;
+  padding: 10px 16px 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.tui-ask-turn + .tui-ask-turn {
+  margin-top: 12px;
+}
+
+.tui-ask-prompt {
+  color: var(--_dim);
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+}
+
+.tui-ask-prompt-sigil {
+  color: var(--_accent);
+}
+
+.tui-ask-answer {
+  color: var(--_fg);
+}
+
+.tui-ask-error {
+  color: var(--danger, #ff6b6b);
+  margin-top: 4px;
+}
+
+/* Spinner: the accent asterisk breathes (scale + glow) on top of the frame cycle. */
+.tui-ask-spinner {
+  display: inline-block;
+  min-width: 1.1em;
+  text-align: center;
+  color: var(--_accent);
+  animation: tui-ask-breathe 1.4s ease-in-out infinite;
+}
+
+@keyframes tui-ask-breathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+/* "Pondering…" row under the last prompt while nothing has streamed yet. */
+.tui-ask-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--_dim);
+  padding: 2px 0;
+}
+
+/* Shimmer: a light band sweeps across the label, Claude-style. */
+.tui-ask-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--_dim) 0%,
+    var(--_dim) 35%,
+    var(--_fg) 50%,
+    var(--_dim) 65%,
+    var(--_dim) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tui-ask-shimmer 2.2s linear infinite;
+}
+
+@keyframes tui-ask-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* Streaming cursor: soft pulse rather than a hard blink. */
+.tui-ask-cursor {
+  color: var(--_accent);
+  animation: tui-ask-pulse 1s ease-in-out infinite;
+}
+
+@keyframes tui-ask-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tui-ask-spinner,
+  .tui-ask-shimmer,
+  .tui-ask-cursor {
+    animation: none;
+  }
+  .tui-ask-shimmer {
+    color: var(--_dim);
+    background: none;
+  }
+}
+
+/* Markdown-lite blocks (parseMarkdownLite → AskMarkdown). */
+.md-p {
+  min-height: 0.7em; /* blank lines keep paragraph rhythm */
+  margin: 0 0 2px;
+  white-space: pre-wrap;
+}
+
+.md-h {
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.md-h1 {
+  font-size: 15px;
+}
+
+.md-li {
+  margin: 0 0 2px;
+  white-space: pre-wrap;
+}
+
+.md-code {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--_border);
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+.tui-ask code {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--_accent);
+}

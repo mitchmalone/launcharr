@@ -158,8 +158,9 @@ pub fn refresh(app: &AppHandle) {
 
 /// Bundled reference scripts: installed on startup if absent, never overwritten — they're
 /// the user's to edit (that's the point).
+// `lorem.py` left the bundle 2026-08-17: `lorem` is a built-in now (five volumes,
+// semi-random) and built-ins win the trigger, so the script would only shadow itself.
 const BUNDLED: &[(&str, &str)] = &[
-    ("lorem.py", include_str!("../scripts/lorem.py")),
     // NB: not "json.py" — a script named after a python stdlib module shadows it for every
     // script in the dir (the test suite caught exactly that).
     ("json-format.py", include_str!("../scripts/json-format.py")),

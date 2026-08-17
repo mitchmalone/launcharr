@@ -1,5 +1,6 @@
 import { type AwakeUntil, parseAwakeArgs, untilLabel } from './awake'
 import { searchEmoji } from './emoji'
+import { LOREM_VOLUMES, type LoremVolume } from './lorem'
 import { fuzzyMatch } from './matcher'
 import { evaluate, formatResult } from './math'
 import { MAX_RESULTS, rank } from './ranking'
@@ -39,6 +40,8 @@ export type RowEnter =
   | { kind: 'open-panel'; panel: string }
   | { kind: 'awake-arm'; until: AwakeUntil }
   | { kind: 'awake-release' }
+  /** Built-in `lorem`: generate at Enter time (fresh every copy) and confirm with a toast. */
+  | { kind: 'lorem'; volume: LoremVolume }
 
 /** ⌥⏎ per item kind: apps reveal in Finder, links copy their URL. */
 function itemAlt(item: IndexItem): Row['alt'] {
@@ -297,6 +300,20 @@ export function clipRows(args: string, clips: Clip[]): Row[] {
     glyph: '⧉',
     enter: { kind: 'copy-clip', content: clip.content },
     alt: { label: 'delete', enter: { kind: 'delete-clip', id: clip.id } },
+  }))
+}
+
+/** `lorem` trigger: the five volumes, in the ticket's order. Args are ignored on
+ * purpose — the volume is a choice, not a number to remember. */
+export function loremRows(): Row[] {
+  return LOREM_VOLUMES.map((v) => ({
+    key: `lorem-${v.id}`,
+    title: v.label,
+    hint: `${v.hint} · copy`,
+    positions: [],
+    icon: null,
+    glyph: '¶',
+    enter: { kind: 'lorem', volume: v.id },
   }))
 }
 

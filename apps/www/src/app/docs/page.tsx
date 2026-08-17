@@ -43,17 +43,17 @@ function Note({
 }
 
 const MANIFEST_JSON = `{
-  "trigger": "lorem",
-  "name": "Lorem ipsum",
-  "description": "Generate placeholder text"
+  "trigger": "uuid",
+  "name": "UUID",
+  "description": "Generate a v4 UUID"
 }`
 
 const QUERY_JSON = `{
   "items": [
     {
-      "title": "Copy 3 paragraphs of lorem ipsum",
-      "subtitle": "1,338 chars",
-      "action": { "type": "copy", "value": "Lorem ipsum dolor…" }
+      "title": "Copy 3f9c1e2a-7b4d-4c8e-9a1f-2d6b8e4c0a55",
+      "subtitle": "v4 · fresh every keystroke",
+      "action": { "type": "copy", "value": "3f9c1e2a-7b4d-4c8e-9a1f-2d6b8e4c0a55" }
     }
   ]
 }`
@@ -99,7 +99,6 @@ export default function Docs() {
           <code className={CODE}>~/.config/launcharr/scripts/</code> and its
           trigger word joins the launcher grammar — no restart, no store, no
           manifest file. Any language. The bundled scripts (
-          <code className={CODE}>lorem</code>,{' '}
           <code className={CODE}>json</code>, <code className={CODE}>ip</code>)
           are reference implementations and yours to edit.
         </p>
