@@ -36,6 +36,8 @@ export type Config = {
   colorLoupe: boolean
   /** Loupe magnification, 2–8 (default 4). */
   colorLoupeZoom: number
+  /** Loupe diameter in points (default 352). */
+  colorLoupeSize: number
 }
 
 export type BarConfig = {

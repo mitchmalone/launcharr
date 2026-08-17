@@ -17,15 +17,19 @@ use tauri::{AppHandle, Manager};
 /// loupe (loupe.rs, 2×). Toggle on but not granted: prompt once, sampler meanwhile.
 pub fn pick(app: &AppHandle) {
     let handle = app.clone();
-    let (loupe_wanted, zoom) = {
+    let (loupe_wanted, zoom, size) = {
         let config = app.state::<crate::AppState>();
         let config = config.config.read().unwrap();
-        (config.color_loupe, config.color_loupe_zoom)
+        (
+            config.color_loupe,
+            config.color_loupe_zoom,
+            config.color_loupe_size,
+        )
     };
     let _ = app.run_on_main_thread(move || {
         if loupe_wanted {
             if crate::loupe::capture_allowed() {
-                match crate::loupe::show(&handle, zoom) {
+                match crate::loupe::show(&handle, zoom, size) {
                     Ok(()) => return,
                     Err(e) => eprintln!(
                         "[launcharr] loupe failed, falling back to the system sampler: {e}"

@@ -69,6 +69,8 @@ const K_CG_BITMAP_RGBA8: u32 = 1 | (4 << 12);
 
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
+    fn CGWindowListCopyWindowInfo(option: u32, relative_to: u32) -> *mut c_void;
+    fn CFRelease(cf: *const c_void);
     fn CGPreflightScreenCaptureAccess() -> bool;
     fn CGRequestScreenCaptureAccess() -> bool;
     fn CGDisplayCreateImageForRect(display: u32, rect: CGRect) -> CGImageRef;
@@ -88,6 +90,50 @@ extern "C" {
     ) -> CGContextRef;
     fn CGContextDrawImage(ctx: CGContextRef, rect: CGRect, image: CGImageRef);
     fn CGContextRelease(ctx: CGContextRef);
+}
+
+/// Log the on-screen windows whose owners opted out of screen capture
+/// (`sharingType = None`, e.g. Electron `setContentProtection`) — those render black
+/// in every capture, ours included, and the log line is the only way to know why.
+fn log_protected_windows() {
+    const ON_SCREEN_ONLY: u32 = 1 << 0;
+    // SAFETY: CF/NS bridging of a CFArray of CFDictionaries; released after use.
+    unsafe {
+        let list = CGWindowListCopyWindowInfo(ON_SCREEN_ONLY, 0);
+        if list.is_null() {
+            return;
+        }
+        let array: &objc2_foundation::NSArray<objc2_foundation::NSDictionary> = &*(list as *const _);
+        let mut protected: Vec<String> = Vec::new();
+        let owner_key = objc2_foundation::NSString::from_str("kCGWindowOwnerName");
+        let sharing_key = objc2_foundation::NSString::from_str("kCGWindowSharingState");
+        let layer_key = objc2_foundation::NSString::from_str("kCGWindowLayer");
+        for dict in array.iter() {
+            let dict: &objc2_foundation::NSDictionary<objc2_foundation::NSString, objc2::runtime::AnyObject> = &*(&*dict as *const _ as *const _);
+            let Some(sharing) = dict.objectForKey(&sharing_key) else { continue };
+            let sharing: i64 = objc2::msg_send![&*sharing, longLongValue];
+            let layer: i64 = dict
+                .objectForKey(&layer_key)
+                .map(|l| objc2::msg_send![&*l, longLongValue])
+                .unwrap_or(0);
+            if sharing == 0 && layer == 0 {
+                if let Some(owner) = dict.objectForKey(&owner_key) {
+                    let owner: &objc2_foundation::NSString = &*(&*owner as *const _ as *const _);
+                    let name = owner.to_string();
+                    if !protected.contains(&name) {
+                        protected.push(name);
+                    }
+                }
+            }
+        }
+        CFRelease(list);
+        if !protected.is_empty() {
+            eprintln!(
+                "[launcharr loupe] windows that block screen capture (render black): {}",
+                protected.join(", ")
+            );
+        }
+    }
 }
 
 /// Screen Recording granted to launcharr?
@@ -144,7 +190,7 @@ fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame, u32)>
 /// Show the loupe over the mouse's screen. Builds the window on first use, then
 /// hides/reuses (destroying nspanel-converted windows aborts — JOURNAL 2026-08-16).
 /// Main thread only (NSScreen/NSEvent).
-pub fn show(app: &AppHandle, zoom: u32) -> CmdResult<()> {
+pub fn show(app: &AppHandle, zoom: u32, size: u32) -> CmdResult<()> {
     let mtm = MainThreadMarker::new()
         .ok_or_else(|| CmdError::Internal("loupe::show off the main thread".into()))?;
     let ((mx, my), (sx, sy, sw, sh), display) =
@@ -203,10 +249,14 @@ pub fn show(app: &AppHandle, zoom: u32) -> CmdResult<()> {
         let _: () = objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, setSharingType: 0usize];
     }
     *SHOWN.lock().unwrap() = Some(Shown { display });
+    log_protected_windows();
 
     // Where the mouse is in the webview's coordinates (so the loupe draws before
     // the first mousemove) plus the configured zoom.
-    let _ = window.emit("loupe-open", (mx - sx, my - sy, zoom.clamp(2, 8)));
+    let _ = window.emit(
+        "loupe-open",
+        (mx - sx, my - sy, zoom.clamp(2, 8), size.clamp(120, 600)),
+    );
 
     let panel = app
         .get_webview_panel(LABEL)

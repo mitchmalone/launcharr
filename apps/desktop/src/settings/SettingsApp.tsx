@@ -265,6 +265,17 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
                   {z}×
                 </option>
               ))}
+            </select>{' '}
+            Size
+            <select
+              value={String(config.colorLoupeSize)}
+              onChange={(e) => set('colorLoupeSize', Number(e.target.value))}
+            >
+              {[176, 264, 352, 440, 528].map((d) => (
+                <option key={d} value={d}>
+                  {d}px
+                </option>
+              ))}
             </select>
           </label>
         )}

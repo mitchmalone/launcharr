@@ -14,15 +14,15 @@ import './loupe.css'
  * moves bytes.
  */
 
-/** Loupe diameter in points. Zoom (one screen point → N loupe points) arrives with
- * `loupe-open` from config (`colorLoupeZoom`, default 4 — 2 wasn't enough). */
-const DIAMETER = 264 // 176 was too small to aim (Mitch, 2026-08-17)
+/** Zoom (one screen point → N loupe points) and diameter (points) arrive with
+ * `loupe-open` from config (`colorLoupeZoom` default 4, `colorLoupeSize` default 352). */
 
 const hex2 = (n: number) => n.toString(16).padStart(2, '0').toUpperCase()
 
 function Loupe() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const zoom = useRef(4)
+  const [diameter, setDiameter] = useState(352)
   const [hex, setHex] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
@@ -30,61 +30,64 @@ function Loupe() {
   const wanted = useRef<{ x: number; y: number } | null>(null)
   const drawn = useRef<{ x: number; y: number } | null>(null)
 
-  const paint = useCallback((bytes: ArrayBuffer) => {
-    const view = new DataView(bytes)
-    const w = view.getUint32(0, true)
-    const h = view.getUint32(4, true)
-    if (w === 0 || h === 0) return
-    const rgba = new Uint8ClampedArray(bytes, 8, w * h * 4)
-    const image = new ImageData(rgba, w, h)
+  const paint = useCallback(
+    (bytes: ArrayBuffer) => {
+      const view = new DataView(bytes)
+      const w = view.getUint32(0, true)
+      const h = view.getUint32(4, true)
+      if (w === 0 || h === 0) return
+      const rgba = new Uint8ClampedArray(bytes, 8, w * h * 4)
+      const image = new ImageData(rgba, w, h)
 
-    // Pixel under the cursor = the centre of the region.
-    const cx = Math.floor(w / 2)
-    const cy = Math.floor(h / 2)
-    const at = (cy * w + cx) * 4
-    setHex(`#${hex2(rgba[at]!)}${hex2(rgba[at + 1]!)}${hex2(rgba[at + 2]!)}`)
+      // Pixel under the cursor = the centre of the region.
+      const cx = Math.floor(w / 2)
+      const cy = Math.floor(h / 2)
+      const at = (cy * w + cx) * 4
+      setHex(`#${hex2(rgba[at]!)}${hex2(rgba[at + 1]!)}${hex2(rgba[at + 2]!)}`)
 
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const dpr = window.devicePixelRatio || 1
-    const px = Math.round(DIAMETER * dpr)
-    if (canvas.width !== px) {
-      canvas.width = px
-      canvas.height = px
-    }
-    let scratch = scratchRef.current
-    if (!scratch) {
-      scratch = document.createElement('canvas')
-      scratchRef.current = scratch
-    }
-    if (scratch.width !== w || scratch.height !== h) {
-      scratch.width = w
-      scratch.height = h
-    }
-    scratch.getContext('2d')!.putImageData(image, 0, 0)
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const dpr = window.devicePixelRatio || 1
+      const px = Math.round(diameter * dpr)
+      if (canvas.width !== px) {
+        canvas.width = px
+        canvas.height = px
+      }
+      let scratch = scratchRef.current
+      if (!scratch) {
+        scratch = document.createElement('canvas')
+        scratchRef.current = scratch
+      }
+      if (scratch.width !== w || scratch.height !== h) {
+        scratch.width = w
+        scratch.height = h
+      }
+      scratch.getContext('2d')!.putImageData(image, 0, 0)
 
-    const ctx = canvas.getContext('2d')!
-    ctx.clearRect(0, 0, px, px)
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(px / 2, px / 2, px / 2 - 1, 0, Math.PI * 2)
-    ctx.clip()
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(scratch, 0, 0, w, h, 0, 0, px, px)
-    // Sampled-pixel marker: one screen pixel scaled by the zoom.
-    const cell = (px / w) | 0 || 1
-    ctx.lineWidth = 1 * dpr
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)'
-    ctx.strokeRect(
-      px / 2 - cell / 2 - dpr,
-      px / 2 - cell / 2 - dpr,
-      cell + 2 * dpr,
-      cell + 2 * dpr,
-    )
-    ctx.strokeStyle = 'rgba(255,255,255,0.95)'
-    ctx.strokeRect(px / 2 - cell / 2, px / 2 - cell / 2, cell, cell)
-    ctx.restore()
-  }, [])
+      const ctx = canvas.getContext('2d')!
+      ctx.clearRect(0, 0, px, px)
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(px / 2, px / 2, px / 2 - 1, 0, Math.PI * 2)
+      ctx.clip()
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(scratch, 0, 0, w, h, 0, 0, px, px)
+      // Sampled-pixel marker: one screen pixel scaled by the zoom.
+      const cell = (px / w) | 0 || 1
+      ctx.lineWidth = 1 * dpr
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)'
+      ctx.strokeRect(
+        px / 2 - cell / 2 - dpr,
+        px / 2 - cell / 2 - dpr,
+        cell + 2 * dpr,
+        cell + 2 * dpr,
+      )
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'
+      ctx.strokeRect(px / 2 - cell / 2, px / 2 - cell / 2, cell, cell)
+      ctx.restore()
+    },
+    [diameter],
+  )
 
   // One capture in flight at a time; the newest wanted position wins.
   const pump = useCallback(() => {
@@ -101,7 +104,7 @@ function Loupe() {
     invoke<ArrayBuffer>('loupe_capture', {
       x: target.x,
       y: target.y,
-      size: DIAMETER / zoom.current,
+      size: diameter / zoom.current,
     })
       .then((bytes) => {
         drawn.current = target
@@ -112,12 +115,13 @@ function Loupe() {
         inFlight.current = false
         requestAnimationFrame(pump)
       })
-  }, [paint])
+  }, [paint, diameter])
 
   useEffect(() => {
-    const un = listen<[number, number, number]>('loupe-open', (e) => {
+    const un = listen<[number, number, number, number]>('loupe-open', (e) => {
       const p = { x: e.payload[0], y: e.payload[1] }
       zoom.current = e.payload[2] || 4
+      setDiameter(e.payload[3] || 352)
       drawn.current = null
       setHex(null)
       wanted.current = p
@@ -162,10 +166,10 @@ function Loupe() {
         <div
           className="loupe"
           style={{
-            left: pos.x - DIAMETER / 2,
-            top: pos.y - DIAMETER / 2,
-            width: DIAMETER,
-            height: DIAMETER,
+            left: pos.x - diameter / 2,
+            top: pos.y - diameter / 2,
+            width: diameter,
+            height: diameter,
           }}
         >
           <canvas ref={canvasRef} className="loupe-canvas" />

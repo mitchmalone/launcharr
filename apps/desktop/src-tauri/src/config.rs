@@ -220,6 +220,8 @@ pub struct Config {
     /// Loupe magnification (one screen point → N loupe points). 2 was "not zoomed in
     /// enough" (Mitch, 2026-08-17); 4 is the default, the settings offer 2–8.
     pub color_loupe_zoom: u32,
+    /// Loupe diameter in points (default 352 — "50% larger" then some, Mitch 2026-08-17).
+    pub color_loupe_size: u32,
 }
 
 impl Default for Config {
@@ -242,6 +244,7 @@ impl Default for Config {
             desktop: serde_json::Value::Object(Default::default()),
             color_loupe: false,
             color_loupe_zoom: 4,
+            color_loupe_size: 352,
         }
     }
 }
