@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "launcharr",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "identifier": "com.mitchmalone.launcharr",
   "build": {
     "beforeDevCommand": "pnpm dev",
