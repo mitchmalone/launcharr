@@ -89,6 +89,8 @@ pub struct ScanNetwork {
 pub fn scan() -> CmdResult<Vec<ScanNetwork>> {
     let out = run("/usr/sbin/system_profiler", &["SPAirPortDataType", "-json"])
         .ok_or_else(|| CmdError::Internal("system_profiler failed to run".into()))?;
+    // Same scan carries the current SSID the bar can't otherwise see.
+    crate::bar_modules::note_scan_output(&out);
     parse_scan(&out).map_err(CmdError::Internal)
 }
 
