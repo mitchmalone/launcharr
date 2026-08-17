@@ -26,6 +26,7 @@ import type {
   BarHoverApi,
   BarSnapshot,
   BatteryDetail,
+  WifiDetail,
 } from './types'
 
 /**
@@ -384,14 +385,18 @@ export function BarBatteryCard({
       </div>
       {d.powerMode && (
         <>
-          <BarCardSection>Power profile</BarCardSection>
+          <BarCardSection>Power mode</BarCardSection>
+          {/* Read-only, so it must not read as buttons (Mitch, 2026-08-17):
+              plain text, the active mode lit, the others dim. */}
           <div className="bar-battery-modes">
-            {POWER_MODES.map(([mode, label]) => (
-              <span
-                key={label}
-                className={`bar-battery-mode ${mode === d.powerMode ? 'bar-battery-mode-on' : ''}`}
-              >
-                {label}
+            {POWER_MODES.map(([mode, label], i) => (
+              <span key={label} className="bar-battery-mode-item">
+                {i > 0 && <span className="bar-battery-mode-sep">·</span>}
+                <span
+                  className={`bar-battery-mode ${mode === d.powerMode ? 'bar-battery-mode-on' : ''}`}
+                >
+                  {label}
+                </span>
               </span>
             ))}
           </div>
@@ -573,22 +578,118 @@ export function BarAwakeCell({
 }
 
 /** SSID when online, an alarmed "Offline" when not. */
-export function BarWifiCell({
-  online,
+/**
+ * The wifi card: what `dns ⏎` shows, hanging off the cell instead (Notion
+ * "DNS → Wifi Hover", 2026-08-17). `detail` is fetched by the consumer on hover
+ * only — the desktop spawns `ipconfig`/`networksetup` then, never at 1 Hz.
+ */
+export function BarWifiCard({
+  detail,
   ssid,
+  online,
+  cardRef,
 }: {
-  online: boolean
+  detail: WifiDetail | null
   ssid: string | null
+  online: boolean
+  cardRef?: (el: HTMLElement | null) => void
 }) {
+  const d = detail
   return (
-    <BarCell
-      className={`bar-cell ${online ? '' : 'bar-danger'}`}
-      title={ssid ?? undefined}
-    >
-      {online ? <Wifi {...ICON_PROPS} /> : <WifiOff {...ICON_PROPS} />}
-      {online ? (ssid ?? 'SSID hidden') : 'Offline'}
-    </BarCell>
+    <BarCard variant="wifi" cardRef={cardRef}>
+      <div className="bar-wifi-head">
+        {online ? (
+          <Wifi size={20} strokeWidth={2.2} aria-hidden />
+        ) : (
+          <WifiOff size={20} strokeWidth={2.2} aria-hidden />
+        )}
+        <div>
+          <BarCardTitle>
+            {online ? (ssid ?? 'SSID hidden') : 'Wi-Fi offline'}
+          </BarCardTitle>
+          <div className="bar-card-dim bar-wifi-state">
+            {online ? 'connected' : 'no connection'}
+            {d?.iface ? ` · ${d.iface}` : ''}
+          </div>
+        </div>
+      </div>
+      <div className="bar-wifi-grid">
+        <Stat label="IP address" value={d ? (d.ip ?? '—') : '…'} />
+        <Stat label="Router" value={d ? (d.router ?? '—') : '…'} />
+        <Stat label="DNS" value={d ? (d.dns ?? '—') : '…'} />
+        <Stat label="Interface" value={d ? (d.iface ?? '—') : '…'} />
+      </div>
+      {d?.dns === '100.100.100.100' && (
+        <div className="bar-card-dim bar-wifi-note">
+          100.100.100.100 is Tailscale MagicDNS
+        </div>
+      )}
+      <BarCardHint>wifi ⏎ networks · dns ⏎ details</BarCardHint>
+    </BarCard>
   )
 }
 
-export type { AgentSession, BarHoverApi, BarSnapshot, BatteryDetail }
+/**
+ * The wifi cell; with `hover` it opens the wifi card (the site strip and any
+ * consumer without hover machinery get the plain cell).
+ */
+export function BarWifiCell({
+  online,
+  ssid,
+  hover,
+  detail = null,
+  cardHeight = 190,
+  onClick,
+}: {
+  online: boolean
+  ssid: string | null
+  hover?: BarHoverApi
+  detail?: WifiDetail | null
+  cardHeight?: number
+  onClick?: () => void
+}) {
+  const body = (
+    <>
+      {online ? <Wifi {...ICON_PROPS} /> : <WifiOff {...ICON_PROPS} />}
+      {online ? (ssid ?? 'SSID hidden') : 'Offline'}
+    </>
+  )
+  if (!hover) {
+    return (
+      <BarCell
+        className={`bar-cell ${online ? '' : 'bar-danger'}`}
+        title={ssid ?? undefined}
+      >
+        {body}
+      </BarCell>
+    )
+  }
+  return (
+    <BarHoverCell
+      id="wifi"
+      cardHeight={cardHeight}
+      hover={hover}
+      className={`bar-cell ${online ? '' : 'bar-danger'}`}
+      wrapperClassName="bar-wifi"
+      onClick={onClick}
+      card={
+        <BarWifiCard
+          detail={detail}
+          ssid={ssid}
+          online={online}
+          cardRef={hover.cardRef}
+        />
+      }
+    >
+      {body}
+    </BarHoverCell>
+  )
+}
+
+export type {
+  AgentSession,
+  BarHoverApi,
+  BarSnapshot,
+  BatteryDetail,
+  WifiDetail,
+}

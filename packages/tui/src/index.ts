@@ -66,6 +66,7 @@ export {
   BarClock,
   BarFrontApp,
   BarHoverCell,
+  BarWifiCard,
   BarWifiCell,
   BarWorkspaces,
   ICON_PROPS,
@@ -96,4 +97,5 @@ export type {
   BarSnapshot,
   BarZones,
   BatteryDetail,
+  WifiDetail,
 } from './bar/types'

@@ -528,11 +528,18 @@ pub fn open_path(target: String) -> CmdResult<()> {
         }
         // The same curated pane table the launcher indexes — one source of truth
         // for deep links, even for a one-off caller like the bar.
-        "battery-settings" => crate::settings_panes::SETTINGS_PANES
-            .iter()
-            .find(|(name, _)| *name == "Battery")
-            .map(|(_, id)| std::path::PathBuf::from(crate::settings_panes::deep_link(id)))
-            .ok_or_else(|| CmdError::Internal("no Battery settings pane".into()))?,
+        "battery-settings" | "wifi-settings" => {
+            let pane = if target == "battery-settings" {
+                "Battery"
+            } else {
+                "Wi-Fi"
+            };
+            crate::settings_panes::SETTINGS_PANES
+                .iter()
+                .find(|(name, _)| *name == pane)
+                .map(|(_, id)| std::path::PathBuf::from(crate::settings_panes::deep_link(id)))
+                .ok_or_else(|| CmdError::Internal(format!("no {pane} settings pane")))?
+        }
         other => return Err(CmdError::Internal(format!("unknown open target: {other}"))),
     };
     std::process::Command::new("open").arg(path).spawn()?;

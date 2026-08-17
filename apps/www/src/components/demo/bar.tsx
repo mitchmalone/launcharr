@@ -12,7 +12,7 @@ import {
 } from '@launcharr/tui'
 import { useEffect, useState } from 'react'
 
-import { demoSnapshot } from '@/lib/demo-data'
+import { WIFI, demoSnapshot } from '@/lib/demo-data'
 
 import { useWebBarHover } from './bar-hover'
 
@@ -69,6 +69,16 @@ export function DemoBar({
             key="wifi"
             online={snap.wifi.online}
             ssid={snap.wifi.ssid}
+            hover={hover}
+            // The card is the shipping component; only the addresses are fake.
+            detail={{
+              iface: WIFI.status.iface,
+              online: snap.wifi.online,
+              ssid: snap.wifi.ssid,
+              ip: WIFI.status.ip,
+              router: WIFI.status.router,
+              dns: WIFI.status.dns,
+            }}
           />,
           <BarBatteryCell
             key="battery"

@@ -18,6 +18,17 @@ export interface AgentSession {
   tmuxWindowName: string | null
 }
 
+/** What the wifi hover card shows — mirrors WifiStatus in wifi.rs (the same
+ * command feeds `wifi ⏎` and `dns ⏎`); fetched by the consumer on hover only. */
+export interface WifiDetail {
+  iface: string | null
+  online: boolean
+  ssid: string | null
+  ip: string | null
+  router: string | null
+  dns: string | null
+}
+
 /** Mirrors BatteryDetail in battery.rs — every field optional by design. */
 export interface BatteryDetail {
   pct: number | null

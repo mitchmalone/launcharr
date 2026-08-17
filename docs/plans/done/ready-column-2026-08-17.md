@@ -89,6 +89,14 @@ Shortcuts tab, flesh out About).
 - `lorem` must confirm the keyword first → `lorem ⏎` opens the volume menu.
 - Built-ins fuzzy-match (`lor` → Lorem ipsum): `builtin` item kind in core, items in App.
 
+## Round 2 (Notion "Battery hover feedback", "DNS → Wifi Hover")
+
+- `BarWifiCard` + `BarWifiCell` gains `hover`/`detail` (`WifiDetail` mirrors
+  `WifiStatus`), desktop fetches `wifi_status` on hover only, `open_path wifi-settings`
+  on click; www demo wires the same card with its fake addresses.
+- Cards: `top: 100% + 10px`, padding 14/16, grid gaps 6/14; battery power mode → text
+  (active accent, others dim, dots between).
+
 ## Out of scope
 
 - Color history / non-HEX formats (ticket open questions → HEX now, revisit on use)

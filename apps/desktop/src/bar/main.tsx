@@ -18,6 +18,7 @@ import {
   BarWifiCell,
   BarWorkspaces,
   type BatteryDetail,
+  type WifiDetail,
   formatBarClock,
 } from '@launcharr/tui'
 import '@launcharr/tui/bar.css'
@@ -122,6 +123,23 @@ function useSnapshot(): [
   return [snap, now, patch]
 }
 
+/** Wifi detail (IP/router/DNS — what `dns ⏎` shows) spawns `ipconfig` and
+ * friends, so it is fetched on hover only, like the battery detail below. */
+function useWifiDetail(open: boolean): WifiDetail | null {
+  const [detail, setDetail] = useState<WifiDetail | null>(null)
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    invoke<WifiDetail>('wifi_status')
+      .then((d) => live && setDetail(d))
+      .catch(console.error)
+    return () => {
+      live = false
+    }
+  }, [open])
+  return open ? detail : null
+}
+
 /** Battery detail is slow (spawns `ioreg` + `pmset`), so it is fetched on hover
  * only — never on the 1 Hz snapshot path. */
 function useBatteryDetail(open: boolean): BatteryDetail | null {
@@ -162,6 +180,7 @@ function BarWindow() {
   // shares it (see hover.ts).
   const hover = useBarHover()
   const batteryDetail = useBatteryDetail(hover.hovered === 'battery')
+  const wifiDetail = useWifiDetail(hover.hovered === 'wifi')
   const awakeStatus = useAwakeStatus(hover.hovered === 'awake')
 
   // Primary awake-trigger watcher: evaluate on each Rust-pushed snapshot
@@ -225,6 +244,13 @@ function BarWindow() {
             key={id}
             online={snap!.wifi.online}
             ssid={snap!.wifi.ssid}
+            hover={hover}
+            detail={wifiDetail}
+            onClick={() =>
+              invoke('open_path', { target: 'wifi-settings' }).catch(
+                console.error,
+              )
+            }
           />
         )
       case 'awake': {
