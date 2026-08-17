@@ -95,15 +95,22 @@ export function Slider({
   )
 }
 
-/** Bordered button row (DHCP | Cloudflare | Google | Custom). */
+/** Bordered button row (DHCP | Cloudflare | Google | Custom). `cursor` is an
+ * optional keyboard highlight distinct from the active value (the AeroSpace
+ * strip: active = focused workspace, cursor = where ←→ is); `dim` greys an
+ * option (empty workspace). */
 export function SegmentedControl<T extends string>({
   options,
   value,
+  cursor,
   onChange,
+  onHover,
 }: {
-  options: readonly { value: T; label: ReactNode }[]
+  options: readonly { value: T; label: ReactNode; dim?: boolean }[]
   value: T
+  cursor?: T
   onChange: (value: T) => void
+  onHover?: (value: T) => void
 }) {
   return (
     <div className="tui-segmented" role="radiogroup">
@@ -113,8 +120,18 @@ export function SegmentedControl<T extends string>({
           type="button"
           role="radio"
           aria-checked={opt.value === value}
-          className={`tui-segment ${opt.value === value ? 'tui-segment-active' : ''}`}
+          className={[
+            'tui-segment',
+            opt.value === value ? 'tui-segment-active' : '',
+            cursor !== undefined && opt.value === cursor
+              ? 'tui-segment-cursor'
+              : '',
+            opt.dim ? 'tui-segment-dim' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           onClick={() => onChange(opt.value)}
+          onMouseEnter={onHover ? () => onHover(opt.value) : undefined}
         >
           {opt.label}
         </button>

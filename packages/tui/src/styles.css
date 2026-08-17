@@ -358,6 +358,14 @@
   border-color: var(--_frame);
 }
 
+.tui-segment-cursor {
+  border-color: var(--_accent);
+}
+
+.tui-segment-dim {
+  color: var(--_dim);
+}
+
 /* ---- Meter ----------------------------------------------------------- */
 
 .tui-meter {
