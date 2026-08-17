@@ -356,24 +356,19 @@
   text-align: center;
 }
 
+/* States (Mitch, 2026-08-17): active = accent border; cursor/hover = solid
+   fill; both = fill + accent border. Text is never restyled. */
 .tui-segmented .tui-segment-active {
-  background: var(--_selected);
-  border-color: var(--_frame);
+  border-color: var(--_accent);
 }
 
-/* With a keyboard cursor present, "active" steps back to accent text so the
-   fill means one thing only (where the cursor is). */
-.tui-segmented-cursored .tui-segment-active {
-  background: transparent;
-  color: var(--_accent);
-  font-weight: 700;
-}
-
-/* Keyboard cursor = the same selected fill every list row uses. Declared last
-   at equal specificity so it wins over the active look on the same segment. */
 .tui-segmented .tui-segment-cursor {
   background: var(--_selected);
-  border-color: var(--_frame);
+  border-color: transparent;
+}
+
+.tui-segmented .tui-segment-active.tui-segment-cursor {
+  border-color: var(--_accent);
 }
 
 .tui-segmented .tui-segment-dim {
