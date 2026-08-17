@@ -217,6 +217,35 @@ pub async fn audio_set_default(id: u32, input: bool) -> CmdResult<()> {
     crate::audio::set_default_device(id, input)
 }
 
+/// Desktop layer (v0.4, DECISIONS 2026-08-17). async: `defaults`/`aerospace`/`brew`
+/// subprocesses and `--version` probes stay off main. TypeScript decides, Rust does.
+#[tauri::command]
+pub async fn desktop_status() -> crate::desktop::DesktopStatus {
+    crate::desktop::status()
+}
+
+#[tauri::command]
+pub async fn desktop_apply(
+    req: crate::desktop::DesktopApply,
+) -> CmdResult<crate::desktop::ApplyResult> {
+    crate::desktop::apply(req)
+}
+
+#[tauri::command]
+pub async fn desktop_adopt() -> CmdResult<String> {
+    crate::desktop::adopt()
+}
+
+#[tauri::command]
+pub async fn desktop_install(app: AppHandle, dep: crate::deps::Dep) -> CmdResult<()> {
+    crate::deps::install(app, dep)
+}
+
+#[tauri::command]
+pub async fn desktop_corner_radius(radius: Option<f64>) -> CmdResult<()> {
+    crate::desktop::set_corner_radius(radius)
+}
+
 /// Bar workspace cell click → focus that aerospace workspace. async: see above.
 #[tauri::command]
 pub async fn bar_switch_workspace(ws: String) -> CmdResult<()> {
@@ -459,8 +488,8 @@ pub fn open_path(target: String) -> CmdResult<()> {
 
 /// Open (or focus) the settings window.
 #[tauri::command]
-pub fn open_settings(app: AppHandle) -> CmdResult<()> {
-    crate::settings_window::open(&app)
+pub fn open_settings(app: AppHandle, tab: Option<String>) -> CmdResult<()> {
+    crate::settings_window::open_tab(&app, tab.as_deref())
 }
 
 /// ⌥⏎ on an app: dismiss and reveal the bundle in Finder.

@@ -74,6 +74,13 @@ announcing anywhere is a deliberate, separate decision.
 No in-app updater, ever (zero-network invariant). Never instruct users to strip
 quarantine.
 
+**Dependencies (v0.4, DECISIONS 2026-08-17):** the cask declares
+`depends_on cask: "nikitabobko/tap/aerospace"` — a structural line in
+`Casks/launcharr.rb` that CI's version/sha `sed` leaves alone; edit it in the tap when the
+dependency changes. JankyBorders is **not** a dependency (GPL-3, opt-in): the app installs
+it via `brew install borders` from Settings → Desktop when asked. dmg/zip installs get the
+same in-app install offer for AeroSpace. Nothing is ever vendored.
+
 ## One-time setup
 
 - [x] **Developer ID cert** — in the keychain (`security find-identity -v -p codesigning`).

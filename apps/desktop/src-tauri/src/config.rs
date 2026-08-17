@@ -209,6 +209,10 @@ pub struct Config {
     pub bar: BarConfig,
     /// Agent monitoring + usage monitor (all off by default).
     pub agents: AgentsConfig,
+    /// The desktop layer (v0.4): tiling via AeroSpace, JankyBorders, corner radius.
+    /// Opaque to Rust — the shape and defaults live in `@launcharr/core/desktop`;
+    /// desktop.rs only receives rendered bytes and argv.
+    pub desktop: serde_json::Value,
 }
 
 impl Default for Config {
@@ -228,6 +232,7 @@ impl Default for Config {
             themes: std::collections::HashMap::new(),
             bar: BarConfig::default(),
             agents: AgentsConfig::default(),
+            desktop: serde_json::Value::Object(Default::default()),
         }
     }
 }

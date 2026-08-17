@@ -1,3 +1,4 @@
+import type { DesktopConfig } from '@launcharr/core/desktop'
 import type { Link } from '@launcharr/core/types'
 import type { BarModule, BarZones } from '@launcharr/tui'
 
@@ -27,6 +28,9 @@ export type Config = {
   bar: BarConfig
   /** Agent monitoring + usage monitor; all off by default. */
   agents: AgentsConfig
+  /** The desktop layer (v0.4): AeroSpace tiling, JankyBorders, corner radius. Rust
+   * persists it opaquely; read it through `normalizeDesktop` (partial/absent → defaults). */
+  desktop: Partial<DesktopConfig> | undefined
 }
 
 export type BarConfig = {

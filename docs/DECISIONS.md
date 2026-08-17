@@ -5,6 +5,39 @@
 
 ---
 
+### 2026-08-17 · v0.4 desktop layer: AeroSpace as a Homebrew dependency, JankyBorders opt-in, never vendored; corner radius via hidden default; CornerFix rejected
+
+- **Decision (delivery).** AeroSpace ships as a **cask dependency** (`depends_on cask:
+"nikitabobko/tap/aerospace"`), not a vendored binary — this supersedes the "vendor a
+  pinned release binary under launcharr's own directory" clause of 2026-08-15. Zip installs
+  get the same via a one-click `brew install` from Settings (or the command shown when
+  Homebrew is absent). launcharr downloads nothing itself: zero-network holds.
+- **Decision (borders).** JankyBorders is **GPL-3.0** (verified); AeroSpace MIT; launcharr
+  MIT. Distributing the `borders` binary inside `launcharr.app` is GPL distribution (grey
+  at best); porting its code makes launcharr a derivative (GPL — dealbreaker). Installing
+  via Homebrew and spawning it as a process triggers neither. So: borders is an **opt-in
+  Homebrew install from Settings → Desktop**, supervised by launcharr, never vendored,
+  never ported. Its config is CLI flags rendered from launcharr's theme, no `bordersrc`.
+  No MIT alternative exists that is maintained (yabai's pre-v6 border code is the only
+  fork candidate; not worth owning a SkyLight hack).
+- **Decision (config ownership).** launcharr's `config.json` is the only surface;
+  `aerospace.toml` is generated from a pure renderer in `packages/core` and reloaded live.
+  Few knobs (modifier, gaps, workspace count, float rules, border width, corner radius).
+  `desktop.tiling.managed = false` is the escape hatch **and** the adopt-or-stop
+  migration answer for existing installs (adopt = backup + overwrite).
+- **Decision (corner radius).** System window corner radius is a look-and-feel knob via
+  the hidden AppKit global `defaults write -g NSConvolutionOverride1 -float N` (no SIP,
+  no injection; verified 2026-08-17 on 27.0 — `0` reads as unset, min 1; per-app on
+  relaunch; Finder/Quick Look exceptions). Undocumented → the UI says so and fails
+  visibly. **CornerFix** (makalin, MIT) and macos-corner-fix (m4rkw) are dylib-injection /
+  SIP-off tools — rejected outright; incompatible with zero-permissions and with asking
+  users to weaken system security for cosmetics.
+- **Decision (Mitch's machine).** Hand-installed AeroSpace/borders/aerospace-swipe come
+  off before installing 0.4; only launcharr-managed versions from then on. Dotfiles keep
+  the toml/bordersrc as historical templates but stop deploying them.
+- **New IPC** (thin, plain-function-backed): `desktop_status`, `desktop_apply`,
+  `desktop_install`, `desktop_corner_radius`. Plan: `plans/active/v0.4-desktop-aerospace-borders.md`.
+
 ### 2026-08-16 · awake B–D: sessions split Rust-mechanical / TS-opinionated; one readings command
 
 - **Decision.** A keep-awake session's _semantics_ live in TypeScript: `@launcharr/core/awake`

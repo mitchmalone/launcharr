@@ -441,20 +441,14 @@ fn parse_lsappinfo_name(out: &str) -> Option<String> {
     (!name.is_empty()).then(|| name.to_owned())
 }
 
-/// The aerospace CLI, wherever Homebrew put it. PATH first for dev shells.
+/// The aerospace CLI, wherever Homebrew put it (one locator for the bar and the
+/// desktop layer: deps.rs).
 fn aerospace(args: &[&str]) -> Option<String> {
-    for bin in [
-        "aerospace",
-        "/opt/homebrew/bin/aerospace",
-        "/usr/local/bin/aerospace",
-    ] {
-        if let Ok(out) = Command::new(bin).args(args).output() {
-            if out.status.success() {
-                return Some(String::from_utf8_lossy(&out.stdout).into_owned());
-            }
-        }
-    }
-    None
+    let bin = crate::deps::locate(crate::deps::Dep::Aerospace.binary())?;
+    let out = Command::new(bin).args(args).output().ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 fn parse_lines(out: &str) -> Vec<String> {

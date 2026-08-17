@@ -23,6 +23,8 @@ mod clipboard;
 mod commands;
 mod config;
 mod coreaudio;
+mod deps;
+mod desktop;
 mod error;
 mod favicon;
 mod frecency;
@@ -107,6 +109,11 @@ pub fn run() {
             commands::usage_status,
             ask::ask,
             commands::agent_jump,
+            commands::desktop_status,
+            commands::desktop_apply,
+            commands::desktop_adopt,
+            commands::desktop_install,
+            commands::desktop_corner_radius,
             commands::wifi_status,
             commands::wifi_known_networks,
             commands::wifi_connect,
@@ -201,6 +208,12 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running launcharr");
+        .build(tauri::generate_context!())
+        .expect("error while building launcharr")
+        .run(|_app, event| {
+            // Orderly quit takes the supervised `borders` child with us (desktop.rs).
+            if let tauri::RunEvent::Exit = event {
+                desktop::shutdown();
+            }
+        });
 }

@@ -132,7 +132,14 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   NSWorkspace observer for event-driven front-app; multi-display fix (JOURNAL
   2026-08-15 — notch detection assumes NSScreen order matches monitors, revisit
   together); placement config (notched profiles shipped, plans/done/bar-zones-and-arranger.md).
-- Aerospace vendored wrap + adopt-or-stop migration (B3); module API (B4 — agent bar
+- **v0.4 desktop layer** (plans/active/v0.4-desktop-aerospace-borders.md, DECISIONS
+  2026-08-17) — **built 2026-08-17, awaiting hands + release**: `@launcharr/core/desktop`
+  renders `aerospace.toml` + borders flags (tests), Rust `deps.rs`/`desktop.rs` (locate,
+  `brew install` streamed, atomic write + `reload-config`, borders child supervision,
+  `NSConvolutionOverride1`), Settings → **Desktop** tab (knobs, install rows, adopt-or-
+  leave, corner slider), tap cask `depends_on` aerospace (pushed), dotfiles retired.
+  Five `desktop_*` IPC commands. Was "B3 vendored wrap" — vendoring dropped (GPL +
+  zero-network). Module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
@@ -140,6 +147,12 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   `secret` both fail for `shared/trmnl/api_key`) — module lights up when healed.
 
 ## Blocked / waiting on Mitch
+
+- **v0.4 desktop hands-check**: settings opened on Desktop with the adopt prompt (your
+  toml is foreign) → "use launcharr's" (backs up to `aerospace.toml.bak-launcharr`),
+  tiling reloads; Window borders → "install JankyBorders via Homebrew" (borders was
+  uninstalled 2026-08-17) → toggle on → retints on theme switch; corner slider → relaunch
+  TextEdit. Then `scripts/release.sh 0.4.0`.
 
 - Panel focus checklist (only hands): summon → `wifi ⏎` → connect → Esc → Esc → focus
   restored exactly, incl. over a full-screen app.

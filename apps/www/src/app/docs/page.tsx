@@ -70,7 +70,13 @@ const CONFIG_JSON = `{
       "right":  [{ "id": "wifi" }, { "id": "trmnl" }, { "id": "battery" }]
     }
   },
-  "agents": { "askMode": false, "askProvider": "claude" }
+  "agents": { "askMode": false, "askProvider": "claude" },
+  "desktop": {
+    "tiling":  { "enabled": true, "managed": true, "modifier": "alt", "gaps": 8,
+                 "workspaces": 6, "float": ["com.raycast.macos"] },
+    "borders": { "enabled": false, "width": 5, "style": "round" },
+    "cornerRadius": null
+  }
 }`
 
 const UNINSTALL = `$ rm -rf /Applications/launcharr.app \\
@@ -169,6 +175,18 @@ export default function Docs() {
             shape; without one, the main layout applies with the center folded
             into the head of the right zone.
           </p>
+          <p className={`m-0 mt-5 max-w-[70ch] ${PROSE}`}>
+            <code className={CODE}>desktop</code> is the tiling layer: launcharr
+            renders{' '}
+            <code className={CODE}>~/.config/aerospace/aerospace.toml</code>{' '}
+            from these few knobs and reloads AeroSpace live. Set{' '}
+            <code className={CODE}>tiling.managed</code> to{' '}
+            <code className={CODE}>false</code> and the file is yours —
+            launcharr never writes it again. Borders (JankyBorders) are opt-in
+            from Settings → Desktop and take their colours from the theme;{' '}
+            <code className={CODE}>cornerRadius</code> sets macOS&rsquo;s hidden
+            window-corner default (1–26, apps relaunch to pick it up).
+          </p>
         </div>
       </section>
 
@@ -207,7 +225,11 @@ export default function Docs() {
           <p className={`m-0 mt-5 max-w-[70ch] ${PROSE}`}>
             Installed with Homebrew?{' '}
             <code className={CODE}>brew uninstall</code> handles the app; the
-            three dotfile paths are still yours to remove.
+            three dotfile paths are still yours to remove. AeroSpace (installed
+            alongside as a cask dependency) and JankyBorders (if you opted in)
+            stay until you <code className={CODE}>brew uninstall</code> them too
+            — <code className={CODE}>~/.config/aerospace</code> is only
+            launcharr&rsquo;s if its first line says so.
           </p>
         </div>
       </section>

@@ -33,6 +33,7 @@ import {
   DEFAULT_AGENTS_CONFIG,
   DEFAULT_BAR_LAYOUT,
 } from './lib/config'
+import { applyDesktop } from './lib/desktop'
 import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
@@ -107,6 +108,7 @@ const DEFAULT_CONFIG: Config = {
   themes: {},
   bar: { enabled: false, layout: DEFAULT_BAR_LAYOUT },
   agents: DEFAULT_AGENTS_CONFIG,
+  desktop: undefined,
 }
 
 /** Panel rows draw their lucide icon; everything else keeps its text glyph. */
@@ -138,11 +140,30 @@ export default function App() {
   const [index, setIndex] = useState<IndexItem[]>([])
   const [frecency, setFrecency] = useState<FrecencyMap>({})
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
+  // True once the real config.json is in hand — DEFAULT_CONFIG is a placeholder
+  // and must never drive the desktop layer (it would write a toml for a bar-less setup).
+  const [configLoaded, setConfigLoaded] = useState(false)
   const [panelMode, setPanelMode] = useState<string | null>(null)
   useEffect(
     () => applyTheme(config.theme, config.themes, 'panel'),
     [config.theme, config.themes],
   )
+  // Desktop layer (v0.4): this webview lives for the whole session, so it is the
+  // one place that keeps aerospace.toml / borders / theme in step. A foreign toml
+  // (someone's hand-written AeroSpace config) is never overwritten — the settings
+  // window opens on the Desktop tab once per run to ask adopt-or-leave.
+  const adoptPrompted = useRef(false)
+  useEffect(() => {
+    if (!configLoaded) return
+    applyDesktop(config)
+      .then((r) => {
+        if (r.toml === 'foreign' && !adoptPrompted.current) {
+          adoptPrompted.current = true
+          invoke('open_settings', { tab: 'desktop' }).catch(console.error)
+        }
+      })
+      .catch(console.error)
+  }, [config, configLoaded])
   const [scripts, setScripts] = useState<ScriptInfo[]>([])
   const [clips, setClips] = useState<Clip[]>([])
   const [scriptItems, setScriptItems] = useState<ScriptItem[]>([])
@@ -237,7 +258,12 @@ export default function App() {
     refetchFrecency()
     refetchScripts()
     refetchClips()
-    invoke<Config>('read_config').then(setConfig).catch(console.error)
+    invoke<Config>('read_config')
+      .then((c) => {
+        setConfig(c)
+        setConfigLoaded(true)
+      })
+      .catch(console.error)
 
     const unlisteners = [
       listen('panel-shown', () => {
@@ -257,7 +283,10 @@ export default function App() {
       listen('index-updated', refetchIndex),
       listen('icons-updated', refetchIndex),
       listen('scripts-updated', refetchScripts),
-      listen<Config>('config-changed', (e) => setConfig(e.payload)),
+      listen<Config>('config-changed', (e) => {
+        setConfig(e.payload)
+        setConfigLoaded(true)
+      }),
       listen<string>('ask-chunk', (e) => {
         const ev = parseAskLine(e.payload)
         if (ev.delta) {

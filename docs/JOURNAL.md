@@ -6,6 +6,48 @@
 
 ---
 
+### 2026-08-17 · Retiring a dotfiles config dir deletes the live one — `~/.config/aerospace` was a dir symlink
+
+`link_config_dir` in dotfiles symlinks the _directory_, so `ls -la ~/.config/aerospace/
+aerospace.toml` shows a plain file while the parent is the link. `git rm -r macos/desktop/
+aerospace` therefore emptied `~/.config/aerospace` from under a running AeroSpace (which
+kept its in-memory config; only the file was gone). Recovered by unlinking the dangling
+symlink, restoring the pre-0.4 copy as `aerospace.toml.bak-launcharr`, and letting
+`desktop_apply` write the managed toml. Check `readlink` on the parent before retiring
+anything dotfiles-managed.
+
+### 2026-08-17 · Window corner radius: `NSConvolutionOverride1` works, `0` doesn't, Finder needs a logout
+
+Hidden AppKit global: `defaults write -g NSConvolutionOverride1 -float N`. On 27.0
+(`26A5406e`) TextEdit picked up `4` on relaunch — nearly square. Gotchas: **`0` is read as
+unset** (nothing changes), so 1 is the floor; `killall Finder` alone showed no change (Finder
+wants a logout, or is exempt — unverified); Quick Look ignores it per reports. Undocumented,
+so the Desktop tab says so and the setting reads the current value back rather than
+trusting config. CornerFix-style dylib injection was the alternative — rejected outright
+(DECISIONS 2026-08-17).
+
+### 2026-08-17 · JankyBorders is GPL-3 — a Homebrew dependency, never a sidecar
+
+Checked before designing the desktop layer: AeroSpace MIT, JankyBorders GPL-3.0. Spawning
+`borders` as a process and installing it via `brew` carry no obligations; bundling the
+binary in `launcharr.app` is distribution (source offer, GPL text, grey area at best) and
+porting its SkyLight code would make launcharr a derivative. Hence: `brew install borders`
+from Settings → Desktop, flags rendered from the theme, no `bordersrc`, `killall borders`
+before we spawn ours to clear strays from a crash (no PDEATHSIG on macOS; `RunEvent::Exit`
+covers orderly quit).
+
+### 2026-08-17 · Agent cells lose their tmux groups after a reboot — until each session speaks again
+
+Field report: three agents across two tmux sessions, bar showed loose ungrouped cells with
+no borders, then "came good" minutes later. Not the cold-start `list-panes` race (fixed
+2026-08-16) — stale pane ids. tmux pane ids are per-server (`%0, %1…`), so a reboot +
+resurrect hands every pane a new id, while `agents.json` still carries the pre-reboot ones;
+`list()` looks them up, misses, and every session renders as loose (`tmuxSession: null`).
+Hook events fired before launcharr came up are lost (no listener on the socket). It
+self-heals per session on the next hook event carrying the fresh `$TMUX_PANE` (here:
+08:55:06–08:55:18 for an app launched 08:54:56). tmux can't map a Claude session id back
+to a pane after a restart, so this is a known post-reboot transient, not a bug to chase.
+
 ### 2026-08-17 · `.bar-card-line` defaults to agent green
 
 `.bar-card-line`'s base color is the agent-idle green (`#00c853`) with a comment saying

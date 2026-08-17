@@ -7,6 +7,7 @@ import {
   GripVertical,
   Info,
   Keyboard,
+  LayoutGrid,
   Link2,
   PanelTop,
   Search,
@@ -23,6 +24,7 @@ import {
   notchedZones,
 } from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
+import DesktopTab from './DesktopTab'
 import HotkeyRecorder from './HotkeyRecorder'
 import iconUrl from './launcharr.svg'
 
@@ -41,6 +43,7 @@ const TABS = [
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'menubar', label: 'Menubar', icon: PanelTop },
+  { id: 'desktop', label: 'Desktop', icon: LayoutGrid },
   { id: 'about', label: 'About', icon: Info },
 ] as const
 
@@ -50,7 +53,17 @@ const SAVE_DEBOUNCE_MS = 400
 
 export default function SettingsApp() {
   const [config, setConfig] = useState<Config | null>(null)
-  const [tab, setTab] = useState<TabId>('general')
+  // Deep link: `open_settings { tab }` puts the id in the URL hash for a fresh
+  // window and emits `settings-tab` at an open one (the adopt prompt lands here).
+  const [tab, setTab] = useState<TabId>(() => tabFromHash(window.location.hash))
+  useEffect(() => {
+    const un = listen<string>('settings-tab', (e) =>
+      setTab(tabFromHash(e.payload)),
+    )
+    return () => {
+      un.then((u) => u())
+    }
+  }, [])
   const [error, setError] = useState<string | null>(null)
 
   // Autosave plumbing: don't write back what we just loaded or received from the
@@ -125,6 +138,7 @@ export default function SettingsApp() {
         {tab === 'shortcuts' && <ShortcutsTab config={config} set={set} />}
         {tab === 'agents' && <AgentsTab config={config} set={set} />}
         {tab === 'menubar' && <MenubarTab config={config} set={set} />}
+        {tab === 'desktop' && <DesktopTab config={config} set={set} />}
         {tab === 'about' && <AboutTab />}
       </main>
     </div>
@@ -132,6 +146,11 @@ export default function SettingsApp() {
 }
 
 type SetFn = <K extends keyof Config>(key: K, value: Config[K]) => void
+
+function tabFromHash(hash: string): TabId {
+  const id = hash.replace(/^#/, '')
+  return TABS.some((t) => t.id === id) ? (id as TabId) : 'general'
+}
 
 function Row({
   label,
