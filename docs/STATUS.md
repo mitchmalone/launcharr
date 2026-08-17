@@ -20,8 +20,9 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 
 - **Ready-column round, 2026-08-17** (plans/done/ready-column-2026-08-17.md, DECISIONS
   2026-08-17 ×4): **`colorpicker`** (the launcharr **loupe** at 2× — own transparent panel +
-  `CGWindowListCreateImage` below it, Screen Recording opt-in, invariant 1 reworded —
-  falling back to Apple's `NSColorSampler` when not granted; `#RRGGBB` on the pasteboard,
+  `CGWindowListCreateImage` below it, **opt-in via Settings → General → "Use the
+  launcharr loupe"**, Screen Recording, invariant 1 reworded — default and fallback is
+  Apple's `NSColorSampler`, no prompt unless the toggle is on; `#RRGGBB` on the pasteboard,
   Esc copies nothing) and **`lorem`** (built-in, five
   volumes, semi-random, `lorem.py` retired from the bundle) — both confirm with the new
   **toast** row (frontend `copy_text keepOpen`, Rust `panel::flash`); **`?` agent mode**
@@ -171,8 +172,8 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 ## Blocked / waiting on Mitch
 
 - **Ready-column hands-check** (plans/done/ready-column-2026-08-17.md): `colorpicker ⏎`
-  — first run prompts for Screen Recording (grant → relaunch launcharr → 2× loupe; deny →
-  Apple's sampler keeps working), loupe over a full-screen app, click copies + toast,
+  — default = Apple's sampler; flip Settings → General → loupe to compare (first pick
+  prompts for Screen Recording → grant → relaunch → 2× loupe), loupe over a full-screen app, click copies + toast,
   Esc copies nothing; `lorem` → five
   rows → Enter copies + toast auto-hides with focus returned; `?` conversation keeps the
   input focused across turns; Settings → Agents sub-tabs / About links open in the browser.

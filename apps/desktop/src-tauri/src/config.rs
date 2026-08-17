@@ -213,6 +213,13 @@ pub struct Config {
     /// Opaque to Rust — the shape and defaults live in `@launcharr/core/desktop`;
     /// desktop.rs only receives rendered bytes and argv.
     pub desktop: serde_json::Value,
+    /// `colorpicker` uses the launcharr loupe (2×, needs Screen Recording — the toggle
+    /// is the only thing that ever asks) instead of Apple's permission-free sampler.
+    /// Default off (invariant 1).
+    pub color_loupe: bool,
+    /// Loupe magnification (one screen point → N loupe points). 2 was "not zoomed in
+    /// enough" (Mitch, 2026-08-17); 4 is the default, the settings offer 2–8.
+    pub color_loupe_zoom: u32,
 }
 
 impl Default for Config {
@@ -233,6 +240,8 @@ impl Default for Config {
             bar: BarConfig::default(),
             agents: AgentsConfig::default(),
             desktop: serde_json::Value::Object(Default::default()),
+            color_loupe: false,
+            color_loupe_zoom: 4,
         }
     }
 }

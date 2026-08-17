@@ -244,6 +244,39 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
         </label>
       </Row>
       <hr />
+      <Row label="Color picker">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={config.colorLoupe}
+            onChange={(e) => set('colorLoupe', e.target.checked)}
+          />
+          Use the launcharr loupe
+        </label>
+        {config.colorLoupe && (
+          <label className="check">
+            Zoom
+            <select
+              value={String(config.colorLoupeZoom)}
+              onChange={(e) => set('colorLoupeZoom', Number(e.target.value))}
+            >
+              {[2, 3, 4, 6, 8].map((z) => (
+                <option key={z} value={z}>
+                  {z}×
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p className="hint">
+          Off (default): <code>colorpicker</code> uses Apple's own sampler — no
+          permission, its zoom. On: launcharr draws its own loupe, which needs{' '}
+          <strong>Screen Recording</strong> — the first pick after switching
+          asks macOS once; grant it, relaunch launcharr, and picks use the
+          loupe. Flip back any time to compare.
+        </p>
+      </Row>
+      <hr />
       <Row label="Hackables">
         <div className="buttonrow">
           <button

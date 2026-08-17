@@ -10,23 +10,34 @@
 
 use block2::RcBlock;
 use objc2_app_kit::{NSColor, NSColorSampler, NSColorSpace};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-/// Open the picker on the main thread. With Screen Recording granted that's the
-/// launcharr loupe (loupe.rs, 2× zoom, ours to tune); otherwise ask macOS once and use
-/// Apple's sampler for this pick — it needs no permission and still gets the job done.
+/// Open the picker on the main thread. Default: Apple's sampler, no permission. With
+/// `colorLoupe` on (Settings → General) and Screen Recording granted: the launcharr
+/// loupe (loupe.rs, 2×). Toggle on but not granted: prompt once, sampler meanwhile.
 pub fn pick(app: &AppHandle) {
     let handle = app.clone();
+    let (loupe_wanted, zoom) = {
+        let config = app.state::<crate::AppState>();
+        let config = config.config.read().unwrap();
+        (config.color_loupe, config.color_loupe_zoom)
+    };
     let _ = app.run_on_main_thread(move || {
-        if crate::loupe::capture_allowed() {
-            match crate::loupe::show(&handle) {
-                Ok(()) => return,
-                Err(e) => eprintln!("[launcharr] loupe failed, falling back to the system sampler: {e}"),
+        if loupe_wanted {
+            if crate::loupe::capture_allowed() {
+                match crate::loupe::show(&handle, zoom) {
+                    Ok(()) => return,
+                    Err(e) => eprintln!(
+                        "[launcharr] loupe failed, falling back to the system sampler: {e}"
+                    ),
+                }
+            } else {
+                // The toggle asked for it: prompt (once) and use the sampler meanwhile.
+                let _ = crate::loupe::request_capture();
+                eprintln!(
+                    "[launcharr] Screen Recording not granted yet — using Apple's color sampler this time"
+                );
             }
-        } else if !crate::loupe::request_capture() {
-            eprintln!(
-                "[launcharr] Screen Recording not granted — using Apple's color sampler; grant it in System Settings → Privacy & Security for the launcharr loupe"
-            );
         }
         system_sampler(&handle);
     });

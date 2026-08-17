@@ -144,7 +144,7 @@ fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame)> {
 /// Show the loupe over the mouse's screen. Builds the window on first use, then
 /// hides/reuses (destroying nspanel-converted windows aborts — JOURNAL 2026-08-16).
 /// Main thread only (NSScreen/NSEvent).
-pub fn show(app: &AppHandle) -> CmdResult<()> {
+pub fn show(app: &AppHandle, zoom: u32) -> CmdResult<()> {
     let mtm = MainThreadMarker::new()
         .ok_or_else(|| CmdError::Internal("loupe::show off the main thread".into()))?;
     let ((mx, my), (sx, sy, sw, sh)) =
@@ -205,9 +205,9 @@ pub fn show(app: &AppHandle) -> CmdResult<()> {
         window_number: window_number.max(0) as u32,
     });
 
-    // Where the mouse is in the webview's coordinates, so the loupe draws before
-    // the first mousemove.
-    let _ = window.emit("loupe-open", (mx - sx, my - sy));
+    // Where the mouse is in the webview's coordinates (so the loupe draws before
+    // the first mousemove) plus the configured zoom.
+    let _ = window.emit("loupe-open", (mx - sx, my - sy, zoom.clamp(2, 8)));
 
     let panel = app
         .get_webview_panel(LABEL)

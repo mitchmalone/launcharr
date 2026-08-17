@@ -31,6 +31,11 @@ export type Config = {
   /** The desktop layer (v0.4): AeroSpace tiling, JankyBorders, corner radius. Rust
    * persists it opaquely; read it through `normalizeDesktop` (partial/absent → defaults). */
   desktop: Partial<DesktopConfig> | undefined
+  /** `colorpicker` opens the launcharr loupe (2×) — needs Screen Recording, so it is
+   * opt-in and the toggle is what triggers the prompt; off = Apple's sampler. */
+  colorLoupe: boolean
+  /** Loupe magnification, 2–8 (default 4). */
+  colorLoupeZoom: number
 }
 
 export type BarConfig = {

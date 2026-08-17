@@ -63,9 +63,10 @@ it in `docs/DECISIONS.md`.
 
 1. **Zero required permissions.** The app runs with none (sole exception: the standard
    Automation consent prompt on first iTerm2 hand-off). Nothing requiring Accessibility.
-   One opt-in: `colorpicker` asks for **Screen Recording** once for the launcharr loupe
-   (2× magnifier, DECISIONS 2026-08-17) and falls back to Apple's `NSColorSampler` —
-   which needs nothing — until it's granted. Refusing costs no feature.
+   One opt-in, off by default: Settings → General → "Use the launcharr loupe" makes
+   `colorpicker` ask for **Screen Recording** once (2× magnifier, DECISIONS 2026-08-17);
+   off — and until granted — it's Apple's `NSColorSampler`, which needs nothing. Nothing
+   ever prompts unless that toggle is flipped.
 2. **Zero network.** The desktop app makes no network requests, ever. Two carve-outs,
    both user-initiated: a favicon fetch at quicklink-add time (DECISIONS 2026-08-09), and
    the usage monitor's account-limit fetches to the agent providers' own usage endpoints —

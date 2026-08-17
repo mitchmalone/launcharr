@@ -14,17 +14,15 @@ import './loupe.css'
  * moves bytes.
  */
 
-/** Magnification: one screen point → ZOOM loupe points. Mitch: "try a zoom of 2". */
-const ZOOM = 2
-/** Loupe diameter in points. */
+/** Loupe diameter in points. Zoom (one screen point → N loupe points) arrives with
+ * `loupe-open` from config (`colorLoupeZoom`, default 4 — 2 wasn't enough). */
 const DIAMETER = 176
-/** Captured square around the cursor, in points. */
-const REGION = DIAMETER / ZOOM
 
 const hex2 = (n: number) => n.toString(16).padStart(2, '0').toUpperCase()
 
 function Loupe() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const zoom = useRef(4)
   const [hex, setHex] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scratchRef = useRef<HTMLCanvasElement | null>(null)
@@ -103,7 +101,7 @@ function Loupe() {
     invoke<ArrayBuffer>('loupe_capture', {
       x: target.x,
       y: target.y,
-      size: REGION,
+      size: DIAMETER / zoom.current,
     })
       .then((bytes) => {
         drawn.current = target
@@ -117,8 +115,9 @@ function Loupe() {
   }, [paint])
 
   useEffect(() => {
-    const un = listen<[number, number]>('loupe-open', (e) => {
+    const un = listen<[number, number, number]>('loupe-open', (e) => {
       const p = { x: e.payload[0], y: e.payload[1] }
+      zoom.current = e.payload[2] || 4
       drawn.current = null
       setHex(null)
       wanted.current = p

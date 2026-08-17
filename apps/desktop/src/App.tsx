@@ -126,6 +126,8 @@ const DEFAULT_CONFIG: Config = {
   bar: { enabled: false, layout: DEFAULT_BAR_LAYOUT },
   agents: DEFAULT_AGENTS_CONFIG,
   desktop: undefined,
+  colorLoupe: false,
+  colorLoupeZoom: 4,
 }
 
 /** Panel rows draw their lucide icon; everything else keeps its text glyph. */
