@@ -273,6 +273,12 @@
   color: var(--_fg);
 }
 
+/* Lucide glyphs as key symbols (the four-way `move` arrow) sit on the text line. */
+.tui-keyhint-keys > svg {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
 /* ---- Two-pane -------------------------------------------------------- */
 
 .tui-twopane {

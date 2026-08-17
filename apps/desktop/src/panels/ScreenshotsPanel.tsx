@@ -14,7 +14,7 @@ import {
   ThumbGrid,
   useGridNav,
 } from '@launcharr/tui'
-import { Camera } from 'lucide-react'
+import { Camera, Move } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
@@ -101,7 +101,10 @@ export function ScreenshotsPanel({
       footer={
         <KeyHints
           hints={[
-            { keys: '←↑↓→', label: 'move' },
+            {
+              keys: <Move size={12} strokeWidth={2} aria-label="arrows" />,
+              label: 'move',
+            },
             { keys: '↵', label: 'copy file' },
             { keys: '⌘↵', label: 'reveal' },
             { keys: '⌘⇧↵', label: 'open' },
