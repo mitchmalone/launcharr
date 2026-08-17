@@ -7,9 +7,12 @@
 
 ## Where we are
 
-launcharr is mid-**v0.5**: launcher → launcher + menubar replacement + keyboard control
-surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular install,
-**not a distro**). Mitch runs it all daily; latest verdict: "insanely good."
+**v0.4.0 released 2026-08-17** (signed + notarized; docs/releases/v0.4.0.md; fan-out
+green: cask 0.4.0, Notion, mitchmalone.com hook; launcharr.com redeployed on the release
+commit). launcharr is a keyboard control surface: launcher + bar + panels + agents +
+desktop layer, all in Mitch's daily use. **Next: the v0.5 scope talk** (ROADMAP "v0.5 —
+plugins" lists the carried-over candidates: module API, multi-display, settings-in-
+panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision).
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
@@ -134,21 +137,16 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   NSWorkspace observer for event-driven front-app; multi-display fix (JOURNAL
   2026-08-15 — notch detection assumes NSScreen order matches monitors, revisit
   together); placement config (notched profiles shipped, plans/done/bar-zones-and-arranger.md).
-- **v0.4 desktop layer** (plans/active/v0.4-desktop-aerospace-borders.md, DECISIONS
-  2026-08-17) — **built 2026-08-17, awaiting hands + release**: `@launcharr/core/desktop`
-  renders `aerospace.toml` + borders flags (tests), Rust `deps.rs`/`desktop.rs` (locate,
-  `brew install` streamed, atomic write + `reload-config`, borders child supervision,
-  `NSConvolutionOverride1`), Settings → **Desktop** tab (knobs, install rows, adopt-or-
-  leave, corner slider), tap cask `depends_on` aerospace (pushed), dotfiles retired.
-  **`aerospace ⏎` panel** (fuzzy `aero`) carries the tray menu — horizontal workspace
-  strip (←→, digits jump; active = accent border, cursor = fill), pause, reload, open
-  config, sponsor — because the icon can't be hidden from outside (JOURNAL). Seven new IPC
-  commands. Kit fallout fixed on the way: `.tui button` was beating single-class segment
-  rules; `revealSelected` is now the one keep-in-view helper (LEARNINGS). **Adopted on
-  Mitch's machine** (managed toml live, borders uninstalled pending the Settings button).
-  **Not released** — 0.4.0 waits on more polish + hands-check. Was "B3 vendored wrap" — vendoring dropped (GPL +
-  zero-network). Module API (B4 — agent bar
-  shipped 2026-08-16, general any-language emitter API remains).
+- **v0.4 desktop layer — shipped in 0.4.0** (plans/done/v0.4-desktop-aerospace-borders.md,
+  DECISIONS 2026-08-17 ×3): `@launcharr/core/desktop` renders `aerospace.toml` + borders
+  flags, Rust `deps.rs`/`desktop.rs`, Settings → Desktop with sub-tabs (AeroSpace +
+  JankyBorders / macOS adjustments), "Let launcharr manage AeroSpace" with the unmanaged
+  hand-offs (edit / use my own via symlink / save a copy — `desktop_toml`), borders ride
+  on tiling, `aerospace ⏎` panel. Module API (B4) → v0.5.
+- **0.4 feedback round (2026-08-17)** all landed: settings tabs clear of the traffic
+  lights, Search+Links → Quicklinks, scrollbar at the window edge, 760px wide, sub-tabs,
+  HTML DnD fixed on the zone board (wry file-drop hook — JOURNAL), `ss ⏎` screenshots
+  panel (first grid + scrolling panel), TRMNL removed pending the plugin API.
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
   sketchybar config there when confident.
@@ -157,10 +155,11 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 
 ## Blocked / waiting on Mitch
 
-- **v0.4 desktop hands-check** (adopt already done): Window borders → "install
-  JankyBorders via Homebrew" (borders was uninstalled 2026-08-17) → toggle on → retints on
-  theme switch; corner slider (you set 1) → relaunch TextEdit; `aero ⏎` strip + actions;
-  Settings → Desktop knobs reload live. Then more polish, then `scripts/release.sh 0.4.0`.
+- **0.4.0 hands-check leftovers** (released; these are the bits only hands can feel):
+  Settings → Desktop → uncheck manage → "use my own config…" / "save a copy to edit…"
+  dialogs; `ss ⏎` → ⌘V lands in claude.ai _and_ Claude Code; the fresh-profile smoke ran
+  by script (config recreated, hint summoned, cold 152 ms) — a human eyeball on it is
+  still worth one minute.
 
 - Panel focus checklist (only hands): summon → `wifi ⏎` → connect → Esc → Esc → focus
   restored exactly, incl. over a full-screen app.

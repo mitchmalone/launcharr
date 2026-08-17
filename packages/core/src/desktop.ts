@@ -3,7 +3,7 @@
  * AeroSpace, window borders via JankyBorders, the system corner radius) and the
  * pure renderers that turn it into what the tools consume — an `aerospace.toml`,
  * `borders` CLI flags, `defaults(1)` arguments. No I/O: Rust writes the file,
- * spawns the processes, and reloads (plans/active/v0.4-desktop-aerospace-borders.md,
+ * spawns the processes, and reloads (plans/done/v0.4-desktop-aerospace-borders.md,
  * DECISIONS 2026-08-17).
  *
  * The toml template is Mitch's daily config (dotfiles/macos/desktop/aerospace)

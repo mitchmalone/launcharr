@@ -23,7 +23,7 @@ import {
 import SubTabs from './SubTabs'
 
 /**
- * Settings → Desktop (v0.4, plans/active/v0.4-desktop-aerospace-borders.md): the
+ * Settings → Desktop (v0.4, plans/done/v0.4-desktop-aerospace-borders.md): the
  * few knobs launcharr exposes over AeroSpace + JankyBorders, the install rows for
  * either tool when it is missing, the adopt-or-leave choice for a hand-written
  * aerospace.toml, and the system corner-radius slider. Everything else about

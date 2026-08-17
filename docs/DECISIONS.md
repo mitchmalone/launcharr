@@ -88,7 +88,7 @@
 - **New IPC** (thin, plain-function-backed): `desktop_status`, `desktop_apply`,
   `desktop_adopt`, `desktop_install`, `desktop_corner_radius`, plus `aerospace_workspaces`
   / `aerospace_action` (validated enum) for the panel. Plan:
-  `plans/active/v0.4-desktop-aerospace-borders.md`.
+  `plans/done/v0.4-desktop-aerospace-borders.md`.
 
 ### 2026-08-16 · awake B–D: sessions split Rust-mechanical / TS-opinionated; one readings command
 

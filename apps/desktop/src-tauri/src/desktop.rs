@@ -1,4 +1,4 @@
-//! The desktop layer's mechanics (plans/active/v0.4-desktop-aerospace-borders.md):
+//! The desktop layer's mechanics (plans/done/v0.4-desktop-aerospace-borders.md):
 //! write the generated `aerospace.toml` and ask AeroSpace to reload it, keep a
 //! `borders` child alive with the flags the theme dictates, and set the hidden
 //! window-corner-radius default. Every decision (what the toml says, which
