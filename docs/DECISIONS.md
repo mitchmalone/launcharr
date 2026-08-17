@@ -35,8 +35,19 @@
 - **Decision (Mitch's machine).** Hand-installed AeroSpace/borders/aerospace-swipe come
   off before installing 0.4; only launcharr-managed versions from then on. Dotfiles keep
   the toml/bordersrc as historical templates but stop deploying them.
+- **Decision (AeroSpace's menu bar item).** Goal: fewer menu bar items, so hide it by
+  default. **Not possible from outside**: it's a SwiftUI `MenuBarExtra` without
+  `isInserted`, so AppKit forces `NSStatusItem VisibleCC Item-0 = 1` back on every launch
+  (tried 2026-08-17, both `Visible` and `VisibleCC` keys) and no config key exists. Instead
+  the menu's _contents_ move into the launcher — **`aerospace ⏎` panel** (fuzzy `aero`,
+  `tiling`, `workspace`): workspaces (Enter/digit focuses), pause/resume, reload config,
+  open config, sponsor — so the icon is redundant and a menu-bar manager (Ice/Bartender)
+  or launcharr's own bar covering the strip can hide it. Hiding it for real needs an
+  upstream AeroSpace option (MIT — a small PR; not started).
 - **New IPC** (thin, plain-function-backed): `desktop_status`, `desktop_apply`,
-  `desktop_install`, `desktop_corner_radius`. Plan: `plans/active/v0.4-desktop-aerospace-borders.md`.
+  `desktop_adopt`, `desktop_install`, `desktop_corner_radius`, plus `aerospace_workspaces`
+  / `aerospace_action` (validated enum) for the panel. Plan:
+  `plans/active/v0.4-desktop-aerospace-borders.md`.
 
 ### 2026-08-16 · awake B–D: sessions split Rust-mechanical / TS-opinionated; one readings command
 

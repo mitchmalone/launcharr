@@ -114,6 +114,8 @@ pub fn run() {
             commands::desktop_adopt,
             commands::desktop_install,
             commands::desktop_corner_radius,
+            commands::aerospace_workspaces,
+            commands::aerospace_action,
             commands::wifi_status,
             commands::wifi_known_networks,
             commands::wifi_connect,

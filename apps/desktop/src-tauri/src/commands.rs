@@ -246,6 +246,17 @@ pub async fn desktop_corner_radius(radius: Option<f64>) -> CmdResult<()> {
     crate::desktop::set_corner_radius(radius)
 }
 
+/// `aerospace ⏎` panel: the tray menu as rows.
+#[tauri::command]
+pub async fn aerospace_workspaces() -> Vec<crate::desktop::AerospaceWorkspace> {
+    crate::desktop::workspaces()
+}
+
+#[tauri::command]
+pub async fn aerospace_action(action: crate::desktop::AerospaceAction) -> CmdResult<()> {
+    crate::desktop::aerospace_action(action)
+}
+
 /// Bar workspace cell click → focus that aerospace workspace. async: see above.
 #[tauri::command]
 pub async fn bar_switch_workspace(ws: String) -> CmdResult<()> {

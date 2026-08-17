@@ -158,6 +158,102 @@ fn reload_aerospace() -> bool {
         .is_some_and(|o| o.status.success())
 }
 
+// ---- AeroSpace menu, as launcher rows ----------------------------------------
+//
+// `aerospace ⏎` mirrors the tray menu (workspaces, enable/disable, reload,
+// open config, sponsor) so the menu bar item can go. Every action is a CLI call
+// or an `open`; the workspace list is the bar's own query.
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerospaceWorkspace {
+    pub name: String,
+    pub focused: bool,
+    pub empty: bool,
+}
+
+pub fn workspaces() -> Vec<AerospaceWorkspace> {
+    let Some(raw) = crate::bar::aerospace(&[
+        "list-workspaces",
+        "--all",
+        "--format",
+        "%{workspace}%{tab}%{workspace-is-focused}",
+    ]) else {
+        return Vec::new();
+    };
+    let empty: std::collections::HashSet<String> =
+        crate::bar::aerospace(&["list-workspaces", "--monitor", "all", "--empty"])
+            .map(|o| o.lines().map(|l| l.trim().to_owned()).collect())
+            .unwrap_or_default();
+    raw.lines()
+        .filter_map(|l| {
+            let mut it = l.split('\t');
+            let name = it.next()?.trim();
+            if name.is_empty() {
+                return None;
+            }
+            let focused = it.next().map(str::trim) == Some("true");
+            Some(AerospaceWorkspace {
+                name: name.to_owned(),
+                focused,
+                empty: empty.contains(name),
+            })
+        })
+        .collect()
+}
+
+/// Mirrors `AerospaceAction` in TS. Validated enum — never a raw argv across IPC.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AerospaceAction {
+    Workspace {
+        name: String,
+    },
+    /// `aerospace enable toggle` — pause/resume tiling.
+    Toggle,
+    ReloadConfig,
+    /// launcharr's config when managed, else the toml itself.
+    OpenConfig,
+    Sponsor,
+}
+
+pub fn aerospace_action(action: AerospaceAction) -> CmdResult<()> {
+    let ok = |r: Option<String>, what: &str| {
+        r.map(|_| ())
+            .ok_or_else(|| CmdError::Internal(format!("aerospace {what} failed")))
+    };
+    match action {
+        AerospaceAction::Workspace { name } => crate::bar::switch_workspace(&name),
+        AerospaceAction::Toggle => ok(
+            crate::bar::aerospace(&["enable", "toggle"]),
+            "enable toggle",
+        ),
+        AerospaceAction::ReloadConfig => {
+            ok(crate::bar::aerospace(&["reload-config"]), "reload-config")
+        }
+        AerospaceAction::OpenConfig => {
+            let path = match toml_state() {
+                TomlState::Managed => crate::config::config_path(),
+                _ => aerospace_toml_path(),
+            };
+            let status = Command::new("/usr/bin/open").arg("-t").arg(path).status()?;
+            status
+                .success()
+                .then_some(())
+                .ok_or_else(|| CmdError::Internal("open config failed".into()))
+        }
+        AerospaceAction::Sponsor => {
+            let status = Command::new("/usr/bin/open")
+                .arg("https://github.com/sponsors/nikitabobko")
+                .status()?;
+            status
+                .success()
+                .then_some(())
+                .ok_or_else(|| CmdError::Internal("open sponsor page failed".into()))
+        }
+    }
+}
+
 // ---- JankyBorders supervision ------------------------------------------------
 //
 // One child, its argv remembered so re-applies with identical flags are no-ops

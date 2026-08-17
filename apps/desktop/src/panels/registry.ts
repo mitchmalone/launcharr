@@ -1,3 +1,4 @@
+import { normalizeDesktop } from '@launcharr/core/desktop'
 import {
   Bot,
   CircleHelp,
@@ -5,6 +6,7 @@ import {
   Coffee,
   Gauge,
   Globe,
+  LayoutGrid,
   type LucideIcon,
   Volume2,
   Wifi,
@@ -39,6 +41,12 @@ export const PANEL_INFO: PanelInfo[] = [
   { id: 'dns', title: 'DNS', hint: 'network info ▸' },
   { id: 'audio', title: 'Audio', hint: 'volume & devices ▸' },
   { id: 'clipboard', title: 'Clipboard', hint: 'history & search ▸' },
+  {
+    id: 'aerospace',
+    title: 'AeroSpace',
+    hint: 'workspaces & tiling ▸',
+    aliases: ['aero', 'tiling', 'workspace'],
+  },
   { id: 'help', title: 'Help', hint: 'commands & keys ▸' },
 ]
 
@@ -52,11 +60,13 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   audio: Volume2,
   clipboard: ClipboardList,
   help: CircleHelp,
+  aerospace: LayoutGrid,
 }
 
 /** Panels gated by settings; anything unlisted is always on. */
 export function panelEnabled(id: string, config: Config): boolean {
   if (id === 'usage') return config.agents.usage
   if (id === 'agents') return config.agents.monitor
+  if (id === 'aerospace') return normalizeDesktop(config.desktop).tiling.enabled
   return true
 }

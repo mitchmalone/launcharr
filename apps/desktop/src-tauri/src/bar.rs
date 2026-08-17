@@ -443,7 +443,7 @@ fn parse_lsappinfo_name(out: &str) -> Option<String> {
 
 /// The aerospace CLI, wherever Homebrew put it (one locator for the bar and the
 /// desktop layer: deps.rs).
-fn aerospace(args: &[&str]) -> Option<String> {
+pub(crate) fn aerospace(args: &[&str]) -> Option<String> {
     let bin = crate::deps::locate(crate::deps::Dep::Aerospace.binary())?;
     let out = Command::new(bin).args(args).output().ok()?;
     out.status

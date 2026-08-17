@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-08-17 · Quitting AeroSpace dumps every window onto workspace 1; its tray icon can't be hidden by `defaults`
+
+Two facts from one experiment. (1) `osascript quit` + `open -a AeroSpace` reloads fine but
+**every window lands on workspace 1** — assignments are in-memory. Never restart AeroSpace
+to test something; `reload-config` is the only safe knob. (2) The status item is a SwiftUI
+`MenuBarExtra` (no `isInserted`): writing `NSStatusItem Visible Item-0 = false` or
+`VisibleCC Item-0 = false` into `bobko.aerospace` is rewritten to `1` on launch — the item
+is not removal-allowed. Hiding needs upstream support or a menu-bar manager. launcharr's
+answer is the `aerospace ⏎` panel carrying the menu's contents.
+
 ### 2026-08-17 · Retiring a dotfiles config dir deletes the live one — `~/.config/aerospace` was a dir symlink
 
 `link_config_dir` in dotfiles symlinks the _directory_, so `ls -la ~/.config/aerospace/

@@ -138,7 +138,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   `brew install` streamed, atomic write + `reload-config`, borders child supervision,
   `NSConvolutionOverride1`), Settings → **Desktop** tab (knobs, install rows, adopt-or-
   leave, corner slider), tap cask `depends_on` aerospace (pushed), dotfiles retired.
-  Five `desktop_*` IPC commands. Was "B3 vendored wrap" — vendoring dropped (GPL +
+  **`aerospace ⏎` panel** (fuzzy `aero`) carries the tray menu — workspaces, pause,
+  reload, open config, sponsor — because the icon can't be hidden from outside (JOURNAL).
+  Seven new IPC commands. Was "B3 vendored wrap" — vendoring dropped (GPL +
   zero-network). Module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.

@@ -37,6 +37,7 @@ import { applyDesktop } from './lib/desktop'
 import { type Span, parseMarkdownLite } from './lib/markdown'
 import { markInput, reportResultsPainted } from './lib/perf'
 import { applyTheme } from './lib/themes'
+import { AerospacePanelContainer } from './panels/AerospacePanelContainer'
 import { AgentsPanelContainer } from './panels/AgentsPanelContainer'
 import { AudioPanelContainer } from './panels/AudioPanelContainer'
 import { AwakePanelContainer } from './panels/AwakePanelContainer'
@@ -63,6 +64,7 @@ const PANEL_COMPONENTS: Record<string, React.FC<{ onClose: () => void }>> = {
   awake: AwakePanelContainer,
   wifi: WifiPanelContainer,
   dns: DnsPanelContainer,
+  aerospace: AerospacePanelContainer,
   audio: AudioPanelContainer,
   clipboard: ClipboardPanelContainer,
   help: HelpPanelContainer,
