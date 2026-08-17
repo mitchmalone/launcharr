@@ -33,6 +33,7 @@ mod indexer;
 mod notch;
 mod panel;
 mod power;
+mod screenshots;
 mod scripts;
 mod settings_panes;
 mod settings_window;
@@ -69,6 +70,7 @@ pub struct AppState {
     pub index: RwLock<Vec<indexer::IndexItem>>,
     pub db: Mutex<Connection>,
     pub icon_dir: PathBuf,
+    pub thumb_dir: PathBuf,
     pub scripts: RwLock<Vec<scripts::ScriptInfo>>,
     pub summon: RwLock<tauri_plugin_global_shortcut::Shortcut>,
     pub custom_shortcuts: RwLock<Vec<shortcut::CustomShortcut>>,
@@ -142,6 +144,9 @@ pub fn run() {
             commands::delete_clip,
             commands::write_config,
             commands::open_settings,
+            commands::list_screenshots,
+            commands::screenshot_thumb,
+            commands::screenshot_action,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).
@@ -159,6 +164,7 @@ pub fn run() {
                 index: RwLock::new(Vec::new()),
                 db: Mutex::new(db),
                 icon_dir: data_dir.join("icons"),
+                thumb_dir: data_dir.join("thumbs"),
                 scripts: RwLock::new(Vec::new()),
                 summon: RwLock::new("Alt+Space".parse().expect("default hotkey parses")),
                 custom_shortcuts: RwLock::new(Vec::new()),

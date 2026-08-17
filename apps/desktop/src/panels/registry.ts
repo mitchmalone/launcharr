@@ -1,6 +1,7 @@
 import { normalizeDesktop } from '@launcharr/core/desktop'
 import {
   Bot,
+  Camera,
   CircleHelp,
   ClipboardList,
   Coffee,
@@ -26,6 +27,8 @@ export interface PanelInfo {
   /** Extra fuzzy-match words beyond the id (the deleted caffeinate slugs'
    * muscle memory lands on the awake panel through these). */
   aliases?: string[]
+  /** Extra trigger words that open the panel outright (`ss ⏎`), beyond the id. */
+  triggers?: string[]
 }
 
 export const PANEL_INFO: PanelInfo[] = [
@@ -41,6 +44,13 @@ export const PANEL_INFO: PanelInfo[] = [
   { id: 'dns', title: 'DNS', hint: 'network info ▸' },
   { id: 'audio', title: 'Audio', hint: 'volume & devices ▸' },
   { id: 'clipboard', title: 'Clipboard', hint: 'history & search ▸' },
+  {
+    id: 'screenshots',
+    title: 'Screenshots',
+    hint: 'latest captures ▸',
+    aliases: ['ss', 'shots', 'capture', 'screen capture'],
+    triggers: ['ss', 'shots'],
+  },
   {
     id: 'aerospace',
     title: 'AeroSpace',
@@ -59,6 +69,7 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   dns: Globe,
   audio: Volume2,
   clipboard: ClipboardList,
+  screenshots: Camera,
   help: CircleHelp,
   aerospace: LayoutGrid,
 }
@@ -70,3 +81,10 @@ export function panelEnabled(id: string, config: Config): boolean {
   if (id === 'aerospace') return normalizeDesktop(config.desktop).tiling.enabled
   return true
 }
+
+/** Trigger word → panel id, ids included, so `ss` and `screenshots` both open it. */
+export const PANEL_TRIGGERS: Record<string, string> = Object.fromEntries(
+  PANEL_INFO.flatMap((p) =>
+    [p.id, ...(p.triggers ?? [])].map((t) => [t, p.id]),
+  ),
+)

@@ -5,6 +5,29 @@
 
 ---
 
+### 2026-08-17 · Screenshots panel: three commands; the first grid + scrolling panel
+
+- **Decision.** `ss ⏎` / `screenshots ⏎` opens a newest-first thumbnail grid of the
+  macOS screenshot folder (`defaults read com.apple.screencapture location`, else
+  `~/Desktop`); Enter puts the **file** (file URL + image bytes) on the pasteboard and
+  hides — ⌘V into Claude/Cursor/a browser is the whole feature. ⌘⏎ reveals, ⌘⇧⏎ opens.
+  Three new commands: `list_screenshots` (full listing, TS pages/filters),
+  `screenshot_thumb` (320px JPEG cached under `$APPDATA/thumbs`, asset-protocol
+  served, decodes serialised), `screenshot_action` (copy | open; reveal reuses
+  `reveal_item`). Plan: plans/done/screenshots-panel.md.
+- **Why.** @the_mewc: the one Raycast feature a "better Spotlight" user keeps it for —
+  "purely as a means to get visual feedback into <insert agent surface here>". A
+  screenshot is found by recency, not by name (`Screenshot 2026-08-17 at 11.53.23.png`),
+  so the 8-row narrow-by-typing list is the wrong shape: this is deliberately the
+  first **grid** and the first **scrolling** surface (24 per page, ↓ past the bottom or
+  scrolling to the sentinel loads more). Panels already left the 8-row list behind
+  (`clip`, `wifi`); this is a new tenant, not a list exception. Grid nav is a pure
+  `nav/grid.ts` in `packages/tui` (+ `useGridNav`, `ThumbGrid`/`ThumbCell`), so the
+  site can import it under invariant 10.
+- **Rejected.** OCR/text search, a date query language, a recordings tab, drag-out —
+  Raycast's surface area, not the need. `NSFilenamesPboardType` (deprecated; file URL
+  - image data covers Finder, browsers and terminals).
+
 ### 2026-08-17 · v0.4 desktop layer: AeroSpace as a Homebrew dependency, JankyBorders opt-in, never vendored; corner radius via hidden default; CornerFix rejected
 
 - **Decision (delivery).** AeroSpace ships as a **cask dependency** (`depends_on cask:

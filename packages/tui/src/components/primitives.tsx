@@ -225,3 +225,60 @@ export function TextPrompt({
     </div>
   )
 }
+
+/** A grid of `ThumbCell`s; `cols` drives both layout and the caller's nav. */
+export function ThumbGrid({
+  cols,
+  children,
+}: {
+  cols: number
+  children: ReactNode
+}) {
+  return (
+    <div
+      className="tui-thumbgrid"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** One thumbnail: image (or a dim placeholder while it loads), label, sub. */
+export function ThumbCell({
+  src,
+  label,
+  sub,
+  selected = false,
+  onClick,
+  onHover,
+}: {
+  src: string | null
+  label: ReactNode
+  sub?: ReactNode
+  selected?: boolean
+  onClick?: () => void
+  onHover?: () => void
+}) {
+  const cls = ['tui-thumb', selected && 'tui-thumb-selected']
+    .filter(Boolean)
+    .join(' ')
+  return (
+    <div
+      className={cls}
+      onClick={onClick}
+      onMouseMove={onHover}
+      ref={selected ? revealSelected : null}
+    >
+      <div className="tui-thumb-frame">
+        {src ? (
+          <img className="tui-thumb-img" src={src} alt="" draggable={false} />
+        ) : (
+          <span className="tui-thumb-empty">…</span>
+        )}
+      </div>
+      <span className="tui-thumb-label">{label}</span>
+      {sub != null && <span className="tui-thumb-sub">{sub}</span>}
+    </div>
+  )
+}

@@ -1,11 +1,13 @@
+export { moveGridSelection } from './nav/grid'
+export type { GridMove } from './nav/grid'
 export { moveSelection } from './nav/list'
 export { drillIn, drillOut, nodesAtPath } from './nav/menu'
 export type { MenuNode } from './nav/menu'
 export { isoWeek, monthGrid, stepMonth, yearProgress } from './nav/calendar'
 export type { GridDay, GridWeek, MonthGrid, WeekStart } from './nav/calendar'
 export { sliderRatio, stepValue } from './nav/slider'
-export { useListNav } from './hooks'
-export type { ListNav, ListNavOptions } from './hooks'
+export { useGridNav, useListNav } from './hooks'
+export type { GridNavOptions, ListNav, ListNavOptions } from './hooks'
 export {
   Divider,
   HotkeyRow,
@@ -15,6 +17,8 @@ export {
   revealSelected,
   SectionHeader,
   TextPrompt,
+  ThumbCell,
+  ThumbGrid,
   TwoPane,
 } from './components/primitives'
 export {

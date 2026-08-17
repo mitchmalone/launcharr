@@ -529,3 +529,38 @@ pub fn open_url(app: AppHandle, url: String) -> CmdResult<()> {
     Command::new("open").arg(&url).spawn()?;
     Ok(())
 }
+
+// ---- Screenshots panel (plans/done/screenshots-panel.md) ------------------
+
+/// Every image in the screenshot folder, newest first. TS pages and filters.
+#[tauri::command]
+pub fn list_screenshots() -> CmdResult<Vec<crate::screenshots::Screenshot>> {
+    Ok(crate::screenshots::list(&crate::screenshots::dir())?)
+}
+
+/// Thumbnail path for one screenshot (generated on first ask, cached by
+/// path+mtime). Async so a slow decode never blocks the IPC thread; the
+/// generator serialises itself.
+#[tauri::command]
+pub async fn screenshot_thumb(state: State<'_, AppState>, path: String) -> CmdResult<String> {
+    let dir = state.thumb_dir.clone();
+    let out = tauri::async_runtime::spawn_blocking(move || crate::screenshots::thumb(&dir, &path))
+        .await
+        .map_err(|e| CmdError::Internal(e.to_string()))??;
+    Ok(out.to_string_lossy().into_owned())
+}
+
+/// Enter (copy: hide + file on the pasteboard, ⌘V is yours) or ⌘⇧Enter (open).
+/// Reveal reuses `reveal_item`.
+#[tauri::command]
+pub fn screenshot_action(
+    app: AppHandle,
+    path: String,
+    action: crate::screenshots::ScreenshotAction,
+) -> CmdResult<()> {
+    panel::hide(&app);
+    match action {
+        crate::screenshots::ScreenshotAction::Copy => crate::screenshots::copy_to_pasteboard(&path),
+        crate::screenshots::ScreenshotAction::Open => crate::screenshots::open(&path),
+    }
+}

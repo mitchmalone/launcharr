@@ -71,7 +71,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   hand-rolled CoreAudio FFI in coreaudio.rs, `m` mute), **`clipboard ⏎`** (TwoPane:
   search + history left, preview right, ⌘⌫ delete; `clip` inline rows remain), and
   **`help ⏎`** (filterable reference: modes, keys, panels, commands, scripts,
-  quicklinks). Wifi commands ×5 + audio ×4 in Rust (DECISIONS 2026-08-16).
+  quicklinks), and **`ss ⏎` screenshots** (2026-08-17, plans/done/screenshots-panel.md:
+  newest-first thumbnail grid of the capture folder, ↵ copies the file for ⌘V into an
+  agent, ⌘↵ reveal, ⌘⇧↵ open, pages of 24 — the first grid/scrolling panel; DECISIONS
+  2026-08-17). Wifi commands ×5 + audio ×4 + screenshots ×3 in Rust.
 - **2026-08-16 polish wave**: launcharr theme repainted (#1C1D2A ground, #B5B9D9/
   #73747C fg/dim; accent stayed #FF6B8C after an #FF176C detour); lucide icons in the
   bar (wifi/battery), launcher panel rows, and panel internals (wifi strength tiers

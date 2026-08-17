@@ -44,9 +44,15 @@ import { AwakePanelContainer } from './panels/AwakePanelContainer'
 import { ClipboardPanelContainer } from './panels/ClipboardPanelContainer'
 import { DnsPanelContainer } from './panels/DnsPanelContainer'
 import { HelpPanelContainer } from './panels/HelpPanelContainer'
+import { ScreenshotsPanelContainer } from './panels/ScreenshotsPanelContainer'
 import { UsagePanelContainer } from './panels/UsagePanelContainer'
 import { WifiPanelContainer } from './panels/WifiPanelContainer'
-import { PANEL_ICONS, PANEL_INFO, panelEnabled } from './panels/registry'
+import {
+  PANEL_ICONS,
+  PANEL_INFO,
+  PANEL_TRIGGERS,
+  panelEnabled,
+} from './panels/registry'
 
 /** Keep in sync with the CSS: input row + result rows + container border. */
 const INPUT_HEIGHT = 54
@@ -67,6 +73,7 @@ const PANEL_COMPONENTS: Record<string, React.FC<{ onClose: () => void }>> = {
   aerospace: AerospacePanelContainer,
   audio: AudioPanelContainer,
   clipboard: ClipboardPanelContainer,
+  screenshots: ScreenshotsPanelContainer,
   help: HelpPanelContainer,
 }
 
@@ -204,7 +211,9 @@ export default function App() {
     () =>
       new Set([
         'clip',
-        ...Object.keys(PANELS).filter((id) => panelEnabled(id, config)),
+        ...Object.entries(PANEL_TRIGGERS)
+          .filter(([, id]) => id in PANELS && panelEnabled(id, config))
+          .map(([word]) => word),
         ...scripts.map((s) => s.trigger),
         ...quicklinks.map((l) => l.trigger as string),
       ]),
@@ -369,10 +378,11 @@ export default function App() {
         if (parsed.trigger === 'awake' && parsed.args.trim()) {
           return awakeRows(parsed.args)
         }
-        const panel = panelEnabled(parsed.trigger, config)
-          ? PANELS[parsed.trigger]
+        const panelId = PANEL_TRIGGERS[parsed.trigger] ?? parsed.trigger
+        const panel = panelEnabled(panelId, config)
+          ? PANELS[panelId]
           : undefined
-        if (panel) return panelRows(parsed.trigger, panel.title, panel.hint)
+        if (panel) return panelRows(panelId, panel.title, panel.hint)
         if (isScript(parsed.trigger)) return scriptRows(scriptItems)
         const link = quicklinks.find((l) => l.trigger === parsed.trigger)
         return link ? quicklinkRows(link, parsed.args) : []
