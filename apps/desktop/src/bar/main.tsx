@@ -15,7 +15,6 @@ import {
   BarClock,
   BarFrontApp,
   type BarSnapshot,
-  BarTrmnlCell,
   BarWifiCell,
   BarWorkspaces,
   type BatteryDetail,
@@ -228,14 +227,6 @@ function BarWindow() {
             ssid={snap!.wifi.ssid}
           />
         )
-      case 'trmnl':
-        return snap!.trmnl ? (
-          <BarTrmnlCell
-            key={id}
-            pct={snap!.trmnl.pct}
-            name={snap!.trmnl.name}
-          />
-        ) : null
       case 'awake': {
         const a = snap!.awake
         const spec = a?.spec ? parseSpec(a.spec) : null

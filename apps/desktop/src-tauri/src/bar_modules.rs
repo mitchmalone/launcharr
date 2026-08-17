@@ -1,7 +1,7 @@
-//! Bar data modules beyond the core aerospace/battery/clock set: wifi and the
-//! TRMNL device battery, ported from the retired Sketchybar plugins. Slow
-//! sources refresh on their own threads into statics (an 8s HTTP timeout must
-//! never stall the 1 Hz push loop); `snapshot()` only reads.
+//! Bar data modules beyond the core aerospace/battery/clock set: wifi, ported
+//! from the retired Sketchybar plugins. Slow sources refresh on their own
+//! threads into statics so they never stall the 1 Hz push loop; `snapshot()`
+//! only reads.
 
 use std::process::Command;
 use std::sync::Mutex;
@@ -17,27 +17,13 @@ pub struct WifiState {
     pub ssid: Option<String>,
 }
 
-/// Present only when a TRMNL API token is available; `pct: None` means the
-/// token exists but the API call failed (rendered as an error state).
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrmnlState {
-    pub pct: Option<u8>,
-    pub name: Option<String>,
-}
-
 static WIFI: Mutex<WifiState> = Mutex::new(WifiState {
     online: false,
     ssid: None,
 });
-static TRMNL: Mutex<Option<TrmnlState>> = Mutex::new(None);
 
 pub fn wifi() -> WifiState {
     WIFI.lock().unwrap().clone()
-}
-
-pub fn trmnl() -> Option<TrmnlState> {
-    TRMNL.lock().unwrap().clone()
 }
 
 /// Start the refresh threads. Cadences match the Sketchybar update_freqs.
@@ -45,11 +31,6 @@ pub fn start() {
     std::thread::spawn(|| loop {
         refresh_wifi();
         std::thread::sleep(Duration::from_secs(20));
-    });
-    std::thread::spawn(|| loop {
-        let state = read_trmnl();
-        *TRMNL.lock().unwrap() = state;
-        std::thread::sleep(Duration::from_secs(300));
     });
 }
 
@@ -284,77 +265,6 @@ fn valid_ssid(s: &str) -> bool {
     !s.is_empty() && s != "<redacted>" && !s.starts_with("You are not associated")
 }
 
-// ---- TRMNL -----------------------------------------------------------------
-
-fn read_trmnl() -> Option<TrmnlState> {
-    let token = trmnl_token()?;
-    let url =
-        std::env::var("TRMNL_API_URL").unwrap_or_else(|_| "https://trmnl.com/api/devices".into());
-    let body = ureq::get(&url)
-        .set("Authorization", &format!("Bearer {token}"))
-        .timeout(Duration::from_secs(8))
-        .call()
-        .ok()
-        .and_then(|r| r.into_string().ok());
-    match body.as_deref().and_then(parse_trmnl_devices) {
-        Some(state) => Some(state),
-        // Token exists but the API failed: visible error state, not hidden.
-        None => Some(TrmnlState::default()),
-    }
-}
-
-/// `TRMNL_API_KEY` wins; otherwise the age/secret decrypt helper the
-/// sketchybar module used. No token → module hidden entirely.
-fn trmnl_token() -> Option<String> {
-    if let Ok(token) = std::env::var("TRMNL_API_KEY") {
-        if !token.trim().is_empty() {
-            return Some(token.trim().to_owned());
-        }
-    }
-    let helper = std::env::var("AGE_DECRYPT_HELPER").unwrap_or_else(|_| {
-        format!(
-            "{}/.config/age/decrypt.sh",
-            std::env::var("HOME").unwrap_or_default()
-        )
-    });
-    let id = std::env::var("TRMNL_API_SECRET_ID").unwrap_or_else(|_| "shared/trmnl/api_key".into());
-    let request = format!("{{\"protocolVersion\":1,\"ids\":[\"{id}\"]}}\n");
-    let mut child = Command::new(&helper)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .ok()?;
-    use std::io::Write;
-    child.stdin.take()?.write_all(request.as_bytes()).ok()?;
-    let out = child.wait_with_output().ok()?;
-    let json: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
-    let token = json.get("values")?.get(&id)?.as_str()?.trim().to_owned();
-    (!token.is_empty()).then_some(token)
-}
-
-/// Most recently pinged device's charge, from the /api/devices payload.
-fn parse_trmnl_devices(body: &str) -> Option<TrmnlState> {
-    let json: serde_json::Value = serde_json::from_str(body).ok()?;
-    let devices = json.get("data")?.as_array()?;
-    let latest = devices.iter().max_by_key(|d| {
-        d.get("hardware_last_ping_at")
-            .or_else(|| d.get("last_ping_at"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_owned()
-    })?;
-    let pct = latest
-        .get("percent_charged")
-        .and_then(|v| v.as_f64())
-        .map(|p| p.round().clamp(0.0, 100.0) as u8);
-    let name = latest
-        .get("name")
-        .and_then(|v| v.as_str())
-        .map(str::to_owned);
-    Some(TrmnlState { pct, name })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -442,24 +352,5 @@ mod tests {
         if probe.online {
             assert!(wifi().ssid.is_some(), "online but SSID unresolved");
         }
-    }
-
-    #[test]
-    fn parses_trmnl_devices() {
-        let body = r#"{"data":[
-            {"name":"Desk","friendly_id":"ABC","percent_charged":66.7,
-             "battery_voltage":3.9,"hardware_last_ping_at":"2026-08-16T01:00:00Z"},
-            {"name":"Old","friendly_id":"XYZ","percent_charged":10.0,
-             "last_ping_at":"2026-08-01T01:00:00Z"}
-        ]}"#;
-        assert_eq!(
-            parse_trmnl_devices(body),
-            Some(TrmnlState {
-                pct: Some(67),
-                name: Some("Desk".into())
-            })
-        );
-        assert_eq!(parse_trmnl_devices("{}"), None);
-        assert_eq!(parse_trmnl_devices("not json"), None);
     }
 }

@@ -64,8 +64,6 @@ export interface BarSnapshot {
   onAc: boolean
   charging: boolean
   wifi: { online: boolean; ssid: string | null }
-  /** null → no TRMNL token, cell hidden; pct null → API error state. */
-  trmnl: { pct: number | null; name: string | null } | null
   agents: AgentSession[]
   /** Optional so fixtures without a keep-awake session stay valid. */
   awake?: AwakeBarState | null

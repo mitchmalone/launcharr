@@ -245,7 +245,7 @@ const BAR_MODULES = [
     body: 'An ordinary module that usually sits in the center zone — move it wherever you like.',
   },
   {
-    name: 'wifi · trmnl · battery',
+    name: 'wifi · battery',
     body: 'Right-zone glyph cells. Alert states go amber, then red. Fail-soft: a module with no data hides, never errors.',
   },
   {

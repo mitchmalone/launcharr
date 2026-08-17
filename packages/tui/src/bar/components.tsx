@@ -19,7 +19,6 @@ import {
   groupAgents,
   timeLeft,
   toneClass,
-  trmnlTone,
 } from './format'
 import type {
   AgentSession,
@@ -588,21 +587,6 @@ export function BarWifiCell({
     >
       {online ? <Wifi {...ICON_PROPS} /> : <WifiOff {...ICON_PROPS} />}
       {online ? (ssid ?? 'SSID hidden') : 'Offline'}
-    </BarCell>
-  )
-}
-
-/** TRMNL device battery. A missing reading is an error state, not a blank. */
-export function BarTrmnlCell({
-  pct,
-  name,
-}: {
-  pct: number | null
-  name: string | null
-}) {
-  return (
-    <BarCell className={toneClass(trmnlTone(pct))} title={name ?? 'TRMNL'}>
-      ▣ {pct != null ? `${pct}%` : '--'}
     </BarCell>
   )
 }

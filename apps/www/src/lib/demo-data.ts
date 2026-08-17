@@ -190,7 +190,6 @@ export function demoSnapshot(nowSeconds: number, focused: string): BarSnapshot {
     onAc: false,
     charging: false,
     wifi: { online: true, ssid: 'Blackbeard 5G' },
-    trmnl: { pct: 87, name: 'TRMNL' },
     agents: demoAgents(nowSeconds),
   }
 }

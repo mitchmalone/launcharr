@@ -531,7 +531,6 @@ const MODULE_LABELS: Record<string, string> = {
   frontApp: 'Active app',
   clock: 'Clock',
   wifi: 'Wi-Fi',
-  trmnl: 'TRMNL battery',
   awake: 'Awake (keep-alive)',
   battery: 'Battery',
 }

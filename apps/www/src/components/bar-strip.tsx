@@ -6,7 +6,6 @@ import {
   BarBatteryCell,
   BarClock,
   BarFrontApp,
-  BarTrmnlCell,
   BarWifiCell,
   BarWorkspaces,
 } from '@launcharr/tui'
@@ -58,13 +57,6 @@ export function BarStrip() {
             online={snap.wifi.online}
             ssid={snap.wifi.ssid}
           />,
-          snap.trmnl ? (
-            <BarTrmnlCell
-              key="trmnl"
-              pct={snap.trmnl.pct}
-              name={snap.trmnl.name}
-            />
-          ) : null,
           <BarBatteryCell
             key="battery"
             pct={snap.batteryPct}

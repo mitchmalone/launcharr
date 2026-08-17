@@ -24,8 +24,7 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   auto-discovered.
 - **The bar** (`bar.enabled` in config, ON for Mitch; Sketchybar retired — revert
   `brew services start sketchybar`): Omarchy-flat strip — workspaces (clickable +
-  hotkey-tracked), front app, clock, wifi SSID, TRMNL battery (fail-soft, token
-  currently unresolvable), battery states — the battery cell **hovers open a card**
+  hotkey-tracked), front app, clock, wifi SSID, battery states — the battery cell **hovers open a card**
   (plans/done/battery-hover-card.md): capacity, time left, cycles, draw, health, and the
   active power mode read-only, click for System Settings → Battery. Hover machinery is
   now shared (`src/bar/hover.ts`), cards declare their own dropdown height.
@@ -149,8 +148,9 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
 - Housekeeping (Mitch): commit the aerospace.toml triggers change in dotfiles; prune
-  sketchybar config there when confident; TRMNL secret chain (age helper and infisical
-  `secret` both fail for `shared/trmnl/api_key`) — module lights up when healed.
+  sketchybar config there when confident.
+- TRMNL battery module **removed 2026-08-17** (personal; returns later as a plugin once
+  the module API exists — DECISIONS 2026-08-16 carve-out stays as history).
 
 ## Blocked / waiting on Mitch
 

@@ -112,9 +112,3 @@ export function batteryTone(
   if (pct < 50) return 'warn'
   return 'normal'
 }
-
-export function trmnlTone(pct: number | null): CellTone {
-  if (pct == null || pct < 20) return 'danger'
-  if (pct <= 40) return 'warn'
-  return 'normal'
-}

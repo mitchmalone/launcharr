@@ -52,7 +52,6 @@ export {
   BarClock,
   BarFrontApp,
   BarHoverCell,
-  BarTrmnlCell,
   BarWifiCell,
   BarWorkspaces,
   ICON_PROPS,
@@ -72,7 +71,6 @@ export {
   groupAgents,
   timeLeft,
   toneClass,
-  trmnlTone,
 } from './bar/format'
 export type { CellTone } from './bar/format'
 export type {

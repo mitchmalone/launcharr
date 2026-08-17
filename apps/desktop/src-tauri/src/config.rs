@@ -121,7 +121,7 @@ impl Default for BarConfig {
             layout: BarZones {
                 left: ["workspaces", "agents", "frontApp"].map(module).to_vec(),
                 center: vec![module("clock")],
-                right: ["wifi", "trmnl", "battery"].map(module).to_vec(),
+                right: ["wifi", "battery"].map(module).to_vec(),
             },
             notched_layout: None,
             modules: None,

@@ -338,7 +338,6 @@ pub struct BarSnapshot {
     pub on_ac: bool,
     pub charging: bool,
     pub wifi: crate::bar_modules::WifiState,
-    pub trmnl: Option<crate::bar_modules::TrmnlState>,
     pub agents: Vec<crate::agents::AgentSession>,
     /// Keep-awake session state (power.rs) — cheap in-memory read.
     pub awake: crate::power::AwakeState,
@@ -372,7 +371,6 @@ pub fn snapshot() -> BarSnapshot {
         on_ac,
         charging,
         wifi: crate::bar_modules::wifi(),
-        trmnl: crate::bar_modules::trmnl(),
         agents: crate::agents::list(),
         awake: crate::power::state(),
     }

@@ -11,7 +11,6 @@ import {
   groupAgents,
   timeLeft,
   toneClass,
-  trmnlTone,
 } from './format'
 import type { AgentSession, BatteryDetail } from './types'
 
@@ -190,13 +189,6 @@ describe('cell tones', () => {
   it('stays calm while charging or on AC, however low', () => {
     expect(batteryTone(5, false, true)).toBe('normal')
     expect(batteryTone(5, true, false)).toBe('normal')
-  })
-
-  it('treats a missing TRMNL reading as an error state', () => {
-    expect(trmnlTone(null)).toBe('danger')
-    expect(trmnlTone(15)).toBe('danger')
-    expect(trmnlTone(40)).toBe('warn')
-    expect(trmnlTone(80)).toBe('normal')
   })
 
   it('emits classes the CSS actually scopes under .bar-right', () => {

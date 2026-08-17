@@ -311,7 +311,7 @@
   color: var(--fg, #dde1f0);
 }
 
-/* Module alert states (battery low, TRMNL low, wifi offline). Scoped under
+/* Module alert states (battery low, wifi offline). Scoped under
  * .bar-right so they outrank .bar-cell — specificity bites (JOURNAL 2026-08-16). */
 .bar-right .bar-warn {
   color: var(--bang, #d29922);

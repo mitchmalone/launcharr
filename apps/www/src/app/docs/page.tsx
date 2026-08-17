@@ -67,7 +67,7 @@ const CONFIG_JSON = `{
     "layout": {
       "left":   [{ "id": "workspaces" }, { "id": "agents" }, { "id": "frontApp" }],
       "center": [{ "id": "clock" }],
-      "right":  [{ "id": "wifi" }, { "id": "trmnl" }, { "id": "battery" }]
+      "right":  [{ "id": "wifi" }, { "id": "battery" }]
     }
   },
   "agents": { "askMode": false, "askProvider": "claude" },

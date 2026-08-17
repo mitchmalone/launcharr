@@ -46,7 +46,7 @@ and Aerospace are independently toggleable. Not a distro — bar + launcher + co
 - **B1 — Bar spike (gate).** ✅ (2026-08-15) _Exit met: ~19 MB marginal (shared WebKit
   pool) — gate PASSED; numbers in plans/done/v0.5-tui-kit-and-bar-spike.md._
 - **B2 — Bar core.** 🔄 Bar is Mitch's daily menubar (Sketchybar retired 2026-08-16;
-  wifi/TRMNL/battery/clock modules live). Remaining: placement config, notched
+  wifi/battery/clock modules live; TRMNL removed 2026-08-17, returns as a plugin). Remaining: placement config, notched
   profiles, multi-display, app hints, event-driven front-app.
   _Exit (Sketchybar off) met; config surface pending._
 - **B3 — Aerospace wrap.** Vendored pinned binary, generated opinionated config,
@@ -81,6 +81,6 @@ File search, snippets, light mode, Windows/Linux, **anything distro-shaped**. St
 for the **launcher core**: zero network, zero permissions. Amended by DECISIONS
 2026-08-15/16 for v0.5: window management arrives _wrapped_ (Aerospace, which brings its
 own Accessibility grant — launcharr itself still requests nothing), and bar **modules**
-may be credentialed + networked per-module, fail-visible (TRMNL first). The PRD predates
+may be credentialed + networked per-module, fail-visible (TRMNL was the first; pulled 2026-08-17 pending the plugin API). The PRD predates
 v0.5 and needs a revision pass — until then DECISIONS 2026-08-15 is the scope source for
 bar/panel questions.
