@@ -40,11 +40,12 @@ objc2-app-kit = { version = "0.3", features = [
   "NSColor",
   "NSColorSpace",
   "NSColorSampler",
+  "NSEvent",
   "block2",
   "objc2-core-foundation",
 ] }
 block2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSData", "NSDictionary", "NSProcessInfo", "NSObjCRuntime"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSData", "NSDictionary", "NSProcessInfo", "NSObjCRuntime", "NSGeometry"] }
 image = { version = "0.25.10", default-features = false, features = ["png", "ico", "jpeg"] }
 tauri-plugin-autostart = "2.5.1"
 ureq = "2"

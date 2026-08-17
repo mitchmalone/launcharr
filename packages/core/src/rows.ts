@@ -38,6 +38,8 @@ export type RowEnter =
   | { kind: 'delete-clip'; id: number }
   | { kind: 'script-alt-action'; index: number }
   | { kind: 'open-panel'; panel: string }
+  /** Enter on a fuzzy-matched built-in trigger item (`lorem`, `clip`). */
+  | { kind: 'builtin'; trigger: string }
   | { kind: 'awake-arm'; until: AwakeUntil }
   | { kind: 'awake-release' }
   /** Built-in `lorem`, step one: Enter on the keyword opens the volume menu. */
@@ -64,6 +66,7 @@ function kindGlyph(item: IndexItem): string {
   if (item.kind === 'link') return '↗'
   if (item.kind === 'command') return '⏻'
   if (item.kind === 'panel') return '▤'
+  if (item.kind === 'builtin') return '¶'
   return '⚓︎'
 }
 
@@ -139,7 +142,9 @@ export function launchRows(
       enter:
         item.kind === 'panel'
           ? { kind: 'open-panel', panel: item.path }
-          : { kind: 'execute', id: item.id },
+          : item.kind === 'builtin'
+            ? { kind: 'builtin', trigger: item.path }
+            : { kind: 'execute', id: item.id },
       alt: itemAlt(item),
     })
   }

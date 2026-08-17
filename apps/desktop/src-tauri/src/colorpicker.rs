@@ -1,9 +1,9 @@
-//! `colorpicker` (Notion "Color Picker", 2026-08-17): Apple's own `NSColorSampler`
-//! loupe — the magnifier that follows the cursor, click samples, Esc cancels. It runs
-//! out-of-process on Apple's side, so it needs **no** Screen Recording or any other
-//! grant (invariant 1) and costs launcharr nothing while idle (no window, no capture
-//! code). The pick lands on the pasteboard as `#RRGGBB` (sRGB) and the panel flashes
-//! a confirmation; a cancelled pick copies nothing.
+//! `colorpicker` (Notion "Color Picker", 2026-08-17): the launcharr loupe (loupe.rs,
+//! 2× — Mitch's feedback the same day) when Screen Recording is granted, else Apple's
+//! own `NSColorSampler` — a magnifier that follows the cursor, click samples, Esc
+//! cancels, no permission needed. Either way the pick lands on the pasteboard as
+//! `#RRGGBB` (sRGB) and the panel flashes a confirmation; a cancelled pick copies
+//! nothing. `finish` is the shared tail both paths call.
 //!
 //! AppKit-only module (the AGENTS rule): the one `unsafe` block is the block callback,
 //! kept here and out of the command handler.
@@ -12,10 +12,29 @@ use block2::RcBlock;
 use objc2_app_kit::{NSColor, NSColorSampler, NSColorSpace};
 use tauri::AppHandle;
 
-/// Open the sampler on the main thread; the selection handler copies + flashes.
+/// Open the picker on the main thread. With Screen Recording granted that's the
+/// launcharr loupe (loupe.rs, 2× zoom, ours to tune); otherwise ask macOS once and use
+/// Apple's sampler for this pick — it needs no permission and still gets the job done.
 pub fn pick(app: &AppHandle) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
+        if crate::loupe::capture_allowed() {
+            match crate::loupe::show(&handle) {
+                Ok(()) => return,
+                Err(e) => eprintln!("[launcharr] loupe failed, falling back to the system sampler: {e}"),
+            }
+        } else if !crate::loupe::request_capture() {
+            eprintln!(
+                "[launcharr] Screen Recording not granted — using Apple's color sampler; grant it in System Settings → Privacy & Security for the launcharr loupe"
+            );
+        }
+        system_sampler(&handle);
+    });
+}
+
+/// Apple's `NSColorSampler`; the selection handler copies + flashes.
+fn system_sampler(handle: &AppHandle) {
+    {
         let sampler = NSColorSampler::new();
         let done = handle.clone();
         // The block owns a clone of the app handle; AppKit retains the sampler
@@ -29,14 +48,19 @@ pub fn pick(app: &AppHandle) {
             // we only read it and never retain the raw pointer past this scope.
             let hex = unsafe { hex_of(&*color) };
             if let Some(hex) = hex {
-                crate::clipboard::set_string(&hex);
-                crate::panel::flash(&done, &format!("Copied {hex} to clipboard"));
+                finish(&done, &hex);
             }
         });
         // SAFETY: called on the main thread (run_on_main_thread), block outlives the
         // call because AppKit retains it via the sampler.
         unsafe { sampler.showSamplerWithSelectionHandler(&block) };
-    });
+    }
+}
+
+/// Shared tail: pasteboard + toast.
+pub fn finish(app: &AppHandle, hex: &str) {
+    crate::clipboard::set_string(hex);
+    crate::panel::flash(app, &format!("Copied {hex} to clipboard"));
 }
 
 /// sRGB `#RRGGBB`, uppercase (the ticket's example). Colors the sampler returns are

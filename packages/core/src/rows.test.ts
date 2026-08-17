@@ -173,6 +173,23 @@ describe('panelRows', () => {
   })
 })
 
+describe('builtin items', () => {
+  it('a builtin index item ranks like an app and enters as its trigger', () => {
+    const lorem: IndexItem = {
+      id: 'builtin:lorem',
+      name: 'Lorem ipsum',
+      kind: 'builtin',
+      path: 'lorem',
+      hint: 'placeholder text ▸',
+      icon: null,
+      aliases: ['lorem'],
+    }
+    const rows = launchRows('lor', [lorem], {}, 'https://x/{query}')
+    expect(rows[0]!.title).toBe('Lorem ipsum')
+    expect(rows[0]!.enter).toEqual({ kind: 'builtin', trigger: 'lorem' })
+  })
+})
+
 describe('loremEntryRow', () => {
   it('one row whose Enter opens the volume menu', () => {
     const rows = loremEntryRow()

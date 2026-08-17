@@ -82,6 +82,13 @@ Shortcuts tab, flesh out About).
 - [ ] Toast auto-hides and focus returns to the previous app
 - [ ] `?` follow-up input keeps keyboard focus after each answer
 
+## Feedback round (same day)
+
+- Zoom too intense → the launcharr loupe at 2× (loupe.rs, src/loupe/), Screen Recording
+  opt-in with the system sampler as fallback (DECISIONS 2026-08-17).
+- `lorem` must confirm the keyword first → `lorem ⏎` opens the volume menu.
+- Built-ins fuzzy-match (`lor` → Lorem ipsum): `builtin` item kind in core, items in App.
+
 ## Out of scope
 
 - Color history / non-HEX formats (ticket open questions → HEX now, revisit on use)

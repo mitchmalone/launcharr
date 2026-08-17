@@ -19,6 +19,7 @@ export default defineConfig(async () => ({
         main: 'index.html',
         settings: 'settings.html',
         bar: 'bar.html',
+        loupe: 'loupe.html',
       },
     },
   },

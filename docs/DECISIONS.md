@@ -5,6 +5,24 @@
 
 ---
 
+### 2026-08-17 · The launcharr loupe (2×, Screen Recording opt-in) fronts the color picker; the system sampler stays as fallback
+
+- **Decision.** Same-day feedback: Apple's sampler zooms too hard to aim ("decrease
+  intensity… try a zoom of 2") and exposes no magnification knob, so `colorpicker` now
+  opens **our own loupe** (`loupe.rs` + `src/loupe/`): a transparent non-activating key
+  panel over the mouse's screen; the webview draws a 176pt magnifier at **2×** from pixels
+  Rust captures with `CGWindowListCreateImage(… OnScreenBelowWindow …)` (so it never sees
+  itself), shows the centre pixel's hex, click picks / Esc cancels / losing key cancels.
+  Two IPC commands: `loupe_capture(x, y, size)` (binary `Response`: `[w][h][RGBA…]`) and
+  `loupe_done(hex?)`. It needs **Screen Recording**: not granted → `CGRequestScreenCapture
+Access` once and Apple's `NSColorSampler` handles that pick, so nothing is lost by
+  refusing. Invariant 1 reworded to "zero _required_ permissions" with this one opt-in.
+  Zoom/diameter are constants in `src/loupe/main.tsx` (hackable), not config — yet.
+- **Why.** The magnification is the whole complaint and only a loupe we draw can change it;
+  drawing it in the webview keeps the opinion (zoom, ring, label) in TypeScript and Rust to
+  byte-moving. The window is created once and hidden after (destroying nspanel-converted
+  windows aborts, JOURNAL 2026-08-16), so idle memory only grows after the first pick.
+
 ### 2026-08-17 · Color picker = Apple's `NSColorSampler`; confirmations are an in-panel toast, never a notification
 
 - **Decision.** `colorpicker` (a `launcharr:` index item, fuzzy-matchable) runs

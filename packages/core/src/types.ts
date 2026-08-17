@@ -8,6 +8,10 @@ export type ItemKind =
    * like an app; `path` carries the trigger word. Exact-token typing still goes through
    * the grammar's trigger mode. */
   | 'panel'
+  /** A built-in trigger word (`lorem`, `clip`) surfaced as a rankable item so it fuzzy-matches
+   * like everything else; `path` carries the trigger word. Enter runs the trigger's own step
+   * one (lorem opens its menu, clip fills the prompt). */
+  | 'builtin'
 
 export type IndexItem = {
   id: string

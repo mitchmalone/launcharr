@@ -19,8 +19,10 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
 - **Ready-column round, 2026-08-17** (plans/done/ready-column-2026-08-17.md, DECISIONS
-  2026-08-17 ×4): **`colorpicker`** (Apple's `NSColorSampler` loupe → `#RRGGBB` on the
-  pasteboard, Esc copies nothing, zero permissions) and **`lorem`** (built-in, five
+  2026-08-17 ×4): **`colorpicker`** (the launcharr **loupe** at 2× — own transparent panel +
+  `CGWindowListCreateImage` below it, Screen Recording opt-in, invariant 1 reworded —
+  falling back to Apple's `NSColorSampler` when not granted; `#RRGGBB` on the pasteboard,
+  Esc copies nothing) and **`lorem`** (built-in, five
   volumes, semi-random, `lorem.py` retired from the bundle) — both confirm with the new
   **toast** row (frontend `copy_text keepOpen`, Rust `panel::flash`); **`?` agent mode**
   redesigned as turns: first question pinned in the header, transcript below, follow-up
@@ -169,7 +171,9 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 ## Blocked / waiting on Mitch
 
 - **Ready-column hands-check** (plans/done/ready-column-2026-08-17.md): `colorpicker ⏎`
-  loupe over a full-screen app, click copies + toast, Esc copies nothing; `lorem` → five
+  — first run prompts for Screen Recording (grant → relaunch launcharr → 2× loupe; deny →
+  Apple's sampler keeps working), loupe over a full-screen app, click copies + toast,
+  Esc copies nothing; `lorem` → five
   rows → Enter copies + toast auto-hides with focus returned; `?` conversation keeps the
   input focused across turns; Settings → Agents sub-tabs / About links open in the browser.
 - **0.4.0 hands-check leftovers** (released; these are the bits only hands can feel):

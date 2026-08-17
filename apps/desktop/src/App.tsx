@@ -406,6 +406,32 @@ export default function App() {
     [config],
   )
 
+  // Built-in trigger words fuzzy-match too (`lor` → Lorem ipsum); Enter runs
+  // the trigger's first step. Panels have their own item list above.
+  const builtinItems = useMemo<IndexItem[]>(
+    () => [
+      {
+        id: 'builtin:lorem',
+        name: 'Lorem ipsum',
+        kind: 'builtin',
+        path: 'lorem',
+        hint: 'placeholder text ▸',
+        icon: null,
+        aliases: ['lorem', 'ipsum', 'placeholder'],
+      },
+      {
+        id: 'builtin:clip',
+        name: 'Clip search',
+        kind: 'builtin',
+        path: 'clip',
+        hint: 'clipboard history inline ▸',
+        icon: null,
+        aliases: ['clip'],
+      },
+    ],
+    [],
+  )
+
   const rows: Row[] = useMemo(() => {
     if (draft) return draftRows(draft, raw, browsers)
     if (loremMenu) return loremRows()
@@ -413,7 +439,7 @@ export default function App() {
       case 'launch':
         return launchRows(
           parsed.query,
-          [...index, ...panelItems],
+          [...index, ...panelItems, ...builtinItems],
           frecency,
           config.searchFallback,
         )
@@ -443,6 +469,7 @@ export default function App() {
     parsed,
     index,
     panelItems,
+    builtinItems,
     frecency,
     clips,
     scriptItems,
@@ -537,6 +564,15 @@ export default function App() {
         case 'awake-release':
           invoke('awake_release').catch(console.error)
           invoke('hide_panel').catch(console.error)
+          break
+        case 'builtin':
+          if (enter.trigger === 'lorem') {
+            setLoremMenu(true)
+            setRaw('')
+          } else {
+            setRaw(`${enter.trigger} `)
+          }
+          setSelected(0)
           break
         case 'lorem-menu':
           setLoremMenu(true)

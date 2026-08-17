@@ -31,6 +31,7 @@ mod favicon;
 mod frecency;
 mod icons;
 mod indexer;
+mod loupe;
 mod notch;
 mod panel;
 mod power;
@@ -140,6 +141,8 @@ pub fn run() {
             commands::copy_clip,
             commands::clear_clips,
             commands::copy_text,
+            commands::loupe_capture,
+            commands::loupe_done,
             commands::open_url,
             commands::add_quicklink,
             commands::reveal_item,

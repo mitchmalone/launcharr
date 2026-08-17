@@ -421,6 +421,29 @@ pub fn clear_clips(state: State<'_, AppState>) -> CmdResult<()> {
     crate::clipboard::clear(&db)
 }
 
+/// Loupe: pixels around (`x`, `y`) on the loupe window, `size` points square, as raw
+/// `[w][h][RGBA…]` bytes (binary IPC — no JSON for 80 KB of pixels per frame).
+#[tauri::command]
+pub fn loupe_capture(x: f64, y: f64, size: f64) -> CmdResult<tauri::ipc::Response> {
+    crate::loupe::capture(x, y, size).map(tauri::ipc::Response::new)
+}
+
+/// Loupe: the pick (`hex` = `#RRGGBB`) or a cancel (`None`); hides the loupe either way.
+#[tauri::command]
+pub fn loupe_done(app: AppHandle, hex: Option<String>) -> CmdResult<()> {
+    crate::loupe::hide(&app);
+    if let Some(hex) = hex {
+        let ok = hex.len() == 7
+            && hex.starts_with('#')
+            && hex[1..].chars().all(|c| c.is_ascii_hexdigit());
+        if !ok {
+            return Err(CmdError::Internal(format!("bad color: {hex}")));
+        }
+        crate::colorpicker::finish(&app, &hex.to_ascii_uppercase());
+    }
+    Ok(())
+}
+
 /// Copy-row Enter (inline math, emoji, `lorem`…): copy, and dismiss unless the
 /// frontend wants to flash a confirmation first (`keep_open` — it hides itself).
 #[tauri::command]

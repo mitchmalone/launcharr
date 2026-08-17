@@ -6,6 +6,20 @@
 
 ---
 
+### 2026-08-17 · Loupe capture: `CGWindowListCreateImage` below our own window; points, not pixels
+
+For a magnifier drawn _at_ the cursor, plain display capture sees the loupe itself
+(feedback loop). `CGWindowListCreateImage(rect, kCGWindowListOptionOnScreenBelowWindow,
+ourWindowNumber, kCGWindowImageBestResolution)` captures everything beneath the loupe
+panel and returns native pixels for a rect given in CG global _points_ (top-left origin
+of the main display) — Tauri's `LogicalPosition` on macOS is the same space, so the
+webview's `clientX/Y` + the panel's origin is the rect, no scale math. AppKit's
+`NSEvent.mouseLocation` / `NSScreen.frame` are bottom-left; flip with the main screen's
+height. Bytes come out via a `CGBitmapContextCreate(RGBA8, ByteOrder32Big)` draw into a
+Vec — `tauri::ipc::Response` ships them binary (~80 KB/frame at 2×, fine at 60 Hz).
+Deprecated-in-14 API, still present in 26; ScreenCaptureKit is the eventual replacement.
+Screen Recording (TCC) is required; without it the call returns an image of nothing.
+
 ### 2026-08-17 · Driving the panel from an agent shell: tray "Summon panel" works, keystrokes don't land
 
 Under tmux/iTerm the shell has no Screen Recording (`screencapture` → "could not create

@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "launcharr panel capabilities",
-  "windows": ["main", "settings", "bar-*"],
+  "windows": ["main", "settings", "bar-*", "loupe"],
   "permissions": ["core:default"]
 }
