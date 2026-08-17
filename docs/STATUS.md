@@ -138,9 +138,13 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
   `brew install` streamed, atomic write + `reload-config`, borders child supervision,
   `NSConvolutionOverride1`), Settings → **Desktop** tab (knobs, install rows, adopt-or-
   leave, corner slider), tap cask `depends_on` aerospace (pushed), dotfiles retired.
-  **`aerospace ⏎` panel** (fuzzy `aero`) carries the tray menu — workspaces, pause,
-  reload, open config, sponsor — because the icon can't be hidden from outside (JOURNAL).
-  Seven new IPC commands. Was "B3 vendored wrap" — vendoring dropped (GPL +
+  **`aerospace ⏎` panel** (fuzzy `aero`) carries the tray menu — horizontal workspace
+  strip (←→, digits jump; active = accent border, cursor = fill), pause, reload, open
+  config, sponsor — because the icon can't be hidden from outside (JOURNAL). Seven new IPC
+  commands. Kit fallout fixed on the way: `.tui button` was beating single-class segment
+  rules; `revealSelected` is now the one keep-in-view helper (LEARNINGS). **Adopted on
+  Mitch's machine** (managed toml live, borders uninstalled pending the Settings button).
+  **Not released** — 0.4.0 waits on more polish + hands-check. Was "B3 vendored wrap" — vendoring dropped (GPL +
   zero-network). Module API (B4 — agent bar
   shipped 2026-08-16, general any-language emitter API remains).
 - Saved for last by request: vercel / GitHub Actions / uptime bar modules.
@@ -150,11 +154,10 @@ surface (direction: DECISIONS 2026-08-15 — own bar, wrapped Aerospace, modular
 
 ## Blocked / waiting on Mitch
 
-- **v0.4 desktop hands-check**: settings opened on Desktop with the adopt prompt (your
-  toml is foreign) → "use launcharr's" (backs up to `aerospace.toml.bak-launcharr`),
-  tiling reloads; Window borders → "install JankyBorders via Homebrew" (borders was
-  uninstalled 2026-08-17) → toggle on → retints on theme switch; corner slider → relaunch
-  TextEdit. Then `scripts/release.sh 0.4.0`.
+- **v0.4 desktop hands-check** (adopt already done): Window borders → "install
+  JankyBorders via Homebrew" (borders was uninstalled 2026-08-17) → toggle on → retints on
+  theme switch; corner slider (you set 1) → relaunch TextEdit; `aero ⏎` strip + actions;
+  Settings → Desktop knobs reload live. Then more polish, then `scripts/release.sh 0.4.0`.
 
 - Panel focus checklist (only hands): summon → `wifi ⏎` → connect → Esc → Esc → focus
   restored exactly, incl. over a full-screen app.
