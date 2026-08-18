@@ -65,7 +65,9 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   (hook walks the parent chain; `LAUNCHARR_AGENT_PID` overrides), new `agent_forget`
   command on `⌫`/`x` in `agents ⏎`, agents outside tmux share a dashed box instead of
   floating loose. Hook also stopped mapping `/clear`'s `SessionEnd` to `ended`.
-  Both reaping paths verified live; `⌫` awaits a hands-check.
+  A session with neither pane nor pid can only be judged on silence, so it gets 15 min,
+  not the 12 h `pruneHours` sweep — the fix that finally cleared the field orphan.
+  All reaping paths verified live; `⌫` awaits a hands-check.
 - **Agent monitoring** (B4 slice, plans/done/agent-monitoring.md): launcharr absorbed
   sketchybar-agent-status — Rust socket monitor (`agents.rs`, old wire protocol
   unchanged), bar agent cells, `agents ⏎` panel. WIP color semantics (2026-08-16):

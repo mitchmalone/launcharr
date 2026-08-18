@@ -103,14 +103,20 @@ fn log_protected_windows() {
         if list.is_null() {
             return;
         }
-        let array: &objc2_foundation::NSArray<objc2_foundation::NSDictionary> = &*(list as *const _);
+        let array: &objc2_foundation::NSArray<objc2_foundation::NSDictionary> =
+            &*(list as *const _);
         let mut protected: Vec<String> = Vec::new();
         let owner_key = objc2_foundation::NSString::from_str("kCGWindowOwnerName");
         let sharing_key = objc2_foundation::NSString::from_str("kCGWindowSharingState");
         let layer_key = objc2_foundation::NSString::from_str("kCGWindowLayer");
         for dict in array.iter() {
-            let dict: &objc2_foundation::NSDictionary<objc2_foundation::NSString, objc2::runtime::AnyObject> = &*(&*dict as *const _ as *const _);
-            let Some(sharing) = dict.objectForKey(&sharing_key) else { continue };
+            let dict: &objc2_foundation::NSDictionary<
+                objc2_foundation::NSString,
+                objc2::runtime::AnyObject,
+            > = &*(&*dict as *const _ as *const _);
+            let Some(sharing) = dict.objectForKey(&sharing_key) else {
+                continue;
+            };
             let sharing: i64 = objc2::msg_send![&*sharing, longLongValue];
             let layer: i64 = dict
                 .objectForKey(&layer_key)
@@ -266,7 +272,8 @@ pub fn show(app: &AppHandle, zoom: u32, size: u32) -> CmdResult<()> {
     // keeps the loupe out of every screen capture, ours included — that's how the
     // magnifier avoids seeing itself.
     unsafe {
-        let _: () = objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, setSharingType: 0usize];
+        let _: () =
+            objc2::msg_send![ns_window as *mut objc2::runtime::AnyObject, setSharingType: 0usize];
     }
     *SHOWN.lock().unwrap() = Some(Shown { display });
     breadcrumb(&format!(

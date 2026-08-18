@@ -23,6 +23,15 @@ use crate::error::{CmdError, CmdResult};
 /// configurable via `agents.pruneHours`.
 const DEFAULT_STALE_SECS: u64 = 12 * 3600;
 
+/// How long a session with *nothing to check* — no tmux pane, no pid — may sit
+/// silent before we call it gone. `pruneHours` is a bulk sweep, not a liveness
+/// test, and a session offering no evidence of life shouldn't get the same
+/// benefit of the doubt as one we merely failed to reach (field report
+/// 2026-08-18: a quit agent still on the bar half an hour later). Every current
+/// adapter reports a pid, so this only catches legacy records and adapters that
+/// don't; both come back on their next event if we called it early.
+const UNVERIFIABLE_STALE_SECS: u64 = 15 * 60;
+
 /// Monitoring is off by default (Settings → Agents). The socket stays bound
 /// either way — cheaper and simpler than tearing down a blocked accept loop —
 /// but events are discarded and list() is empty while disabled.
@@ -152,7 +161,9 @@ pub fn list() -> Vec<AgentSession> {
 /// - has a tmux pane that a *successful* `list-panes` read didn't list → gone.
 ///   A failed read (tmux missing, cold start) reaps nothing at all;
 /// - otherwise, if a pid is known and `comm` says it's gone, or now belongs to
-///   a different command → gone. Sessions without a pid ride the prune window.
+///   a different command → gone;
+/// - a session with neither a pane nor a pid can only be judged on silence, and
+///   is held to `UNVERIFIABLE_STALE_SECS` rather than the full prune window.
 fn reap(
     sessions: &mut Vec<AgentSession>,
     layout: &std::collections::HashMap<String, PaneLocation>,
@@ -177,7 +188,14 @@ fn reap(
                 return false;
             }
         }
-        let Some(pid) = s.pid else { return true };
+        let Some(pid) = s.pid else {
+            // No process to interrogate. If it still claims a pane we simply
+            // couldn't reach tmux — that's ignorance, and ignorance keeps the
+            // session. With no pane either, silence is the only signal left,
+            // and it's held to a much shorter one.
+            return !s.tmux.is_empty()
+                || now.saturating_sub(s.updated_at) <= UNVERIFIABLE_STALE_SECS;
+        };
         match (comm(pid), s.pid_comm.as_deref()) {
             (None, _) => false,
             (Some(now_comm), Some(seen)) => now_comm == seen,
@@ -805,32 +823,53 @@ mod tests {
     }
 
     #[test]
-    fn a_pid_less_session_rides_the_prune_window() {
-        let mut s = vec![AgentSession {
-            session: "a".into(),
-            agent: "claude".into(),
-            updated_at: 100,
-            ..Default::default()
-        }];
+    fn a_session_with_nothing_to_check_is_judged_on_silence() {
+        // No pane, no pid — the 2026-08-18 field orphan's shape. Nothing here
+        // is evidence of life, so it gets the short window, not the 12h sweep.
+        let bare = || {
+            vec![AgentSession {
+                session: "a".into(),
+                agent: "claude".into(),
+                updated_at: 100,
+                ..Default::default()
+            }]
+        };
+        let mut s = bare();
         assert!(!reap(
             &mut s,
             &layout(&[]),
             true,
-            100,
+            100 + UNVERIFIABLE_STALE_SECS,
             DEFAULT_STALE_SECS,
             no_procs
         ));
         assert_eq!(s.len(), 1);
-        // …until it ages out.
+        let mut s = bare();
         assert!(reap(
             &mut s,
             &layout(&[]),
             true,
-            100 + DEFAULT_STALE_SECS + 1,
+            100 + UNVERIFIABLE_STALE_SECS + 1,
             DEFAULT_STALE_SECS,
             no_procs
         ));
-        assert!(s.is_empty());
+        assert!(s.is_empty(), "silent far past the window, nothing to ask");
+    }
+
+    #[test]
+    fn a_pid_less_pane_holder_keeps_the_full_prune_window() {
+        // A pane we couldn't look up is ignorance, not death: this one must
+        // outlive the short window that catches the pane-less case above.
+        let mut s = vec![paned("a", "%1")];
+        assert!(!reap(
+            &mut s,
+            &layout(&[]),
+            false,
+            100 + UNVERIFIABLE_STALE_SECS + 1,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert_eq!(s.len(), 1);
     }
 
     #[test]

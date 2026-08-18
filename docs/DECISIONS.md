@@ -26,9 +26,16 @@
   nothing at all (tmux absent or cold start must never clear a live fleet), a live pane
   outranks a missing process, and a session with no pid rides the prune window as before. A
   ghost cell is an annoyance; a vanished live agent is a lie.
+- **Amended same day.** The first cut kept anything it couldn't check, which left the very
+  record that prompted this — no pane, no pid — sitting on the bar exactly as before, with
+  hand-dismissal as the only cure. Corrected: a session with **nothing to interrogate** is
+  judged on silence and held to 15 minutes, not the 12 h sweep. `pruneHours` is a bulk
+  sweep, not a liveness test. A session that still claims a pane keeps the full window —
+  a tmux read we couldn't make is ignorance, not death.
 - **Alternatives.** `kill(pid, 0)` alone — cheaper, but a recycled pid pins a ghost forever.
-  Shortening `pruneHours` for pane-less sessions — no protocol change, but wrong about any
-  agent that simply thinks for a long time. Both rejected for guessing where we can observe.
+  Shortening `pruneHours` for _all_ pane-less sessions — wrong about any agent that simply
+  thinks for a long time; with a pid we can know instead of guess, so the short window is
+  the last resort, not the first.
 
 ### 2026-08-17 · The launcharr loupe (2×, Screen Recording opt-in) fronts the color picker; the system sampler stays as fallback
 

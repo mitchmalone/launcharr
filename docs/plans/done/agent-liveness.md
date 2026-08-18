@@ -69,9 +69,13 @@ Also: the hook maps every `SessionEnd` to `ended`, but `/clear` fires `SessionEn
       `reason=clear`; unit-tested via the hook's own branch, not yet seen in anger)
 - [x] tmux unavailable → no reaping (12 h prune only), never a mass clear
       (`an_untrusted_layout_reaps_nothing`)
-- [ ] **Hands-check:** `⌫` on an `agents ⏎` row removes it immediately. The 2026-08-18
-      field orphan (`f4de26e7`, pane-less, no pid — it predates the wire change, so no
-      heuristic can prove it dead) is left in the store on purpose as the specimen.
+- [x] The 2026-08-18 field orphan itself disappears. First cut failed this: pane-less and
+      pid-less, it fell through to the 12 h prune and stayed put. Fixed by holding
+      "nothing to interrogate" sessions to `UNVERIFIABLE_STALE_SECS` (15 min) — confirmed
+      gone on relaunch, the three live sessions kept
+- [ ] **Hands-check:** `⌫` on an `agents ⏎` row removes it immediately (no specimen left
+      in the store now — make one by dismissing any live row; it repopulates on the next
+      hook event)
 
 ## Out of scope
 
