@@ -24,6 +24,20 @@ Access` once and Apple's `NSColorSampler` handles that pick, so nothing is lost 
   byte-moving. The window is created once and hidden after (destroying nspanel-converted
   windows aborts, JOURNAL 2026-08-16), so idle memory only grows after the first pick.
 
+### 2026-08-17 · Unfocused JankyBorders ring: a solid mid tone (border→fg 57%), not translucent dim
+
+- **Decision.** `inactiveBorderColor` in `@launcharr/core/desktop`: opaque, 57% of the
+  way from the theme's `border` to its `fg` (#8083a0 for launcharr). `BorderColors`
+  now carries `border` + `fg` instead of `dim`; `INACTIVE_ALPHA` is gone.
+- **Why.** With `gaps` fixed to mean the visible gap, the _unfocused_ pair still read
+  as ~10px: the ring straddles the frame and a translucent dim ring reads as air, so
+  the eye adds it to the gap. Tried live via `borders inactive_color=…` (2026-08-17,
+  no reload needed): dim@70/100% — no change; surface/border tones — vanish into a
+  dark wallpaper; fg@35% — washed out; solid #9498b8 — visible; solid #7f83a0 — reads
+  as edge, gap reads 8. Baked as a ratio so other themes get the same relationship.
+  Hypothesis 3 (draw the ring inset so geometry ≡ appearance) stays the eventual fix,
+  upstream in JankyBorders.
+
 ### 2026-08-17 · `gaps` is the gap you see: borders and the top bar are factored in
 
 - **Decision.** `gapPlan` in `@launcharr/core/desktop` turns the one `gaps` knob into

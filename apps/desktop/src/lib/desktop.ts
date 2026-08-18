@@ -85,7 +85,12 @@ export function planDesktop(
       : null
   const borders =
     d.tiling.enabled && d.borders.enabled
-      ? bordersArgs(d, { accent: theme.accent, dim: theme.dim, bg: theme.bg })
+      ? bordersArgs(d, {
+          accent: theme.accent,
+          border: theme.border,
+          fg: theme.fg,
+          bg: theme.bg,
+        })
       : null
   return { toml, bordersArgs: borders }
 }

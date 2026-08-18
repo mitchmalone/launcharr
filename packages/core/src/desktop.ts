@@ -288,13 +288,33 @@ export function renderAerospaceToml(
 export interface BorderColors {
   /** Focused-window border. */
   accent: string
-  /** Unfocused-window border (drawn at half alpha). */
-  dim: string
+  /** Theme border line — the dark end of the unfocused ring's tone. */
+  border: string
+  /** Theme text — the light end of the unfocused ring's tone. */
+  fg: string
   /** Faint fill behind the border. */
   bg: string
 }
 
-const INACTIVE_ALPHA = 0.5
+/**
+ * Unfocused ring: a *solid* tone 57% of the way from `border` to `fg`. Settled by
+ * eye on 2026-08-17 (DECISIONS): translucent dim rings read as gap (an 8px gap
+ * looked 10), surface/border tones vanished into a dark wallpaper, translucent fg
+ * washed out — a solid mid tone is what reads as "window edge" so the visible gap
+ * matches the real one. For launcharr's theme this lands on #8083a0.
+ */
+export const INACTIVE_MIX = 0.57
+
+export function inactiveBorderColor(
+  colors: Pick<BorderColors, 'border' | 'fg'>,
+): string {
+  const a = parseCss(colors.border.trim()) ?? { r: 57, g: 59, b: 84, a: 1 }
+  const b = parseCss(colors.fg.trim()) ?? { r: 181, g: 185, b: 217, a: 1 }
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * INACTIVE_MIX)
+  const hex = (n: number) => clamp(n, 0, 255).toString(16).padStart(2, '0')
+  return `#${hex(mix(a.r, b.r))}${hex(mix(a.g, b.g))}${hex(mix(a.b, b.b))}`
+}
+
 const BACKGROUND_ALPHA = 48 / 255
 export const BORDER_WIDTH_MIN = 1
 export const BORDER_WIDTH_MAX = 20
@@ -311,7 +331,7 @@ export function bordersArgs(
   )
   return [
     `active_color=${cssToBordersColor(colors.accent)}`,
-    `inactive_color=${cssToBordersColor(colors.dim, INACTIVE_ALPHA)}`,
+    `inactive_color=${cssToBordersColor(inactiveBorderColor(colors))}`,
     `background_color=${cssToBordersColor(colors.bg, BACKGROUND_ALPHA)}`,
     `width=${trimNumber(width)}`,
     'hidpi=on',

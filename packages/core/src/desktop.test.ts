@@ -12,12 +12,18 @@ import {
   cornerRadiusArgs,
   cssToBordersColor,
   gapPlan,
+  inactiveBorderColor,
   isManagedToml,
   normalizeDesktop,
   renderAerospaceToml,
 } from './desktop'
 
-const COLORS = { accent: '#ff6b8c', dim: '#73747c', bg: '#1c1d2a' }
+const COLORS = {
+  accent: '#ff6b8c',
+  border: '#393b54',
+  fg: '#b5b9d9',
+  bg: '#1c1d2a',
+}
 
 function desktop(over: Partial<DesktopConfig> = {}): DesktopConfig {
   return { ...DEFAULT_DESKTOP, ...over }
@@ -141,11 +147,20 @@ describe('renderAerospaceToml', () => {
   })
 })
 
+describe('inactiveBorderColor', () => {
+  it('is a solid tone 57% from border to fg — #8083a0 for the launcharr theme', () => {
+    expect(inactiveBorderColor(COLORS)).toBe('#8083a0')
+    expect(inactiveBorderColor({ border: '#000000', fg: '#ffffff' })).toBe(
+      '#919191',
+    )
+  })
+})
+
 describe('bordersArgs', () => {
   it('renders JankyBorders flags from theme colours', () => {
     expect(bordersArgs(desktop(), COLORS)).toEqual([
       'active_color=0xffff6b8c',
-      'inactive_color=0x8073747c',
+      'inactive_color=0xff8083a0',
       'background_color=0x301c1d2a',
       'width=5',
       'hidpi=on',
