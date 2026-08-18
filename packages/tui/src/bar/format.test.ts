@@ -20,11 +20,12 @@ const agent = (over: Partial<AgentSession> = {}): AgentSession => ({
   state: 'idle',
   title: '',
   detail: '',
-  tmux: '',
+  mux: '',
+  muxTarget: '',
   updatedAt: 0,
-  tmuxSession: null,
-  tmuxWindow: null,
-  tmuxWindowName: null,
+  muxGroup: null,
+  muxIndex: null,
+  muxLabel: null,
   pid: null,
   pidComm: null,
   ...over,
@@ -84,9 +85,9 @@ describe('agentLocation', () => {
     expect(
       agentLocation(
         agent({
-          tmuxSession: 'fable',
-          tmuxWindow: 2,
-          tmuxWindowName: 'release',
+          muxGroup: 'fable',
+          muxIndex: 2,
+          muxLabel: 'release',
         }),
       ),
     ).toBe('fable · tab 2 · release')
@@ -94,38 +95,36 @@ describe('agentLocation', () => {
 
   it('omits the window name when it is empty', () => {
     expect(
-      agentLocation(
-        agent({ tmuxSession: 'www', tmuxWindow: 1, tmuxWindowName: '' }),
-      ),
+      agentLocation(agent({ muxGroup: 'www', muxIndex: 1, muxLabel: '' })),
     ).toBe('www · tab 1')
   })
 
   it('says so when the agent has no pane', () => {
-    expect(agentLocation(agent())).toBe('outside tmux')
+    expect(agentLocation(agent())).toBe('outside a multiplexer')
   })
 })
 
 describe('groupAgents', () => {
   it('groups by tmux session name, ordering groups alphabetically', () => {
     const { groups } = groupAgents([
-      agent({ session: 'b', tmuxSession: 'www', tmuxWindow: 1 }),
-      agent({ session: 'a', tmuxSession: 'fable', tmuxWindow: 1 }),
+      agent({ session: 'b', muxGroup: 'www', muxIndex: 1 }),
+      agent({ session: 'a', muxGroup: 'fable', muxIndex: 1 }),
     ])
     expect(groups.map(([name]) => name)).toEqual(['fable', 'www'])
   })
 
   it('orders cells within a group by tab index, not arrival order', () => {
     const { groups } = groupAgents([
-      agent({ session: 'late', tmuxSession: 'fable', tmuxWindow: 3 }),
-      agent({ session: 'early', tmuxSession: 'fable', tmuxWindow: 1 }),
+      agent({ session: 'late', muxGroup: 'fable', muxIndex: 3 }),
+      agent({ session: 'early', muxGroup: 'fable', muxIndex: 1 }),
     ])
     expect(groups[0]![1].map((a) => a.session)).toEqual(['early', 'late'])
   })
 
   it('breaks equal tab indexes on session id so order is stable', () => {
     const { groups } = groupAgents([
-      agent({ session: 'z', tmuxSession: 'fable', tmuxWindow: 1 }),
-      agent({ session: 'a', tmuxSession: 'fable', tmuxWindow: 1 }),
+      agent({ session: 'z', muxGroup: 'fable', muxIndex: 1 }),
+      agent({ session: 'a', muxGroup: 'fable', muxIndex: 1 }),
     ])
     expect(groups[0]![1].map((a) => a.session)).toEqual(['a', 'z'])
   })

@@ -54,6 +54,11 @@ fn stale_secs() -> u64 {
     PRUNE_SECS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Multiplexer kinds. Free-form on the wire, but these two are the ones the
+/// app knows how to group and jump into.
+pub const MUX_TMUX: &str = "tmux";
+pub const MUX_HERDR: &str = "herdr";
+
 /// One live agent session. Mirrored as `AgentSession` in the frontend.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,19 +70,26 @@ pub struct AgentSession {
     pub state: String,
     pub title: String,
     pub detail: String,
-    /// tmux pane id (`%12`) or target; empty when the agent isn't in tmux.
-    pub tmux: String,
+    /// Which multiplexer the agent lives in: `tmux`, `herdr`, or empty for
+    /// neither. The wire's `tmux` field still means tmux — adapters don't have
+    /// to know this field exists.
+    #[serde(default)]
+    pub mux: String,
+    /// Pane id within that multiplexer: `%12` for tmux, `w1:p1` for herdr.
+    /// Empty when the agent isn't in one.
+    #[serde(alias = "tmux")]
+    pub mux_target: String,
     /// Unix seconds of the last event.
     pub updated_at: u64,
-    /// tmux location, refreshed at read time from `list-panes` (never trusted
-    /// from disk): session name, window (tab) index, window name. All None
-    /// when the pane no longer exists or the agent isn't in tmux.
-    #[serde(default)]
-    pub tmux_session: Option<String>,
-    #[serde(default)]
-    pub tmux_window: Option<u32>,
-    #[serde(default)]
-    pub tmux_window_name: Option<String>,
+    /// Where the pane sits, refreshed at read time from the multiplexer itself
+    /// and never trusted from disk: tmux session/window or herdr
+    /// workspace/tab. All None when the pane is gone, or there's no pane.
+    #[serde(default, alias = "tmux_session")]
+    pub mux_group: Option<String>,
+    #[serde(default, alias = "tmux_window")]
+    pub mux_index: Option<u32>,
+    #[serde(default, alias = "tmux_window_name")]
+    pub mux_label: Option<String>,
     /// The agent process, when its adapter can name one. Liveness is checked
     /// against `pid` *and* `pid_comm` — a recycled pid running something else
     /// is not our agent.
@@ -116,6 +128,22 @@ static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
 /// stamped with its current tmux location so the UI can group by session and
 /// order by tab.
 pub fn list() -> Vec<AgentSession> {
+    let mut all = own_list();
+    all.extend(crate::herdr::list());
+    all.sort_by(|a, b| {
+        b.updated_at
+            .cmp(&a.updated_at)
+            .then(a.session.cmp(&b.session))
+    });
+    all
+}
+
+/// The sessions *we* keep — hook-fed, reaped, and the only ones that belong in
+/// our state file. herdr's are read fresh every time and never persisted: herdr
+/// is the durable one, and a stale copy of its agents in our file would outlive
+/// the server that owned them (field bug 2026-08-18, caught within a minute of
+/// the first live merge).
+fn own_list() -> Vec<AgentSession> {
     if !monitoring() {
         return Vec::new();
     }
@@ -128,10 +156,10 @@ pub fn list() -> Vec<AgentSession> {
         .iter()
         .cloned()
         .map(|mut s| {
-            let loc = layout.get(&s.tmux);
-            s.tmux_session = loc.map(|l| l.session.clone());
-            s.tmux_window = loc.map(|l| l.window);
-            s.tmux_window_name = loc.map(|l| l.window_name.clone());
+            let loc = layout.get(&s.mux_target);
+            s.mux_group = loc.map(|l| l.session.clone());
+            s.mux_index = loc.map(|l| l.window);
+            s.mux_label = loc.map(|l| l.window_name.clone());
             s
         })
         .collect();
@@ -142,7 +170,9 @@ pub fn list() -> Vec<AgentSession> {
     });
     drop(sessions);
     // Reaping is the one mutation that happens on a read; persist it so a
-    // restart doesn't resurrect what we just buried.
+    // restart doesn't resurrect what we just buried. Only our own sessions are
+    // persisted — herdr's are appended after, because herdr is the durable one
+    // and a stale copy in our file would outlive the server that owned it.
     if dropped {
         if let Err(e) = save(&state_file(), &fresh) {
             eprintln!("[launcharr agents] state save failed: {e}");
@@ -178,10 +208,10 @@ fn reap(
         if now.saturating_sub(s.updated_at) > stale {
             return false;
         }
-        if !s.tmux.is_empty() {
+        if !s.mux_target.is_empty() {
             // A live pane is proof of life; a dead one, proof of death — but
             // only when we actually managed to ask tmux.
-            if layout.contains_key(&s.tmux) {
+            if layout.contains_key(&s.mux_target) {
                 return true;
             }
             if layout_fresh {
@@ -193,7 +223,7 @@ fn reap(
             // couldn't reach tmux — that's ignorance, and ignorance keeps the
             // session. With no pane either, silence is the only signal left,
             // and it's held to a much shorter one.
-            return !s.tmux.is_empty()
+            return !s.mux_target.is_empty()
                 || now.saturating_sub(s.updated_at) <= UNVERIFIABLE_STALE_SECS;
         };
         match (comm(pid), s.pid_comm.as_deref()) {
@@ -386,7 +416,7 @@ fn handle(stream: UnixStream, app: &AppHandle) {
             apply(&mut sessions, event, now_secs(), stale_secs())
         };
         if applied {
-            if let Err(e) = save(&state_file(), &list()) {
+            if let Err(e) = save(&state_file(), &own_list()) {
                 eprintln!("[launcharr agents] state save failed: {e}");
             }
             // The bar re-snapshots immediately — state flips beat the 1 Hz tick.
@@ -414,7 +444,12 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         state: event.state,
         title: event.title,
         detail: event.detail,
-        tmux: event.tmux,
+        mux: if event.tmux.is_empty() {
+            String::new()
+        } else {
+            MUX_TMUX.to_owned()
+        },
+        mux_target: event.tmux,
         updated_at: now,
         pid: event.pid,
         ..Default::default()
@@ -427,8 +462,9 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         if next.detail.is_empty() {
             next.detail = old.detail.clone();
         }
-        if next.tmux.is_empty() {
-            next.tmux = old.tmux.clone();
+        if next.mux_target.is_empty() {
+            next.mux_target = old.mux_target.clone();
+            next.mux = old.mux.clone();
         }
         if next.pid.is_none() {
             next.pid = old.pid;
@@ -446,17 +482,35 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
 
 /// Jump to a session's pane by session id, marking a `done` session read
 /// (done → idle) on the way — "done (unread)" is a blue cell until visited.
+///
+/// herdr sessions aren't in our store at all: herdr owns their state, so the
+/// jump is dispatched straight from the session key it minted.
 pub fn jump_session(app: &AppHandle, session_id: &str, terminal: Terminal) -> CmdResult<()> {
+    if let Some((herdr_session, pane)) = parse_herdr_key(session_id) {
+        if !crate::herdr::focus(herdr_session, pane) {
+            return Err(CmdError::Internal("herdr would not focus that pane".into()));
+        }
+        return activate_terminal(terminal);
+    }
     let target = mark_read(&mut SESSIONS.lock().unwrap(), session_id)
         .ok_or_else(|| CmdError::Internal("unknown agent session".into()))?;
-    if let Err(e) = save(&state_file(), &list()) {
+    if let Err(e) = save(&state_file(), &own_list()) {
         eprintln!("[launcharr agents] state save failed: {e}");
     }
     crate::bar::push(app);
     if target.is_empty() {
-        return Err(CmdError::Internal("session has no tmux pane".into()));
+        return Err(CmdError::Internal("session has no pane".into()));
     }
     jump(&target, terminal)
+}
+
+/// Split a herdr session key (`herdr:<session>:<pane>`) back into its parts.
+/// Pane ids contain colons themselves (`w1:p1`), so only the first two
+/// segments are fixed.
+fn parse_herdr_key(session_id: &str) -> Option<(&str, &str)> {
+    let rest = session_id.strip_prefix("herdr:")?;
+    let (session, pane) = rest.split_once(':')?;
+    (!session.is_empty() && !pane.is_empty()).then_some((session, pane))
 }
 
 /// Drop a session by hand. Every liveness heuristic has a blind spot — an
@@ -471,7 +525,7 @@ pub fn forget_session(app: &AppHandle, session_id: &str) -> CmdResult<()> {
             return Err(CmdError::Internal("unknown agent session".into()));
         }
     }
-    if let Err(e) = save(&state_file(), &list()) {
+    if let Err(e) = save(&state_file(), &own_list()) {
         eprintln!("[launcharr agents] state save failed: {e}");
     }
     crate::bar::push(app);
@@ -484,7 +538,7 @@ fn mark_read(sessions: &mut [AgentSession], session_id: &str) -> Option<String> 
     if session.state == "done" {
         session.state = "idle".into();
     }
-    Some(session.tmux.clone())
+    Some(session.mux_target.clone())
 }
 
 /// Jump to a session's tmux pane and bring the terminal frontmost. Ported from
@@ -495,6 +549,12 @@ fn jump(target: &str, terminal: Terminal) -> CmdResult<()> {
     let client_target = target.split(':').next().unwrap_or(target);
     let _ = tmux(&["switch-client", "-t", client_target]);
     let _ = tmux(&["select-window", "-t", target]);
+    activate_terminal(terminal)
+}
+
+/// Bring the terminal frontmost. Shared by both multiplexers — whoever owns the
+/// pane, the window it lives in is the terminal's.
+fn activate_terminal(terminal: Terminal) -> CmdResult<()> {
     let app = match crate::terminal::effective_terminal(terminal) {
         Terminal::ITerm2 => "iTerm",
         Terminal::TerminalApp => "Terminal",
@@ -576,10 +636,30 @@ fn save(path: &std::path::Path, sessions: &[AgentSession]) -> std::io::Result<()
 
 fn load(path: &std::path::Path) -> std::io::Result<Vec<AgentSession>> {
     match std::fs::read(path) {
-        Ok(bytes) => Ok(serde_json::from_slice(&bytes).unwrap_or_default()),
+        Ok(bytes) => Ok(adopt_stored(
+            serde_json::from_slice(&bytes).unwrap_or_default(),
+        )),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(e) => Err(e),
     }
+}
+
+/// Fix up what a state file may contain: records written before `mux` existed
+/// carry a pane id and no kind (back then there was only one multiplexer it
+/// could have been), and any herdr record is a leftover from a build that
+/// persisted them — herdr's agents are read live or not at all, so a copy on
+/// disk can only ever be a ghost of a server that has moved on.
+fn adopt_stored(sessions: Vec<AgentSession>) -> Vec<AgentSession> {
+    sessions
+        .into_iter()
+        .filter(|s| parse_herdr_key(&s.session).is_none())
+        .map(|mut s| {
+            if s.mux.is_empty() && !s.mux_target.is_empty() {
+                s.mux = MUX_TMUX.to_owned();
+            }
+            s
+        })
+        .collect()
 }
 
 fn restrict_permissions(path: &std::path::Path) -> std::io::Result<()> {
@@ -649,12 +729,12 @@ mod tests {
         apply(&mut s, first, 100, DEFAULT_STALE_SECS);
         apply(&mut s, event("a", "idle"), 200, DEFAULT_STALE_SECS);
         assert_eq!(s[0].title, "Fix auth");
-        assert_eq!(s[0].tmux, "%3");
+        assert_eq!(s[0].mux_target, "%3");
         let mut retitled = event("a", "working");
         retitled.title = "New task".into();
         apply(&mut s, retitled, 300, DEFAULT_STALE_SECS);
         assert_eq!(s[0].title, "New task");
-        assert_eq!(s[0].tmux, "%3");
+        assert_eq!(s[0].mux_target, "%3");
     }
 
     #[test]
@@ -701,7 +781,8 @@ mod tests {
         AgentSession {
             session: session.into(),
             agent: "claude".into(),
-            tmux: pane.into(),
+            mux: MUX_TMUX.into(),
+            mux_target: pane.into(),
             updated_at: 100,
             ..Default::default()
         }
@@ -950,6 +1031,27 @@ bad
     }
 
     #[test]
+    fn splits_herdr_session_keys() {
+        // Pane ids carry their own colons, so only the first two segments are
+        // structure: herdr:<session>:<pane>.
+        assert_eq!(
+            parse_herdr_key("herdr:default:w1:p1"),
+            Some(("default", "w1:p1"))
+        );
+        assert_eq!(
+            parse_herdr_key("herdr:work:w12:p3"),
+            Some(("work", "w12:p3"))
+        );
+        assert_eq!(parse_herdr_key("herdr:default:"), None);
+        assert_eq!(parse_herdr_key("herdr:default"), None);
+        // A hook-fed session id must never be mistaken for one.
+        assert_eq!(
+            parse_herdr_key("74926675-ce0a-42eb-b1cb-1fcd79b461d3"),
+            None
+        );
+    }
+
+    #[test]
     fn validates_tmux_targets() {
         assert!(validate_target("%23").is_ok());
         assert!(validate_target("work:1.0").is_ok());
@@ -1004,6 +1106,37 @@ bad
     }
 
     #[test]
+    fn old_records_are_read_as_tmux() {
+        // agents.json from before the mux rename: `tmux` aliases the pane id,
+        // and the kind has to be inferred rather than left blank.
+        let old: Vec<AgentSession> = serde_json::from_str(
+            r#"[{"session":"a","agent":"claude","state":"idle","title":"",
+              "detail":"","tmux":"%3","updatedAt":42},
+              {"session":"b","agent":"claude","state":"idle","title":"","detail":"",
+              "tmux":"","updatedAt":42}]"#,
+        )
+        .expect("legacy state parses");
+        let filled = adopt_stored(old);
+        assert_eq!(filled[0].mux_target, "%3");
+        assert_eq!(filled[0].mux, MUX_TMUX);
+        assert_eq!(filled[1].mux, "", "no pane, no multiplexer to infer");
+    }
+
+    #[test]
+    fn stored_herdr_records_are_dropped_on_load() {
+        let stored: Vec<AgentSession> = serde_json::from_str(
+            r#"[{"session":"herdr:default:w1:p1","agent":"claude","state":"idle","title":"",
+                 "detail":"","mux":"herdr","muxTarget":"w1:p1","updatedAt":42},
+                {"session":"a","agent":"claude","state":"idle","title":"","detail":"",
+                 "tmux":"%3","updatedAt":42}]"#,
+        )
+        .expect("state parses");
+        let kept = adopt_stored(stored);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].session, "a", "herdr owns its own agents, not us");
+    }
+
+    #[test]
     fn state_roundtrips_through_disk() {
         let dir =
             std::env::temp_dir().join(format!("launcharr-agents-test-{}", std::process::id()));
@@ -1014,7 +1147,8 @@ bad
             state: "working".into(),
             title: "Fix auth".into(),
             detail: "PreToolUse · Bash".into(),
-            tmux: "%3".into(),
+            mux: MUX_TMUX.into(),
+            mux_target: "%3".into(),
             updated_at: 42,
             ..Default::default()
         }];

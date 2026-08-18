@@ -5,6 +5,34 @@
 
 ---
 
+### 2026-08-18 · herdr is a second agent _store_, not a second hook source; the monitor goes multiplexer-agnostic
+
+- **Decision.** launcharr reads [herdr](https://herdr.dev) directly over its unix socket
+  (`~/.config/herdr/herdr.sock`, newline-JSON) — `session.snapshot` on a 1 s cache, mapped
+  into the same `AgentSession` the bar already renders, `agent.focus` to jump. herdr agents
+  are **never persisted**: herdr owns them, so they're read live or not at all. The store's
+  tmux-shaped fields became multiplexer-agnostic (`mux`, `muxTarget`, `muxGroup`, `muxIndex`,
+  `muxLabel`; tmux session/window ↔ herdr workspace/tab), with `serde(alias)` so existing
+  state files load. The adapter wire protocol is untouched.
+- **Why.** herdr classifies agents itself — `working | blocked | done | idle | unknown`, our
+  own vocabulary — so a hook-based integration would duplicate work herdr has already done,
+  and only for the two agents that have hook systems. Reading herdr's snapshot covers
+  everything it detects (cursor, opencode, grok, droid…) and makes liveness exact: in the
+  snapshot means alive, absent means gone. No pane heuristics, no pid fingerprints.
+- **Polling, not `events.subscribe`.** herdr's `pane.agent_status_changed` subscription
+  requires a `pane_id`, so there's no session-wide status push; a subscriber would have to
+  re-subscribe per pane as panes come and go. One `session.snapshot` per second — the same
+  cache shape as `tmux_layout()` — buys the same freshness for a fraction of the machinery.
+- **One pane, one cell.** Claude inside a herdr pane fires our hook _and_ is seen by herdr.
+  The hook now detects `HERDR_PANE_ID` and calls herdr's `pane.report_metadata` with the
+  user's prompt instead of emitting to launcharr — enriching the record herdr already owns
+  (and herdr's own sidebar) rather than competing with it. `report_metadata` is
+  presentation-only by design, so state stays herdr's and the two cannot disagree.
+- **Ages.** herdr's snapshot carries no timestamps, only `state_change_seq`. launcharr
+  remembers when each seq was first seen, so "3 m ago" means the same thing it does for
+  hook-fed agents instead of resetting on every poll. First sighting counts as now — we
+  can't know how long herdr has felt this way, and inventing an age would be a lie on the card.
+
 ### 2026-08-18 · Agent liveness is observed, not reported: pane + process reaping, `agent_forget` as the escape hatch
 
 - **Decision.** The agent store stops trusting agents to announce their own death. `list()`

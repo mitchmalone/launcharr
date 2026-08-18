@@ -57,6 +57,16 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   aerospace exec-on-workspace-change touches it; **dotfiles change uncommitted**),
   async commands only, Floating level + constrainFrameRect override (menu bar slides
   over), 15s reframe heartbeat, ~19 MB marginal memory (gate passed).
+- **herdr as a second multiplexer, 2026-08-18** (plans/done/herdr-multiplexer.md,
+  DECISIONS 2026-08-18): the agent monitor is no longer tmux-shaped. Location fields are
+  `mux`/`muxTarget`/`muxGroup`/`muxIndex`/`muxLabel` (tmux session/window ↔ herdr
+  workspace/tab), and **`herdr.rs`** reads herdr's socket directly — `session.snapshot`
+  on a 1 s cache, `agent.focus` to jump — so every agent herdr detects gets a cell, not
+  just the hook-capable ones. herdr agents are read live and never persisted; presence in
+  the snapshot _is_ liveness. The Claude hook stands down inside a herdr pane and calls
+  `pane.report_metadata` with the prompt instead, so one pane is one cell. Verified live
+  against herdr 0.8.0 (workspace "launcharr", agent L2): mapping, grouping, and
+  `working`/`done` tracking, plus the title landing in herdr's own record.
 - **Agent liveness, 2026-08-18** (plans/done/agent-liveness.md, DECISIONS 2026-08-18):
   agent cells now disappear when the agent does. `list()` reaps a session whose tmux pane
   is gone from a _successful_ `list-panes` read, and a pane-less one whose reported `pid`

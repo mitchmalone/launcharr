@@ -13,12 +13,15 @@ export interface AgentSession {
   state: string
   title: string
   detail: string
-  tmux: string
+  /** Which multiplexer the agent lives in: 'tmux' | 'herdr' | '' for neither. */
+  mux: string
+  /** Pane id inside it: '%12' (tmux), 'w1:p1' (herdr). */
+  muxTarget: string
   /** Unix seconds of the last event. */
   updatedAt: number
-  tmuxSession: string | null
-  tmuxWindow: number | null
-  tmuxWindowName: string | null
+  muxGroup: string | null
+  muxIndex: number | null
+  muxLabel: string | null
   pid: number | null
   pidComm: string | null
 }
@@ -59,11 +62,11 @@ export function AgentsPanel({
   onDismiss,
   onClose,
 }: AgentsPanelProps) {
-  // Same order as the bar: tmux session, then tab index; pane-less last.
+  // Same order as the bar: multiplexer group, then tab index; pane-less last.
   const ordered = [...sessions].sort(
     (a, b) =>
-      (a.tmuxSession ?? '￿').localeCompare(b.tmuxSession ?? '￿') ||
-      (a.tmuxWindow ?? 0) - (b.tmuxWindow ?? 0) ||
+      (a.muxGroup ?? '￿').localeCompare(b.muxGroup ?? '￿') ||
+      (a.muxIndex ?? 0) - (b.muxIndex ?? 0) ||
       a.session.localeCompare(b.session),
   )
   const nav = useListNav(ordered.length, {
@@ -134,7 +137,7 @@ export function AgentsPanel({
               icon={agentGlyph(s.state)}
               label={s.title || s.session.slice(0, 8)}
               sub={[
-                s.tmuxSession && `${s.tmuxSession}:${s.tmuxWindow}`,
+                s.muxGroup && `${s.muxGroup}:${s.muxIndex}`,
                 s.agent,
                 s.state,
                 s.detail,
@@ -142,9 +145,9 @@ export function AgentsPanel({
                 .filter(Boolean)
                 .join(' · ')}
               right={
-                s.tmux
+                s.muxTarget
                   ? formatAge(s.updatedAt, nowSecs)
-                  : `${formatAge(s.updatedAt, nowSecs)} · outside tmux`
+                  : `${formatAge(s.updatedAt, nowSecs)} · outside a multiplexer`
               }
               selected={i === nav.index}
               onClick={() => onJump(s)}

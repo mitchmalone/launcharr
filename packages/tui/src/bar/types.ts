@@ -11,11 +11,17 @@ export interface AgentSession {
   state: string
   title: string
   detail: string
-  tmux: string
+  /** Which multiplexer the agent lives in: 'tmux' | 'herdr' | '' for neither. */
+  mux: string
+  /** Pane id inside it: '%12' (tmux), 'w1:p1' (herdr). */
+  muxTarget: string
   updatedAt: number
-  tmuxSession: string | null
-  tmuxWindow: number | null
-  tmuxWindowName: string | null
+  /** tmux session / herdr workspace — the box a cell is grouped into. */
+  muxGroup: string | null
+  /** tmux window index / herdr tab number. */
+  muxIndex: number | null
+  /** tmux window name / herdr tab label. */
+  muxLabel: string | null
   /** The agent process, when its adapter reports one — liveness, not display. */
   pid: number | null
   pidComm: string | null

@@ -32,20 +32,20 @@ export function agentAge(updatedAt: number, now: Date): string {
 
 /** The card's location line, or its no-pane fallback. Reads as a place, not a
  * fault: since liveness is checked by process too (agents.rs), an agent with no
- * pane is simply one running outside tmux. */
+ * pane is simply one running outside a multiplexer. */
 export function agentLocation(a: AgentSession): string {
-  if (!a.tmuxSession) return 'outside tmux'
+  if (!a.muxGroup) return a.mux ? `in ${a.mux}` : 'outside a multiplexer'
   return (
-    `${a.tmuxSession} · tab ${a.tmuxWindow}` +
-    (a.tmuxWindowName ? ` · ${a.tmuxWindowName}` : '')
+    `${a.muxGroup} · tab ${a.muxIndex}` + (a.muxLabel ? ` · ${a.muxLabel}` : '')
   )
 }
 
 /**
- * tmux-session groups (ordered by name, cells by tab index) plus loose cells
- * for agents outside tmux — invocation order never decides placement. The
- * caller boxes the loose ones too (dashed): an ungrouped glyph floating beside
- * the boxes read as breakage rather than as "not in tmux".
+ * Multiplexer groups — tmux session or herdr workspace, ordered by name, cells
+ * by tab index — plus loose cells for agents in no multiplexer at all;
+ * invocation order never decides placement. The caller boxes the loose ones too
+ * (dashed): an ungrouped glyph floating beside the boxes read as breakage
+ * rather than as "not in one".
  */
 export function groupAgents(agents: AgentSession[]): {
   groups: [string, AgentSession[]][]
@@ -54,10 +54,10 @@ export function groupAgents(agents: AgentSession[]): {
   const byName = new Map<string, AgentSession[]>()
   const loose: AgentSession[] = []
   for (const a of agents) {
-    if (a.tmuxSession) {
-      const list = byName.get(a.tmuxSession) ?? []
+    if (a.muxGroup) {
+      const list = byName.get(a.muxGroup) ?? []
       list.push(a)
-      byName.set(a.tmuxSession, list)
+      byName.set(a.muxGroup, list)
     } else {
       loose.push(a)
     }
@@ -65,7 +65,7 @@ export function groupAgents(agents: AgentSession[]): {
   for (const list of byName.values()) {
     list.sort(
       (x, y) =>
-        (x.tmuxWindow ?? 0) - (y.tmuxWindow ?? 0) ||
+        (x.muxIndex ?? 0) - (y.muxIndex ?? 0) ||
         x.session.localeCompare(y.session),
     )
   }

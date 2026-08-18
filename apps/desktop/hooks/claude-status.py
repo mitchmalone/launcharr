@@ -6,6 +6,10 @@ state and emits one JSON line to launcharr's agents socket. It degrades
 safely: malformed payloads and a missing socket (launcharr not running) both
 exit 0 — a status widget must never break the agent it watches.
 
+Inside a herdr pane it does the opposite: herdr already owns that pane's agent
+state and launcharr reads it from there, so the hook enriches herdr's record
+with the user's prompt instead of emitting a second, competing cell.
+
 Install: point every Claude hook group (SessionStart, UserPromptSubmit,
 PreToolUse, PostToolUse, PermissionRequest, Notification, Stop, SessionEnd)
 at this script in ~/.claude/settings.json.
@@ -73,6 +77,54 @@ def socket_path() -> str:
     return os.path.join(state_home, "launcharr", "agents.sock")
 
 
+def send_line(path: str, line: str) -> None:
+    """One newline-JSON line to a unix socket, failing silently.
+
+    Both launcharr and herdr speak this; a status widget must never break the
+    agent it watches, so an absent socket is a no-op, not an error.
+    """
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2)
+            sock.connect(path)
+            sock.sendall(line.encode() + b"\n")
+    except OSError:
+        pass
+
+
+def report_to_herdr(pane: str, title: str, detail: str) -> None:
+    """Inside a herdr pane, herdr owns the cell — we only enrich it.
+
+    herdr classifies agent state itself and launcharr reads that (herdr.rs), so
+    emitting our own event too would put two cells on the bar for one pane.
+    Instead we hand herdr the thing it can't know: the user's actual prompt.
+    `pane.report_metadata` is presentation-only by design — it cannot take
+    lifecycle state away from herdr's own integration — so the two can't
+    disagree. Bonus: the title shows up in herdr's sidebar as well.
+    """
+    path = os.environ.get("HERDR_SOCKET_PATH") or os.path.expanduser(
+        "~/.config/herdr/herdr.sock"
+    )
+    if not title:
+        return
+    send_line(
+        path,
+        json.dumps(
+            {
+                "id": "launcharr-claude-title",
+                "method": "pane.report_metadata",
+                "params": {
+                    "pane_id": pane,
+                    "source": "user:launcharr-claude",
+                    "agent": "claude",
+                    "title": title[:100],
+                    "detail": detail[:100],
+                },
+            }
+        ),
+    )
+
+
 def main() -> None:
     try:
         payload = json.load(sys.stdin)
@@ -92,24 +144,26 @@ def main() -> None:
         .strip()
     )
     detail = " · ".join(p for p in (event, tool or message[:100]) if p)
-    line = json.dumps(
-        {
-            "session": session,
-            "agent": "claude",
-            "state": STATES.get(event, "unknown"),
-            "title": prompt[:100],
-            "detail": detail,
-            "tmux": os.environ.get("TMUX_PANE", ""),
-            "pid": agent_pid(),
-        }
+
+    herdr_pane = os.environ.get("HERDR_PANE_ID", "")
+    if herdr_pane:
+        report_to_herdr(herdr_pane, prompt, detail)
+        return
+
+    send_line(
+        socket_path(),
+        json.dumps(
+            {
+                "session": session,
+                "agent": "claude",
+                "state": STATES.get(event, "unknown"),
+                "title": prompt[:100],
+                "detail": detail,
+                "tmux": os.environ.get("TMUX_PANE", ""),
+                "pid": agent_pid(),
+            }
+        ),
     )
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.settimeout(2)
-            sock.connect(socket_path())
-            sock.sendall(line.encode() + b"\n")
-    except OSError:
-        pass
 
 
 if __name__ == "__main__":

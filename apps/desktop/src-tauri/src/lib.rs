@@ -29,6 +29,7 @@ mod desktop;
 mod error;
 mod favicon;
 mod frecency;
+mod herdr;
 mod icons;
 mod indexer;
 mod loupe;
