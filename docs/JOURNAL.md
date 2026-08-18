@@ -6,6 +6,21 @@
 
 ---
 
+### 2026-08-18 · herdr's `agent.*` methods take `target`; `pane.*` take `pane_id`
+
+The herdr jump did nothing while every other cell worked. `agent.focus` with
+`{"pane_id":"w1:p1"}` returns `invalid_request` — "missing field `target`" — because the
+`agent.*` family addresses agents by `target` while the `pane.*` family uses `pane_id`. A
+pane id _is_ a valid target; only the field name differs, which is exactly the kind of
+detail prose skims over and a schema states. `herdr api schema --json` had it all along
+(`AgentTarget`), and the docs' line about "pane control methods use public pane ids" is
+about `pane.*` only — I generalised it to the neighbouring family and shipped a dead jump.
+
+Read the bundled schema per method family, never the one next door. Two silent-failure
+notes from the same bug: launcharr's `focus()` correctly returned false and `jump_session`
+returned a typed error — but both the bar and the panel `.catch(console.error)`, so a
+failed jump is invisible to the user. Worth surfacing on the toast row.
+
 ### 2026-08-18 · Jumping to a pane is two problems: which client, and which window — `open -a iTerm` answers neither
 
 Clicking tmux agent cells stopped landing anywhere the day herdr arrived, and every click

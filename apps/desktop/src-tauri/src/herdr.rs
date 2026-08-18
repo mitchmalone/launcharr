@@ -191,6 +191,10 @@ fn request(path: &std::path::Path, line: &str) -> Option<String> {
 
 /// Focus a herdr pane. herdr owns the window; all launcharr does is ask, then
 /// its caller brings the terminal forward.
+/// The `agent.*` methods take a `target`, not the `pane_id` that `pane.*` takes
+/// — a pane id is a valid target, but the field name differs, and inferring it
+/// from the family next door shipped a dead jump (field report 2026-08-18).
+/// Read the bundled schema (`herdr api schema --json`), never the neighbour.
 pub fn focus(session_name: &str, pane_id: &str) -> bool {
     let Some((_, path)) = socket_paths()
         .into_iter()
@@ -198,12 +202,16 @@ pub fn focus(session_name: &str, pane_id: &str) -> bool {
     else {
         return false;
     };
-    let params = serde_json::json!({
+    request(&path, &focus_request(pane_id)).is_some_and(|r| !r.contains(r#""error""#))
+}
+
+fn focus_request(pane_id: &str) -> String {
+    serde_json::json!({
         "id": "launcharr-focus",
         "method": "agent.focus",
-        "params": { "pane_id": pane_id },
-    });
-    request(&path, &params.to_string()).is_some_and(|r| !r.contains(r#""error""#))
+        "params": { "target": pane_id },
+    })
+    .to_string()
 }
 
 /// The tty of herdr's attached client — the terminal window to raise after
@@ -404,6 +412,17 @@ mod tests {
         let mut changed = snapshot.clone();
         changed.agents[0].state_change_seq = 6;
         assert_eq!(to_sessions("ages-test", &changed, 1030)[0].updated_at, 1030);
+    }
+
+    #[test]
+    fn focus_addresses_the_agent_by_target() {
+        // Verified against live herdr 0.8.0: `pane_id` here comes back
+        // invalid_request, "missing field `target`".
+        let req: serde_json::Value =
+            serde_json::from_str(&focus_request("w1:p1")).expect("valid json");
+        assert_eq!(req["method"], "agent.focus");
+        assert_eq!(req["params"]["target"], "w1:p1");
+        assert!(req["params"].get("pane_id").is_none());
     }
 
     #[test]
