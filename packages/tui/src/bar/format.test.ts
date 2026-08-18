@@ -25,6 +25,8 @@ const agent = (over: Partial<AgentSession> = {}): AgentSession => ({
   tmuxSession: null,
   tmuxWindow: null,
   tmuxWindowName: null,
+  pid: null,
+  pidComm: null,
   ...over,
 })
 
@@ -99,7 +101,7 @@ describe('agentLocation', () => {
   })
 
   it('says so when the agent has no pane', () => {
-    expect(agentLocation(agent())).toBe('no tmux pane')
+    expect(agentLocation(agent())).toBe('outside tmux')
   })
 })
 

@@ -240,7 +240,9 @@ export const BarClock = ({ children }: { children: ReactNode }) => (
 
 /**
  * Agent session cells: one glyph per session, boxed by tmux session and ordered
- * by tab. Hovering opens a dropdown card with the agent's task, state and tmux
+ * by tab. Agents outside tmux share one dashed box — same shape, different
+ * texture, so "no pane" reads as a place rather than as a stuck cell.
+ * Hovering opens a dropdown card with the agent's task, state and tmux
  * location; clicking jumps to the pane (and marks a done session read).
  */
 export function BarAgents({
@@ -289,7 +291,11 @@ export function BarAgents({
           {list.map(cell)}
         </div>
       ))}
-      {loose.map(cell)}
+      {loose.length > 0 && (
+        <div className="bar-agent-group bar-agent-group-loose">
+          {loose.map(cell)}
+        </div>
+      )}
       {hovered && (
         <BarCard variant="agent" cardRef={hover.cardRef}>
           <BarCardTitle>{hovered.title || hovered.agent}</BarCardTitle>

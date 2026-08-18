@@ -121,6 +121,8 @@ export const AGENT_AGES: {
       tmuxSession: 'fable',
       tmuxWindow: 1,
       tmuxWindowName: 'core',
+      pid: null,
+      pidComm: null,
     },
   },
   {
@@ -135,6 +137,8 @@ export const AGENT_AGES: {
       tmuxSession: 'fable',
       tmuxWindow: 2,
       tmuxWindowName: 'release',
+      pid: null,
+      pidComm: null,
     },
   },
   {
@@ -149,6 +153,8 @@ export const AGENT_AGES: {
       tmuxSession: 'www',
       tmuxWindow: 1,
       tmuxWindowName: 'panels',
+      pid: null,
+      pidComm: null,
     },
   },
   {
@@ -163,6 +169,8 @@ export const AGENT_AGES: {
       tmuxSession: 'www',
       tmuxWindow: 2,
       tmuxWindowName: '',
+      pid: null,
+      pidComm: null,
     },
   },
 ]

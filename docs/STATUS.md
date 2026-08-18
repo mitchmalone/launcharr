@@ -3,7 +3,7 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-17
+> Last updated: 2026-08-18
 
 ## Where we are
 
@@ -57,6 +57,15 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   aerospace exec-on-workspace-change touches it; **dotfiles change uncommitted**),
   async commands only, Floating level + constrainFrameRect override (menu bar slides
   over), 15s reframe heartbeat, ~19 MB marginal memory (gate passed).
+- **Agent liveness, 2026-08-18** (plans/done/agent-liveness.md, DECISIONS 2026-08-18):
+  agent cells now disappear when the agent does. `list()` reaps a session whose tmux pane
+  is gone from a _successful_ `list-panes` read, and a pane-less one whose reported `pid`
+  is dead or now runs a different command (`pidComm` fingerprint, stamped at first sight —
+  adapter-agnostic, so herdr drops in without touching the reaper). New wire field `pid`
+  (hook walks the parent chain; `LAUNCHARR_AGENT_PID` overrides), new `agent_forget`
+  command on `⌫`/`x` in `agents ⏎`, agents outside tmux share a dashed box instead of
+  floating loose. Hook also stopped mapping `/clear`'s `SessionEnd` to `ended`.
+  Both reaping paths verified live; `⌫` awaits a hands-check.
 - **Agent monitoring** (B4 slice, plans/done/agent-monitoring.md): launcharr absorbed
   sketchybar-agent-status — Rust socket monitor (`agents.rs`, old wire protocol
   unchanged), bar agent cells, `agents ⏎` panel. WIP color semantics (2026-08-16):
@@ -197,5 +206,6 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   between zones + retire/restore via the tray, notched vs external placement,
   bar off/on toggle survives.
 - Agent monitoring hands-check: attention pulse visual; bar-cell click / `agents ⏎`
-  Enter lands in the right tmux pane (plans/done/agent-monitoring.md field notes).
+  Enter lands in the right tmux pane (plans/done/agent-monitoring.md field notes);
+  `⌫` dismisses a row (specimen left in the store: the 2026-08-18 field orphan).
 - Anything off in daily use → JOURNAL it, next session fixes.

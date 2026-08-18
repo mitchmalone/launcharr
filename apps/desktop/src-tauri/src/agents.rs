@@ -69,6 +69,15 @@ pub struct AgentSession {
     pub tmux_window: Option<u32>,
     #[serde(default)]
     pub tmux_window_name: Option<String>,
+    /// The agent process, when its adapter can name one. Liveness is checked
+    /// against `pid` *and* `pid_comm` — a recycled pid running something else
+    /// is not our agent.
+    #[serde(default)]
+    pub pid: Option<u32>,
+    /// The pid's command as observed the first time we saw it. Recorded, never
+    /// matched against a known agent name: a new adapter needs no reaper change.
+    #[serde(default)]
+    pub pid_comm: Option<String>,
 }
 
 /// Incoming wire event: an `AgentSession` minus the timestamp, all fields
@@ -87,6 +96,9 @@ struct AgentEvent {
     detail: String,
     #[serde(default)]
     tmux: String,
+    /// Optional: the agent process's pid, for liveness checks off tmux.
+    #[serde(default)]
+    pid: Option<u32>,
 }
 
 static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
@@ -98,13 +110,13 @@ pub fn list() -> Vec<AgentSession> {
     if !monitoring() {
         return Vec::new();
     }
-    let layout = tmux_layout();
-    let sessions = SESSIONS.lock().unwrap();
+    let (layout, layout_fresh) = tmux_layout();
+    let mut sessions = SESSIONS.lock().unwrap();
     let now = now_secs();
     let stale = stale_secs();
+    let dropped = reap(&mut sessions, &layout, layout_fresh, now, stale, comm_of);
     let mut fresh: Vec<AgentSession> = sessions
         .iter()
-        .filter(|s| now.saturating_sub(s.updated_at) <= stale)
         .cloned()
         .map(|mut s| {
             let loc = layout.get(&s.tmux);
@@ -119,7 +131,64 @@ pub fn list() -> Vec<AgentSession> {
             .cmp(&a.updated_at)
             .then(a.session.cmp(&b.session))
     });
+    drop(sessions);
+    // Reaping is the one mutation that happens on a read; persist it so a
+    // restart doesn't resurrect what we just buried.
+    if dropped {
+        if let Err(e) = save(&state_file(), &fresh) {
+            eprintln!("[launcharr agents] state save failed: {e}");
+        }
+    }
     fresh
+}
+
+/// Drop sessions whose agent is provably gone, and stamp `pid_comm` the first
+/// time a pid is seen. Returns whether anything changed.
+///
+/// The rules, cheapest first — and every one of them errs towards keeping a
+/// session, because a ghost cell is an annoyance while a vanished live agent is
+/// a lie:
+/// - too old to matter (the existing `pruneHours` sweep) → gone;
+/// - has a tmux pane that a *successful* `list-panes` read didn't list → gone.
+///   A failed read (tmux missing, cold start) reaps nothing at all;
+/// - otherwise, if a pid is known and `comm` says it's gone, or now belongs to
+///   a different command → gone. Sessions without a pid ride the prune window.
+fn reap(
+    sessions: &mut Vec<AgentSession>,
+    layout: &std::collections::HashMap<String, PaneLocation>,
+    layout_fresh: bool,
+    now: u64,
+    stale: u64,
+    comm: impl Fn(u32) -> Option<String>,
+) -> bool {
+    let before = sessions.len();
+    let mut stamped = false;
+    sessions.retain_mut(|s| {
+        if now.saturating_sub(s.updated_at) > stale {
+            return false;
+        }
+        if !s.tmux.is_empty() {
+            // A live pane is proof of life; a dead one, proof of death — but
+            // only when we actually managed to ask tmux.
+            if layout.contains_key(&s.tmux) {
+                return true;
+            }
+            if layout_fresh {
+                return false;
+            }
+        }
+        let Some(pid) = s.pid else { return true };
+        match (comm(pid), s.pid_comm.as_deref()) {
+            (None, _) => false,
+            (Some(now_comm), Some(seen)) => now_comm == seen,
+            (Some(now_comm), None) => {
+                s.pid_comm = Some(now_comm);
+                stamped = true;
+                true
+            }
+        }
+    });
+    stamped || sessions.len() != before
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,16 +198,20 @@ struct PaneLocation {
     window_name: String,
 }
 
-/// pane id → location from `tmux list-panes -a`. Cached briefly: list() runs
-/// on the 1 Hz bar push and must not pay a process spawn per tick.
-fn tmux_layout() -> std::collections::HashMap<String, PaneLocation> {
+/// pane id → location from `tmux list-panes -a`, plus whether that layout is a
+/// *trusted* one — i.e. a successful read, cached or not. Cached briefly:
+/// list() runs on the 1 Hz bar push and must not pay a process spawn per tick.
+///
+/// The flag is what lets the reaper treat a missing pane as a dead agent: a
+/// layout we failed to fetch says nothing about who is alive.
+fn tmux_layout() -> (std::collections::HashMap<String, PaneLocation>, bool) {
     use std::time::{Duration, Instant};
     type Layout = std::collections::HashMap<String, PaneLocation>;
     static CACHE: Mutex<Option<(Instant, Layout)>> = Mutex::new(None);
     let mut cache = CACHE.lock().unwrap();
     if let Some((at, layout)) = cache.as_ref() {
         if at.elapsed() < Duration::from_secs(2) {
-            return layout.clone();
+            return (layout.clone(), true);
         }
     }
     let fresh = tmux_out(&[
@@ -153,16 +226,66 @@ fn tmux_layout() -> std::collections::HashMap<String, PaneLocation> {
         // Only successes are cached: a failed spawn during app cold start used
         // to pin an empty layout for 2s and the bar painted agents without
         // their tmux group borders (field report 2026-08-16). On failure,
-        // serve the previous layout (if any) and retry next call.
+        // serve the previous layout (if any), marked untrusted, and retry next
+        // call — stale panes are better than reaping a live fleet.
         Some(layout) => {
             *cache = Some((Instant::now(), layout.clone()));
-            layout
+            (layout, true)
         }
-        None => cache
-            .as_ref()
-            .map(|(_, layout)| layout.clone())
-            .unwrap_or_default(),
+        None => (
+            cache
+                .as_ref()
+                .map(|(_, layout)| layout.clone())
+                .unwrap_or_default(),
+            false,
+        ),
     }
+}
+
+/// A pid's command, or None when no such process exists. Backed by one cached
+/// `ps` sweep — built lazily, so the all-tmux case (every session reaped by
+/// pane) never spawns anything.
+fn comm_of(pid: u32) -> Option<String> {
+    use std::time::{Duration, Instant};
+    type Procs = std::collections::HashMap<u32, String>;
+    static CACHE: Mutex<Option<(Instant, Procs)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    let usable = cache
+        .as_ref()
+        .is_some_and(|(at, _)| at.elapsed() < Duration::from_secs(2));
+    if !usable {
+        // A failed sweep must not read as "every process died": keep the last
+        // good table rather than reporting an empty world.
+        if let Some(procs) = ps_procs() {
+            *cache = Some((Instant::now(), procs));
+        }
+    }
+    cache
+        .as_ref()
+        .and_then(|(_, procs)| procs.get(&pid).cloned())
+}
+
+fn ps_procs() -> Option<std::collections::HashMap<u32, String>> {
+    let out = std::process::Command::new("/bin/ps")
+        .args(["-Ao", "pid=,comm="])
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| parse_procs(&String::from_utf8_lossy(&out.stdout)))
+}
+
+fn parse_procs(out: &str) -> std::collections::HashMap<u32, String> {
+    out.lines()
+        .filter_map(|line| {
+            let (pid, comm) = line.trim_start().split_once(char::is_whitespace)?;
+            let comm = comm.trim();
+            if comm.is_empty() {
+                return None;
+            }
+            Some((pid.parse().ok()?, comm.to_owned()))
+        })
+        .collect()
 }
 
 fn parse_panes(out: &str) -> std::collections::HashMap<String, PaneLocation> {
@@ -275,6 +398,7 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         detail: event.detail,
         tmux: event.tmux,
         updated_at: now,
+        pid: event.pid,
         ..Default::default()
     };
     if let Some(i) = previous {
@@ -287,6 +411,13 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         }
         if next.tmux.is_empty() {
             next.tmux = old.tmux.clone();
+        }
+        if next.pid.is_none() {
+            next.pid = old.pid;
+        }
+        // The comm belongs to the pid that was observed with it.
+        if next.pid == old.pid {
+            next.pid_comm = old.pid_comm.clone();
         }
         sessions[i] = next;
     } else {
@@ -308,6 +439,25 @@ pub fn jump_session(app: &AppHandle, session_id: &str, terminal: Terminal) -> Cm
         return Err(CmdError::Internal("session has no tmux pane".into()));
     }
     jump(&target, terminal)
+}
+
+/// Drop a session by hand. Every liveness heuristic has a blind spot — an
+/// adapter that never reports a pid, an agent that died with tmux unreachable —
+/// and the answer to a stuck cell must not be "edit agents.json".
+pub fn forget_session(app: &AppHandle, session_id: &str) -> CmdResult<()> {
+    {
+        let mut sessions = SESSIONS.lock().unwrap();
+        let before = sessions.len();
+        sessions.retain(|s| s.session != session_id);
+        if sessions.len() == before {
+            return Err(CmdError::Internal("unknown agent session".into()));
+        }
+    }
+    if let Err(e) = save(&state_file(), &list()) {
+        eprintln!("[launcharr agents] state save failed: {e}");
+    }
+    crate::bar::push(app);
+    Ok(())
 }
 
 /// Visiting a session reads it: done → idle. Returns its pane target.
@@ -511,6 +661,211 @@ mod tests {
         );
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].session, "new");
+    }
+
+    fn layout(panes: &[&str]) -> std::collections::HashMap<String, PaneLocation> {
+        panes
+            .iter()
+            .map(|p| {
+                (
+                    (*p).to_owned(),
+                    PaneLocation {
+                        session: "s".into(),
+                        window: 1,
+                        window_name: "w".into(),
+                    },
+                )
+            })
+            .collect()
+    }
+
+    fn paned(session: &str, pane: &str) -> AgentSession {
+        AgentSession {
+            session: session.into(),
+            agent: "claude".into(),
+            tmux: pane.into(),
+            updated_at: 100,
+            ..Default::default()
+        }
+    }
+
+    fn pidded(session: &str, pid: u32, comm: Option<&str>) -> AgentSession {
+        AgentSession {
+            session: session.into(),
+            agent: "claude".into(),
+            pid: Some(pid),
+            pid_comm: comm.map(str::to_owned),
+            updated_at: 100,
+            ..Default::default()
+        }
+    }
+
+    fn no_procs(_: u32) -> Option<String> {
+        None
+    }
+
+    #[test]
+    fn reaps_sessions_whose_pane_is_gone() {
+        let mut s = vec![paned("live", "%1"), paned("dead", "%2")];
+        assert!(reap(
+            &mut s,
+            &layout(&["%1"]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].session, "live");
+    }
+
+    #[test]
+    fn an_untrusted_layout_reaps_nothing() {
+        // tmux missing or the spawn failed: we know nothing, so we keep
+        // everything. Reaping a live fleet is the one unacceptable outcome.
+        let mut s = vec![paned("a", "%1"), paned("b", "%2")];
+        assert!(!reap(
+            &mut s,
+            &layout(&[]),
+            false,
+            100,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert_eq!(s.len(), 2);
+    }
+
+    #[test]
+    fn a_live_pane_outranks_a_missing_process() {
+        // The pane is proof of life; the pid check never even runs.
+        let mut s = vec![AgentSession {
+            pid: Some(42),
+            pid_comm: Some("claude".into()),
+            ..paned("a", "%1")
+        }];
+        assert!(!reap(
+            &mut s,
+            &layout(&["%1"]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert_eq!(s.len(), 1);
+    }
+
+    #[test]
+    fn reaps_pane_less_sessions_by_process() {
+        let mut s = vec![
+            pidded("live", 1, Some("claude")),
+            pidded("gone", 2, Some("claude")),
+            pidded("recycled", 3, Some("claude")),
+        ];
+        let comm = |pid: u32| match pid {
+            1 => Some("claude".to_owned()),
+            3 => Some("Safari".to_owned()),
+            _ => None,
+        };
+        assert!(reap(
+            &mut s,
+            &layout(&[]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            comm
+        ));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].session, "live");
+    }
+
+    #[test]
+    fn first_sight_of_a_pid_records_its_command() {
+        // Adapter-agnostic: whatever the pid is running becomes the fingerprint,
+        // so a new adapter (herdr, …) needs no change here.
+        let mut s = vec![pidded("a", 7, None)];
+        let comm = |_: u32| Some("herdr".to_owned());
+        assert!(reap(
+            &mut s,
+            &layout(&[]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            comm
+        ));
+        assert_eq!(s[0].pid_comm.as_deref(), Some("herdr"));
+        // Second pass is a no-op — nothing changed, nothing to persist.
+        assert!(!reap(
+            &mut s,
+            &layout(&[]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            comm
+        ));
+    }
+
+    #[test]
+    fn a_pid_less_session_rides_the_prune_window() {
+        let mut s = vec![AgentSession {
+            session: "a".into(),
+            agent: "claude".into(),
+            updated_at: 100,
+            ..Default::default()
+        }];
+        assert!(!reap(
+            &mut s,
+            &layout(&[]),
+            true,
+            100,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert_eq!(s.len(), 1);
+        // …until it ages out.
+        assert!(reap(
+            &mut s,
+            &layout(&[]),
+            true,
+            100 + DEFAULT_STALE_SECS + 1,
+            DEFAULT_STALE_SECS,
+            no_procs
+        ));
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn pid_survives_events_that_omit_it_and_resets_the_comm_when_it_moves() {
+        let mut s = Vec::new();
+        let mut first = event("a", "working");
+        first.pid = Some(11);
+        apply(&mut s, first, 100, DEFAULT_STALE_SECS);
+        s[0].pid_comm = Some("claude".into());
+        apply(&mut s, event("a", "idle"), 200, DEFAULT_STALE_SECS);
+        assert_eq!(s[0].pid, Some(11));
+        assert_eq!(s[0].pid_comm.as_deref(), Some("claude"));
+        let mut moved = event("a", "working");
+        moved.pid = Some(22);
+        apply(&mut s, moved, 300, DEFAULT_STALE_SECS);
+        assert_eq!(s[0].pid, Some(22));
+        assert_eq!(s[0].pid_comm, None, "a new pid re-earns its fingerprint");
+    }
+
+    #[test]
+    fn parses_ps_output() {
+        let procs = parse_procs(
+            "  501 claude
+ 1234 /usr/bin/some app
+bad
+
+",
+        );
+        assert_eq!(procs.get(&501).map(String::as_str), Some("claude"));
+        assert_eq!(
+            procs.get(&1234).map(String::as_str),
+            Some("/usr/bin/some app")
+        );
+        assert_eq!(procs.len(), 2);
+        assert!(parse_procs("").is_empty());
     }
 
     #[test]

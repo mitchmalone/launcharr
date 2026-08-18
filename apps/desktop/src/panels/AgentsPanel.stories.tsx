@@ -15,6 +15,8 @@ const session = (over: Partial<AgentSession>): AgentSession => ({
   tmuxSession: 'gogogo',
   tmuxWindow: 2,
   tmuxWindowName: 'Launcharr',
+  pid: 4242,
+  pidComm: 'claude',
   ...over,
 })
 
@@ -59,12 +61,13 @@ const noop = () => {}
 export const agentsPanelStories = defineStories('AgentsPanel (app)', [
   {
     name: 'mixed states',
-    keys: '↵ jump · esc back',
+    keys: '↵ jump · ⌫ dismiss · esc back',
     render: () => (
       <AgentsPanel
         sessions={MIXED}
         nowSecs={NOW}
         onJump={noop}
+        onDismiss={noop}
         onClose={noop}
       />
     ),
@@ -76,6 +79,7 @@ export const agentsPanelStories = defineStories('AgentsPanel (app)', [
         sessions={MIXED.filter((s) => s.state === 'idle')}
         nowSecs={NOW}
         onJump={noop}
+        onDismiss={noop}
         onClose={noop}
       />
     ),
@@ -91,6 +95,7 @@ export const agentsPanelStories = defineStories('AgentsPanel (app)', [
         }))}
         nowSecs={NOW}
         onJump={noop}
+        onDismiss={noop}
         onClose={noop}
       />
     ),
@@ -98,7 +103,13 @@ export const agentsPanelStories = defineStories('AgentsPanel (app)', [
   {
     name: 'empty',
     render: () => (
-      <AgentsPanel sessions={[]} nowSecs={NOW} onJump={noop} onClose={noop} />
+      <AgentsPanel
+        sessions={[]}
+        nowSecs={NOW}
+        onJump={noop}
+        onDismiss={noop}
+        onClose={noop}
+      />
     ),
   },
   {
@@ -108,6 +119,7 @@ export const agentsPanelStories = defineStories('AgentsPanel (app)', [
         sessions={[session({ title: '', detail: 'SessionStart' })]}
         nowSecs={NOW}
         onJump={noop}
+        onDismiss={noop}
         onClose={noop}
       />
     ),

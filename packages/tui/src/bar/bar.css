@@ -93,6 +93,12 @@
   border: 1px solid var(--dim, #7f86a5);
 }
 
+/* Agents outside tmux: the same box, dashed — there is no session name to
+ * print, and a solid box would claim a grouping that doesn't exist. */
+.bar-agent-group-loose {
+  border-style: dashed;
+}
+
 .bar-agent {
   min-width: 16px;
   height: 18px;

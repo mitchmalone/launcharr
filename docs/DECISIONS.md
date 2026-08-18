@@ -5,6 +5,31 @@
 
 ---
 
+### 2026-08-18 · Agent liveness is observed, not reported: pane + process reaping, `agent_forget` as the escape hatch
+
+- **Decision.** The agent store stops trusting agents to announce their own death. `list()`
+  now reaps: a session whose tmux pane is missing from a **successful** `list-panes` read is
+  gone, and a pane-less session is checked against the agent **pid** its adapter reports —
+  dead when the process is gone or when that pid now runs a different command. The pid's
+  command is recorded at first sight and compared thereafter, never matched against a known
+  agent name, so a new adapter (herdr, …) needs no reaper change. One new wire field
+  (`pid`, optional, blank-inherits like `tmux`; `pidComm` is store-side only), one new
+  command — **`agent_forget`**,
+  bound to `⌫`/`x` in `agents ⏎`. The hook resolves the agent pid up the parent chain
+  (`LAUNCHARR_AGENT_PID` overrides) and now ignores `SessionEnd reason=clear`.
+- **Why.** Removal had exactly one path — a `SessionEnd` hook event — so any agent that died
+  without getting to speak (closed window, killed pane, crash) haunted the bar for the full
+  12 h prune window. Field case: a session quit 30 min earlier, pane-less, ungrouped,
+  unjumpable, undismissable. launcharr already re-read the pane layout every tick and
+  _noticed_ the pane was gone — it just nulled the location and kept the cell.
+- **Direction of error.** Every rule errs towards keeping a session: a failed tmux read reaps
+  nothing at all (tmux absent or cold start must never clear a live fleet), a live pane
+  outranks a missing process, and a session with no pid rides the prune window as before. A
+  ghost cell is an annoyance; a vanished live agent is a lie.
+- **Alternatives.** `kill(pid, 0)` alone — cheaper, but a recycled pid pins a ghost forever.
+  Shortening `pruneHours` for pane-less sessions — no protocol change, but wrong about any
+  agent that simply thinks for a long time. Both rejected for guessing where we can observe.
+
 ### 2026-08-17 · The launcharr loupe (2×, Screen Recording opt-in) fronts the color picker; the system sampler stays as fallback
 
 - **Decision.** Same-day feedback: Apple's sampler zooms too hard to aim ("decrease

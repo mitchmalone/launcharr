@@ -30,9 +30,11 @@ export function agentAge(updatedAt: number, now: Date): string {
   return `${Math.round(s / 3600)}h`
 }
 
-/** The card's location line, or its no-pane fallback. */
+/** The card's location line, or its no-pane fallback. Reads as a place, not a
+ * fault: since liveness is checked by process too (agents.rs), an agent with no
+ * pane is simply one running outside tmux. */
 export function agentLocation(a: AgentSession): string {
-  if (!a.tmuxSession) return 'no tmux pane'
+  if (!a.tmuxSession) return 'outside tmux'
   return (
     `${a.tmuxSession} · tab ${a.tmuxWindow}` +
     (a.tmuxWindowName ? ` · ${a.tmuxWindowName}` : '')
@@ -41,7 +43,9 @@ export function agentLocation(a: AgentSession): string {
 
 /**
  * tmux-session groups (ordered by name, cells by tab index) plus loose cells
- * for agents outside tmux — invocation order never decides placement.
+ * for agents outside tmux — invocation order never decides placement. The
+ * caller boxes the loose ones too (dashed): an ungrouped glyph floating beside
+ * the boxes read as breakage rather than as "not in tmux".
  */
 export function groupAgents(agents: AgentSession[]): {
   groups: [string, AgentSession[]][]

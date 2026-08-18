@@ -36,11 +36,21 @@ export function AgentsPanelContainer({ onClose }: { onClose: () => void }) {
       .catch(console.error)
   }
 
+  // Optimistic: the row goes now, the backend confirms. A dismiss the user
+  // has to watch for a second isn't an escape hatch.
+  const onDismiss = (session: AgentSession) => {
+    setSessions((current) =>
+      current.filter((s) => s.session !== session.session),
+    )
+    invoke('agent_forget', { session: session.session }).catch(console.error)
+  }
+
   return (
     <AgentsPanel
       sessions={sessions}
       nowSecs={now}
       onJump={onJump}
+      onDismiss={onDismiss}
       onClose={onClose}
     />
   )

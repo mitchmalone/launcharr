@@ -4,6 +4,7 @@
  * (AgentsPanelContainer) owns invokes and refresh.
  */
 import { KeyHints, ListRow, Panel, useListNav } from '@launcharr/tui'
+import type { KeyboardEvent } from 'react'
 
 /** Mirrors AgentSession in agents.rs. */
 export interface AgentSession {
@@ -18,6 +19,8 @@ export interface AgentSession {
   tmuxSession: string | null
   tmuxWindow: number | null
   tmuxWindowName: string | null
+  pid: number | null
+  pidComm: string | null
 }
 
 const GLYPHS: Record<string, string> = {
@@ -44,6 +47,8 @@ export interface AgentsPanelProps {
   /** Unix seconds "now", injected so stories render deterministic ages. */
   nowSecs: number
   onJump: (session: AgentSession) => void
+  /** Drop a session by hand — the escape hatch when liveness checks can't. */
+  onDismiss: (session: AgentSession) => void
   onClose: () => void
 }
 
@@ -51,6 +56,7 @@ export function AgentsPanel({
   sessions,
   nowSecs,
   onJump,
+  onDismiss,
   onClose,
 }: AgentsPanelProps) {
   // Same order as the bar: tmux session, then tab index; pane-less last.
@@ -67,6 +73,24 @@ export function AgentsPanel({
     },
     onBack: onClose,
   })
+
+  // Dismiss rides on top of the shared nav rather than inside it: this is the
+  // only list where a row is a claim about the world that can go stale.
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key === 'Backspace' ||
+      event.key === 'Delete' ||
+      event.key === 'x'
+    ) {
+      const session = ordered[nav.index]
+      if (session) {
+        event.preventDefault()
+        onDismiss(session)
+      }
+      return
+    }
+    nav.onKeyDown(event)
+  }
 
   const count = (state: string) =>
     sessions.filter((s) => s.state === state).length
@@ -88,12 +112,13 @@ export function AgentsPanel({
       icon="◉"
       title="Agents"
       subtitle={subtitle}
-      onKeyDown={nav.onKeyDown}
+      onKeyDown={onKeyDown}
       footer={
         <KeyHints
           hints={[
             { keys: '↑↓', label: 'move' },
             { keys: '↵', label: 'jump to pane' },
+            { keys: '⌫', label: 'dismiss' },
             { keys: 'esc', label: 'back' },
           ]}
         />
@@ -119,7 +144,7 @@ export function AgentsPanel({
               right={
                 s.tmux
                   ? formatAge(s.updatedAt, nowSecs)
-                  : `${formatAge(s.updatedAt, nowSecs)} · no pane`
+                  : `${formatAge(s.updatedAt, nowSecs)} · outside tmux`
               }
               selected={i === nav.index}
               onClick={() => onJump(s)}

@@ -16,6 +16,9 @@ export interface AgentSession {
   tmuxSession: string | null
   tmuxWindow: number | null
   tmuxWindowName: string | null
+  /** The agent process, when its adapter reports one — liveness, not display. */
+  pid: number | null
+  pidComm: string | null
 }
 
 /** What the wifi hover card shows — mirrors WifiStatus in wifi.rs (the same

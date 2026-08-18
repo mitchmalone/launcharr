@@ -113,6 +113,7 @@ pub fn run() {
             commands::usage_status,
             ask::ask,
             commands::agent_jump,
+            commands::agent_forget,
             commands::desktop_status,
             commands::desktop_apply,
             commands::desktop_adopt,

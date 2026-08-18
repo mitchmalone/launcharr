@@ -169,6 +169,13 @@ pub async fn agent_jump(
     crate::agents::jump_session(&app, &session, terminal)
 }
 
+/// Forget an agent session by hand — the escape hatch for a cell the liveness
+/// checks can't prove dead (DECISIONS 2026-08-18). async: `list()` may spawn.
+#[tauri::command]
+pub async fn agent_forget(session: String, app: AppHandle) -> CmdResult<()> {
+    crate::agents::forget_session(&app, &session)
+}
+
 /// Wifi panel (P0). All async — they spawn subprocesses.
 #[tauri::command]
 pub async fn wifi_status() -> crate::wifi::WifiStatus {
