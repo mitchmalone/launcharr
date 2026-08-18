@@ -72,6 +72,79 @@ end tell"#
     }
 }
 
+/// Build the AppleScript that raises the window/tab whose shell is on `tty`.
+///
+/// Activating the app is not enough once more than one terminal window is open:
+/// `open -a iTerm` raises whichever window happened to be frontmost, so a jump
+/// into a tmux pane could surface a completely unrelated window — a herdr one,
+/// say (field report 2026-08-18). The tty is the one identifier shared by the
+/// multiplexer's client and the terminal session hosting it, so it's what we
+/// aim at. Terminal.app addresses its windows by tty directly; iTerm2 needs the
+/// walk. Failing to find it is fine — the app still comes forward.
+pub fn script_for_tty(terminal: Terminal, tty: &str) -> String {
+    let tty = applescript_escape(tty);
+    match terminal {
+        Terminal::ITerm2 => format!(
+            r#"tell application id "com.googlecode.iterm2"
+    activate
+    repeat with w in windows
+        repeat with t in tabs of w
+            repeat with s in sessions of t
+                if tty of s is "{tty}" then
+                    select w
+                    select t
+                    select s
+                    return
+                end if
+            end repeat
+        end repeat
+    end repeat
+end tell"#
+        ),
+        Terminal::TerminalApp => format!(
+            r#"tell application id "com.apple.Terminal"
+    activate
+    repeat with w in windows
+        repeat with t in tabs of w
+            if tty of t is "{tty}" then
+                set frontmost of w to true
+                set selected of t to true
+                return
+            end if
+        end repeat
+    end repeat
+end tell"#
+        ),
+    }
+}
+
+/// Bring the terminal forward, aimed at `tty` when we know one. Blocking, and
+/// deliberately so: the caller is a jump, and the pane selection underneath it
+/// has already happened — racing the raise would land on the old view.
+pub fn raise_tty(configured: Terminal, tty: Option<&str>) -> CmdResult<()> {
+    let terminal = effective_terminal(configured);
+    let Some(tty) = tty.filter(|t| !t.is_empty()) else {
+        let app = match terminal {
+            Terminal::ITerm2 => "iTerm",
+            Terminal::TerminalApp => "Terminal",
+        };
+        let ok = Command::new("/usr/bin/open")
+            .args(["-a", app])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        return ok
+            .then_some(())
+            .ok_or_else(|| CmdError::Terminal(format!("could not activate {app}")));
+    };
+    Command::new("osascript")
+        .arg("-e")
+        .arg(script_for_tty(terminal, tty))
+        .status()
+        .map_err(|e| CmdError::Terminal(e.to_string()))?;
+    Ok(())
+}
+
 /// Fire-and-forget hand-off. iTerm2 owns output, interactivity, and lifetime from here.
 pub fn run(configured: Terminal, command: &str, new_window: bool) -> CmdResult<()> {
     let terminal = effective_terminal(configured);
@@ -89,6 +162,15 @@ pub fn run(configured: Terminal, command: &str, new_window: bool) -> CmdResult<(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tty_script_aims_at_the_session_hosting_it() {
+        let script = script_for_tty(Terminal::ITerm2, "/dev/ttys002");
+        assert!(script.contains(r#"if tty of s is "/dev/ttys002""#));
+        assert!(script.contains("select s"));
+        let terminal_app = script_for_tty(Terminal::TerminalApp, "/dev/ttys002");
+        assert!(terminal_app.contains(r#"if tty of t is "/dev/ttys002""#));
+    }
 
     #[test]
     fn escapes_quotes_and_backslashes() {

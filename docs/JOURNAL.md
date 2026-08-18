@@ -6,6 +6,31 @@
 
 ---
 
+### 2026-08-18 · Jumping to a pane is two problems: which client, and which window — `open -a iTerm` answers neither
+
+Clicking tmux agent cells stopped landing anywhere the day herdr arrived, and every click
+turned its cell from blue to green on the way. Two separate faults, neither of them herdr's:
+
+1. **`tmux switch-client` with no `-c` picks a client for you.** With two clients attached
+   (`ttys000`→gogogo, `ttys002`→psyke) tmux uses the most recently active one, so a click
+   could shuffle a terminal Mitch wasn't looking at. Fix: resolve the pane's own session
+   (`display-message -p -t <pane> '#{session_name}'`), and if a client is already attached
+   to it (`list-clients -t <session> -F '#{client_tty}'`) just select the window/pane —
+   there is nothing to switch. Only switch when the session has no client.
+2. **`open -a iTerm` raises whichever window was frontmost.** With more than one window
+   that is a coin toss. The tty is the one id shared by the multiplexer's client and the
+   terminal session hosting it, so aim at it: walk iTerm's windows/tabs/sessions for
+   `tty of s` and `select` it (Terminal.app addresses tabs by tty directly).
+
+And the compounding one: `mark_read` (done → idle) ran _before_ the jump, so a run of
+failed clicks silently ate every unread marker. Read after landing, never before.
+
+Two herdr facts found on the way. Its client can outlive the terminal that started it —
+`ps` showed the client orphaned on a tty belonging to no live iTerm session, the server
+still holding the agent — which is herdr working as designed, so raising it is best-effort
+by nature. And the herdr _server_ has no controlling terminal (`??` in `ps -Ao tty=,comm=`)
+while the client does, which is how you tell them apart.
+
 ### 2026-08-17 · TCC grants die with every ad-hoc dev build — sign local builds, and never launch the binary from a shell
 
 Three feedback rounds on the color loupe changed nothing on Mitch's screen: every pick

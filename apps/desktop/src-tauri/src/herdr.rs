@@ -206,6 +206,32 @@ pub fn focus(session_name: &str, pane_id: &str) -> bool {
     request(&path, &params.to_string()).is_some_and(|r| !r.contains(r#""error""#))
 }
 
+/// The tty of herdr's attached client — the terminal window to raise after
+/// focusing one of its panes. herdr's API describes panes inside its own world
+/// and says nothing about the terminal hosting it, so we ask the OS: the client
+/// process is the `herdr` that owns a tty (the server, its parent, has none).
+pub fn client_tty() -> Option<String> {
+    let out = std::process::Command::new("/bin/ps")
+        .args(["-Ao", "tty=,comm="])
+        .output()
+        .ok()?;
+    parse_client_tty(&String::from_utf8_lossy(&out.stdout))
+}
+
+fn parse_client_tty(ps_out: &str) -> Option<String> {
+    ps_out
+        .lines()
+        .filter_map(|line| {
+            let (tty, comm) = line.trim_start().split_once(char::is_whitespace)?;
+            let tty = tty.trim();
+            let comm = comm.trim();
+            // `??` is ps for "no controlling terminal" — that's the server.
+            (tty != "??" && !tty.is_empty() && comm.rsplit('/').next() == Some("herdr"))
+                .then(|| format!("/dev/{tty}"))
+        })
+        .next()
+}
+
 /// herdr's states are launcharr's, with one rename: herdr says `blocked` where
 /// the bar says `attention` (the breathing red cell).
 fn map_state(status: &str) -> &str {
@@ -378,6 +404,22 @@ mod tests {
         let mut changed = snapshot.clone();
         changed.agents[0].state_change_seq = 6;
         assert_eq!(to_sessions("ages-test", &changed, 1030)[0].updated_at, 1030);
+    }
+
+    #[test]
+    fn finds_the_herdr_client_by_its_tty() {
+        // Real `ps -Ao tty=,comm=` shape: the server has no controlling
+        // terminal, the client does — and only the client can be raised.
+        let out = "\
+??       /Users/mitch/.local/bin/herdr
+ttys004  herdr
+ttys000  /bin/zsh
+";
+        assert_eq!(parse_client_tty(out).as_deref(), Some("/dev/ttys004"));
+        assert_eq!(parse_client_tty("??       herdr\n"), None);
+        assert_eq!(parse_client_tty(""), None);
+        // A process merely *containing* herdr in its path isn't the client.
+        assert_eq!(parse_client_tty("ttys009  /usr/bin/herdr-remote\n"), None);
     }
 
     #[test]

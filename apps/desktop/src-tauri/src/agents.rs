@@ -490,18 +490,29 @@ pub fn jump_session(app: &AppHandle, session_id: &str, terminal: Terminal) -> Cm
         if !crate::herdr::focus(herdr_session, pane) {
             return Err(CmdError::Internal("herdr would not focus that pane".into()));
         }
-        return activate_terminal(terminal);
+        return crate::terminal::raise_tty(terminal, crate::herdr::client_tty().as_deref());
     }
-    let target = mark_read(&mut SESSIONS.lock().unwrap(), session_id)
-        .ok_or_else(|| CmdError::Internal("unknown agent session".into()))?;
+    let target = {
+        let sessions = SESSIONS.lock().unwrap();
+        sessions
+            .iter()
+            .find(|s| s.session == session_id)
+            .map(|s| s.mux_target.clone())
+            .ok_or_else(|| CmdError::Internal("unknown agent session".into()))?
+    };
+    if target.is_empty() {
+        return Err(CmdError::Internal("session has no pane".into()));
+    }
+    // Read *after* landing, never before: a jump that goes nowhere used to
+    // still consume the blue "done, unread" marker, so a run of failed clicks
+    // quietly turned the whole bar green (field report 2026-08-18).
+    jump(&target, terminal)?;
+    mark_read(&mut SESSIONS.lock().unwrap(), session_id);
     if let Err(e) = save(&state_file(), &own_list()) {
         eprintln!("[launcharr agents] state save failed: {e}");
     }
     crate::bar::push(app);
-    if target.is_empty() {
-        return Err(CmdError::Internal("session has no pane".into()));
-    }
-    jump(&target, terminal)
+    Ok(())
 }
 
 /// Split a herdr session key (`herdr:<session>:<pane>`) back into its parts.
@@ -541,31 +552,51 @@ fn mark_read(sessions: &mut [AgentSession], session_id: &str) -> Option<String> 
     Some(session.mux_target.clone())
 }
 
-/// Jump to a session's tmux pane and bring the terminal frontmost. Ported from
-/// the retired jump.sh: switch the client to the target's session, select its
-/// window; both are best-effort because pane ids go stale when panes close.
+/// Jump to a session's tmux pane and bring the terminal frontmost.
+///
+/// The pane's own session decides everything: select the window and pane inside
+/// it, hand *that session's* client the switch (never an unnamed "current"
+/// client — with two clients attached, tmux picks the most recently active one,
+/// which is how a click used to shuffle a terminal Mitch wasn't looking at),
+/// and raise the terminal window hosting that client rather than whatever was
+/// frontmost. Selection is best-effort because pane ids go stale when panes
+/// close; the raise is what the user actually sees.
 fn jump(target: &str, terminal: Terminal) -> CmdResult<()> {
     validate_target(target)?;
-    let client_target = target.split(':').next().unwrap_or(target);
-    let _ = tmux(&["switch-client", "-t", client_target]);
+    let session = pane_session(target);
     let _ = tmux(&["select-window", "-t", target]);
-    activate_terminal(terminal)
+    let _ = tmux(&["select-pane", "-t", target]);
+    let tty = session.as_deref().and_then(session_client_tty);
+    match (&session, &tty) {
+        // A client is already looking at that session: nothing to switch.
+        (_, Some(_)) => {}
+        // Attached nowhere — point some client at it, then raise that client.
+        (Some(name), None) => {
+            let _ = tmux(&["switch-client", "-t", name]);
+        }
+        (None, None) => {
+            let _ = tmux(&["switch-client", "-t", target]);
+        }
+    }
+    let tty = tty.or_else(|| session.as_deref().and_then(session_client_tty));
+    crate::terminal::raise_tty(terminal, tty.as_deref())
 }
 
-/// Bring the terminal frontmost. Shared by both multiplexers — whoever owns the
-/// pane, the window it lives in is the terminal's.
-fn activate_terminal(terminal: Terminal) -> CmdResult<()> {
-    let app = match crate::terminal::effective_terminal(terminal) {
-        Terminal::ITerm2 => "iTerm",
-        Terminal::TerminalApp => "Terminal",
-    };
-    let ok = std::process::Command::new("/usr/bin/open")
-        .args(["-a", app])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    ok.then_some(())
-        .ok_or_else(|| CmdError::Internal(format!("could not activate {app}")))
+/// The tmux session a pane belongs to.
+fn pane_session(target: &str) -> Option<String> {
+    let out = tmux_out(&["display-message", "-p", "-t", target, "#{session_name}"])?;
+    let name = out.trim().to_owned();
+    (!name.is_empty()).then_some(name)
+}
+
+/// The tty of a client already attached to `session`, if any. This is the
+/// bridge between the multiplexer and the terminal window we have to raise.
+fn session_client_tty(session: &str) -> Option<String> {
+    let out = tmux_out(&["list-clients", "-t", session, "-F", "#{client_tty}"])?;
+    out.lines()
+        .map(str::trim)
+        .find(|t| !t.is_empty())
+        .map(str::to_owned)
 }
 
 /// Targets come from our own store, but they end up as process arguments —
