@@ -111,8 +111,53 @@ export function isManagedToml(text: string): boolean {
 export const MAX_WORKSPACES = 9
 
 export interface RenderOptions {
-  /** Height of launcharr's bar on external displays (0 = bar off); added to the outer top gap. */
+  /** Height of launcharr's bar strip in points; 0 = bar off. */
   barHeight?: number
+  /** The native menu bar auto-hides (`_HIHideMenuBar = 1`). When it is *visible*
+   * AeroSpace already measures the top gap from below it. */
+  menuBarHidden?: boolean
+}
+
+/** Height of the native macOS menu bar on external displays (points). */
+export const NATIVE_MENU_BAR_HEIGHT = 24
+
+export interface GapPlan {
+  inner: number
+  outer: number
+  outerTopBuiltIn: number
+  outerTopExternal: number
+}
+
+/**
+ * `gaps` means the gap you *see* (Mitch, 2026-08-17). JankyBorders draws its border
+ * centred on the window frame, so half of `width` lands in every gap: between two
+ * windows that is a whole width, at a screen edge half of one. Top: AeroSpace lays
+ * out inside `visibleFrame`, which already excludes a *visible* native menu bar and
+ * the notch band of built-in displays; a hidden native bar means externals start
+ * at y=0, so launcharr's strip (when on) is added — and if both are showing, only
+ * the part of the strip that pokes below the native bar.
+ */
+export function gapPlan(
+  desktop: DesktopConfig,
+  opts: RenderOptions = {},
+): GapPlan {
+  const gaps = clampInt(desktop.tiling.gaps, 0, 64)
+  const border = desktop.borders.enabled
+    ? clamp(desktop.borders.width, BORDER_WIDTH_MIN, BORDER_WIDTH_MAX)
+    : 0
+  const inner = gaps + Math.ceil(border)
+  const outer = gaps + Math.ceil(border / 2)
+  const barHeight = clampInt(opts.barHeight ?? 0, 0, 200)
+  const menuBarHidden = opts.menuBarHidden ?? true
+  const topReserve = menuBarHidden
+    ? barHeight
+    : Math.max(0, barHeight - NATIVE_MENU_BAR_HEIGHT)
+  return {
+    inner,
+    outer,
+    outerTopBuiltIn: outer,
+    outerTopExternal: outer + topReserve,
+  }
 }
 
 export function renderAerospaceToml(
@@ -121,8 +166,7 @@ export function renderAerospaceToml(
 ): string {
   const t = desktop.tiling
   const mod = t.modifier
-  const gaps = clampInt(t.gaps, 0, 64)
-  const barHeight = clampInt(opts.barHeight ?? 32, 0, 200)
+  const gap = gapPlan(desktop, opts)
   const n = clampInt(t.workspaces, 1, MAX_WORKSPACES)
   const ws = Array.from({ length: n }, (_, i) => String(i + 1))
   // Keys 1–9 always work (AeroSpace creates a workspace on demand); N only
@@ -160,13 +204,14 @@ export function renderAerospaceToml(
     "PATH = '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:${PATH}'",
     '',
     '[gaps]',
-    `inner.horizontal = ${gaps}`,
-    `inner.vertical = ${gaps}`,
-    `outer.left = ${gaps}`,
-    `outer.bottom = ${gaps}`,
+    `# visible gap ${clampInt(t.gaps, 0, 64)}px; borders and the bar are already factored in.`,
+    `inner.horizontal = ${gap.inner}`,
+    `inner.vertical = ${gap.inner}`,
+    `outer.left = ${gap.outer}`,
+    `outer.bottom = ${gap.outer}`,
     '# Built-in displays reserve notch/menu-bar space already; externals add room for the bar.',
-    `outer.top = [{ monitor."built-in.*" = ${gaps} }, ${gaps + barHeight}]`,
-    `outer.right = ${gaps}`,
+    `outer.top = [{ monitor."built-in.*" = ${gap.outerTopBuiltIn} }, ${gap.outerTopExternal}]`,
+    `outer.right = ${gap.outer}`,
     '',
     '[mode.main.binding]',
     `${mod}-slash = 'layout tiles horizontal vertical'`,

@@ -252,6 +252,11 @@ export default function DesktopTab({
                       }
                     />{' '}
                     px
+                    <p className="hint">
+                      The gap you see — between windows, at the screen edges,
+                      and below whichever bar is showing (native, launcharr's,
+                      or neither). Border width is factored in automatically.
+                    </p>
                   </Row>
                   <Row label="Workspaces">
                     <input
@@ -481,13 +486,16 @@ function TomlRow({
           className="ghost"
           disabled={busy}
           onClick={() => {
-            const toml = planDesktop({
-              ...config,
-              desktop: {
-                ...desktopOf(config),
-                tiling: { ...desktopOf(config).tiling, managed: true },
+            const toml = planDesktop(
+              {
+                ...config,
+                desktop: {
+                  ...desktopOf(config),
+                  tiling: { ...desktopOf(config).tiling, managed: true },
+                },
               },
-            }).toml
+              { menuBarHidden: status?.menuBarHidden ?? true },
+            ).toml
             if (toml) run({ kind: 'saveAs', toml })
           }}
         >

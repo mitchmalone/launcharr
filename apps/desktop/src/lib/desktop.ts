@@ -4,6 +4,7 @@ import {
   normalizeDesktop,
   renderAerospaceToml,
 } from '@launcharr/core/desktop'
+import { BAR_STRIP_HEIGHT } from '@launcharr/tui/bar'
 import { invoke } from '@tauri-apps/api/core'
 
 import type { Config } from './config'
@@ -15,9 +16,6 @@ import { resolveTheme } from './themes'
  * compares/writes/spawns/reloads. Idempotent — called at boot, on every
  * config-changed, and on theme change; nothing happens unless bytes differ.
  */
-
-/** Height the bar occupies on external displays; AeroSpace's outer top gap makes room. */
-const BAR_HEIGHT = 32
 
 export type TomlState = 'absent' | 'managed' | 'foreign'
 
@@ -36,6 +34,7 @@ export interface DesktopStatus {
   tomlPath: string
   bordersRunning: boolean
   cornerRadius: number | null
+  menuBarHidden: boolean
 }
 
 /** Mirrors `ApplyResult` in desktop.rs. */
@@ -61,8 +60,17 @@ export function desktopOf(config: Config): DesktopConfig {
   return normalizeDesktop(config.desktop)
 }
 
+/** What the machine contributes to the plan: things config can't know. */
+export interface DesktopEnv {
+  /** Native menu bar auto-hides (`desktop_status.menuBarHidden`). */
+  menuBarHidden: boolean
+}
+
 /** What Rust should make true right now, from this config. Exported for tests. */
-export function planDesktop(config: Config): {
+export function planDesktop(
+  config: Config,
+  env: DesktopEnv = { menuBarHidden: true },
+): {
   toml: string | null
   bordersArgs: string[] | null
 } {
@@ -71,7 +79,8 @@ export function planDesktop(config: Config): {
   const toml =
     d.tiling.enabled && d.tiling.managed
       ? renderAerospaceToml(d, {
-          barHeight: config.bar.enabled ? BAR_HEIGHT : 0,
+          barHeight: config.bar.enabled ? BAR_STRIP_HEIGHT : 0,
+          menuBarHidden: env.menuBarHidden,
         })
       : null
   const borders =
@@ -81,8 +90,12 @@ export function planDesktop(config: Config): {
   return { toml, bordersArgs: borders }
 }
 
-export function applyDesktop(config: Config): Promise<ApplyResult> {
-  return invoke<ApplyResult>('desktop_apply', { req: planDesktop(config) })
+/** Reads the menu-bar state first: the top gap depends on whether the native bar
+ * is showing (visibleFrame already excludes it) — see gapPlan in core. */
+export async function applyDesktop(config: Config): Promise<ApplyResult> {
+  const status = await desktopStatus().catch(() => null)
+  const env: DesktopEnv = { menuBarHidden: status?.menuBarHidden ?? true }
+  return invoke<ApplyResult>('desktop_apply', { req: planDesktop(config, env) })
 }
 
 export function desktopStatus(): Promise<DesktopStatus> {

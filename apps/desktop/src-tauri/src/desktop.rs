@@ -60,6 +60,9 @@ pub struct DesktopStatus {
     pub borders_running: bool,
     /// Current `NSConvolutionOverride1`, if set (read back so the slider is truthful).
     pub corner_radius: Option<f64>,
+    /// The native menu bar auto-hides (`_HIHideMenuBar = 1`). The AeroSpace top gap
+    /// depends on it: a visible native bar already pushes windows down.
+    pub menu_bar_hidden: bool,
 }
 
 pub fn status() -> DesktopStatus {
@@ -71,6 +74,7 @@ pub fn status() -> DesktopStatus {
         toml_path: aerospace_toml_path().to_string_lossy().into_owned(),
         borders_running: BORDERS.lock().map(|b| b.is_some()).unwrap_or(false),
         corner_radius: read_corner_radius(),
+        menu_bar_hidden: read_menu_bar_hidden(),
     }
 }
 
@@ -462,6 +466,17 @@ pub fn set_corner_radius(radius: Option<f64>) -> CmdResult<()> {
             String::from_utf8_lossy(&out.stderr).trim().to_owned(),
         ))
     }
+}
+
+/// `defaults read -g _HIHideMenuBar` → 1 when the menu bar auto-hides. Absent = shown.
+fn read_menu_bar_hidden() -> bool {
+    Command::new("/usr/bin/defaults")
+        .args(["read", "-g", "_HIHideMenuBar"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "1")
+        .unwrap_or(false)
 }
 
 fn read_corner_radius() -> Option<f64> {

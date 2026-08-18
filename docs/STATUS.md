@@ -34,7 +34,9 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   `@launcharr/tui/icons`). **Round 2 (same day):** wifi cell hovers a card (SSID, IP,
   router, DNS, interface — what `dns ⏎` shows; `dns ⏎` stays; click → Wi-Fi settings),
   battery card breathes (padding, 10px clear of the strip, power mode as read-only text
-  instead of button-like segments) — all cards share the new spacing.
+  instead of button-like segments) — all cards share the new spacing. **AeroSpace
+  `gaps` now means the visible gap** (`gapPlan`: borders + whichever bar is showing are
+  factored in; native menu-bar state read on apply — DECISIONS 2026-08-17).
 - **v1 launcher line (through v0.3.1, signed + released)**: panel/focus dance, index +
   fuzzy + frecency, bang mode, scripts protocol, clipboard, math, quicklinks, emoji,
   settings window, themes, menubar icon, release pipeline + shared tap. Monorepo on the

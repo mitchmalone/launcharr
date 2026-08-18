@@ -24,6 +24,20 @@ Access` once and Apple's `NSColorSampler` handles that pick, so nothing is lost 
   byte-moving. The window is created once and hidden after (destroying nspanel-converted
   windows aborts, JOURNAL 2026-08-16), so idle memory only grows after the first pick.
 
+### 2026-08-17 · `gaps` is the gap you see: borders and the top bar are factored in
+
+- **Decision.** `gapPlan` in `@launcharr/core/desktop` turns the one `gaps` knob into
+  AeroSpace numbers: JankyBorders draws its border centred on the frame, so
+  `inner = gaps + width`, `outer = gaps + ⌈width/2⌉` (borders off → raw). Top:
+  AeroSpace lays out inside `visibleFrame`, which already excludes a _visible_ native
+  menu bar and the notch band, so externals add launcharr's strip only when the native
+  bar auto-hides (`_HIHideMenuBar`, read via `desktop_status.menuBarHidden` on every
+  apply) — and just the overflow (30 − 24) if both show. Bar height comes from
+  `BAR_STRIP_HEIGHT` in `@launcharr/tui/bar` (the renderer had 32, the bar is 30 —
+  the stray 2px on top).
+- **Why.** Mitch measured 4/6/8/7 with `gaps: 8` + 4px borders and asked for 8
+  everywhere, borders or not, from whichever bar is present or from 0,0 with none.
+
 ### 2026-08-17 · Color picker = Apple's `NSColorSampler`; confirmations are an in-panel toast, never a notification
 
 - **Decision.** `colorpicker` (a `launcharr:` index item, fuzzy-matchable) runs

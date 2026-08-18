@@ -11,6 +11,7 @@ import {
   clampCornerRadius,
   cornerRadiusArgs,
   cssToBordersColor,
+  gapPlan,
   isManagedToml,
   normalizeDesktop,
   renderAerospaceToml,
@@ -23,7 +24,7 @@ function desktop(over: Partial<DesktopConfig> = {}): DesktopConfig {
 }
 
 describe('renderAerospaceToml', () => {
-  const toml = renderAerospaceToml(desktop(), { barHeight: 32 })
+  const toml = renderAerospaceToml(desktop(), { barHeight: 30 })
 
   it('starts with the generated header so we can recognise our own file', () => {
     expect(toml.startsWith(GENERATED_HEADER)).toBe(true)
@@ -46,10 +47,11 @@ describe('renderAerospaceToml', () => {
     expect(toml).toContain('$HOME/.config/launcharr/triggers/workspace')
   })
 
-  it('renders gaps, with the bar height added to the outer top on external monitors', () => {
+  it('renders the gap plan: visible gaps, borders off, bar on externals', () => {
+    // Default desktop has borders off → raw gaps everywhere; bar 30 on externals.
     expect(toml).toContain('inner.horizontal = 8')
     expect(toml).toContain('outer.left = 8')
-    expect(toml).toContain('outer.top = [{ monitor."built-in.*" = 8 }, 40]')
+    expect(toml).toContain('outer.top = [{ monitor."built-in.*" = 8 }, 38]')
     const noBar = renderAerospaceToml(desktop(), { barHeight: 0 })
     expect(noBar).toContain('outer.top = [{ monitor."built-in.*" = 8 }, 8]')
     const wide = renderAerospaceToml(
@@ -135,7 +137,7 @@ describe('renderAerospaceToml', () => {
   })
 
   it('is deterministic', () => {
-    expect(renderAerospaceToml(desktop(), { barHeight: 32 })).toBe(toml)
+    expect(renderAerospaceToml(desktop(), { barHeight: 30 })).toBe(toml)
   })
 })
 
@@ -237,5 +239,67 @@ describe('normalizeDesktop', () => {
     expect(d.tiling.modifier).toBe('alt')
     expect(d.tiling.gaps).toBe(8)
     expect(d.cornerRadius).toBeNull()
+  })
+})
+
+describe('gapPlan — `gaps` is the gap you see', () => {
+  const withBorders = (width: number, gaps = 8) =>
+    desktop({
+      tiling: { ...DEFAULT_DESKTOP.tiling, gaps },
+      borders: { enabled: true, width, style: 'square' },
+    })
+
+  it('borders off: raw gaps, bar added on externals only when the native bar hides', () => {
+    expect(gapPlan(desktop(), { barHeight: 30, menuBarHidden: true })).toEqual({
+      inner: 8,
+      outer: 8,
+      outerTopBuiltIn: 8,
+      outerTopExternal: 38,
+    })
+    expect(gapPlan(desktop(), { barHeight: 0, menuBarHidden: true })).toEqual({
+      inner: 8,
+      outer: 8,
+      outerTopBuiltIn: 8,
+      outerTopExternal: 8,
+    })
+  })
+
+  it('borders on: a whole width between windows, half at the edges (Mitch measured 4/6 at 8/4)', () => {
+    // 8px gaps + 4px border used to show 4 between windows and 6 at edges.
+    expect(gapPlan(withBorders(4), { barHeight: 30 })).toEqual({
+      inner: 12,
+      outer: 10,
+      outerTopBuiltIn: 10,
+      outerTopExternal: 40,
+    })
+    // Odd widths round up rather than leave a hairline short.
+    expect(gapPlan(withBorders(5), { barHeight: 0 })).toMatchObject({
+      inner: 13,
+      outer: 11,
+    })
+  })
+
+  it('native menu bar visible: AeroSpace already sits under it; only the strip overflow counts', () => {
+    // Bar off, native visible → nothing to add.
+    expect(
+      gapPlan(desktop(), { barHeight: 0, menuBarHidden: false })
+        .outerTopExternal,
+    ).toBe(8)
+    // Bar on (30) over a 24px native bar → the 6px that poke below it.
+    expect(
+      gapPlan(desktop(), { barHeight: 30, menuBarHidden: false })
+        .outerTopExternal,
+    ).toBe(14)
+  })
+
+  it('the rendered toml carries the plan', () => {
+    const t = renderAerospaceToml(withBorders(4), {
+      barHeight: 30,
+      menuBarHidden: true,
+    })
+    expect(t).toContain('inner.horizontal = 12')
+    expect(t).toContain('outer.left = 10')
+    expect(t).toContain('outer.top = [{ monitor."built-in.*" = 10 }, 40]')
+    expect(t).toContain('# visible gap 8px')
   })
 })

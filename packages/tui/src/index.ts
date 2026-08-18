@@ -76,6 +76,7 @@ export {
 export {
   AGENT_GLYPHS,
   AGENT_STATE_LABELS,
+  BAR_STRIP_HEIGHT,
   agentAge,
   agentGlyph,
   agentLocation,

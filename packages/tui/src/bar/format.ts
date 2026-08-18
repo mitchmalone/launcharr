@@ -2,6 +2,10 @@ import type { AgentSession, BatteryDetail } from './types'
 
 /** Pure formatting and grouping for the bar. No React, no environment. */
 
+/** The strip's height in points — bar.css `.bar { height }`, bar.rs BAR_HEIGHT and
+ * the AeroSpace top gap all agree on this one number. */
+export const BAR_STRIP_HEIGHT = 30
+
 export const AGENT_GLYPHS: Record<string, string> = {
   working: '●',
   attention: '◉',
