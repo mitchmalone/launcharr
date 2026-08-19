@@ -24,6 +24,13 @@ export interface AgentSession {
   muxLabel: string | null
   pid: number | null
   pidComm: string | null
+  /** Running subagents (id, kind, description, startedAt). */
+  subagents: {
+    id: string
+    kind: string
+    description: string
+    startedAt: number
+  }[]
 }
 
 const GLYPHS: Record<string, string> = {
@@ -140,6 +147,7 @@ export function AgentsPanel({
                 s.muxGroup && `${s.muxGroup}:${s.muxIndex}`,
                 s.agent,
                 s.state,
+                s.subagents.length > 0 && `⑂ ${s.subagents.length}`,
                 s.detail,
               ]
                 .filter(Boolean)

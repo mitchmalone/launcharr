@@ -19,6 +19,12 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
+- **Daemon filter + subagents, 2026-08-19** (plans/done/agent-daemon-and-subagents.md,
+  JOURNAL 2026-08-19): Claude's background daemon (`bg-spare`, pty sessions) no longer
+  gets cells — the hook flags `background`, `apply` won't create from it without a prompt.
+  Subagents (`SubagentStart`/`SubagentStop`, now in settings.json) ride the parent:
+  `subagents[]` on the wire, listed in the hover card, count on the cell, `⑂ N` in
+  `agents ⏎`. **Hands-check:** hover a cell while a session has an Agent running.
 - **Multi-display, 2026-08-19** (plans/done/multi-display.md, JOURNAL 2026-08-19): a bar
   on every screen and the launcher on the screen under the mouse. New `screens.rs`
   (CoreGraphics reads, CG points; `notch.rs` folded in, keyed by display id) replaces

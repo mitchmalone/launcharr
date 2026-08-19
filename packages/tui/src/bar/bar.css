@@ -108,6 +108,23 @@
   color: #00c853;
 }
 
+/* Running subagents: a small count riding the cell's shoulder. */
+.bar-agent {
+  position: relative;
+}
+.bar-agent-subs {
+  position: absolute;
+  top: -1px;
+  right: -5px;
+  font-size: 8px;
+  line-height: 8px;
+  color: var(--dim, #7f86a5);
+}
+
+.bar-card-subagents {
+  margin-top: 2px;
+}
+
 .bar .bar-agent-working {
   color: var(--accent, #9db2ff);
 }

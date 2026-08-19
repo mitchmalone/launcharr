@@ -28,6 +28,7 @@ const agent = (over: Partial<AgentSession> = {}): AgentSession => ({
   muxLabel: null,
   pid: null,
   pidComm: null,
+  subagents: [],
   ...over,
 })
 

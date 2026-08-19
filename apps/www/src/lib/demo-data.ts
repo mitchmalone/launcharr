@@ -124,6 +124,15 @@ export const AGENT_AGES: {
       muxLabel: 'core',
       pid: null,
       pidComm: null,
+      // A forked subagent rides the parent's card; startedAt is re-stamped below.
+      subagents: [
+        {
+          id: 'sub1',
+          kind: 'Explore',
+          description: 'map the ranking call sites',
+          startedAt: 0,
+        },
+      ],
     },
   },
   {
@@ -141,6 +150,7 @@ export const AGENT_AGES: {
       muxLabel: 'release',
       pid: null,
       pidComm: null,
+      subagents: [],
     },
   },
   {
@@ -158,6 +168,7 @@ export const AGENT_AGES: {
       muxLabel: 'panels',
       pid: null,
       pidComm: null,
+      subagents: [],
     },
   },
   {
@@ -175,6 +186,7 @@ export const AGENT_AGES: {
       muxLabel: '',
       pid: null,
       pidComm: null,
+      subagents: [],
     },
   },
 ]
@@ -184,6 +196,10 @@ export function demoAgents(nowSeconds: number): AgentSession[] {
   return AGENT_AGES.map(({ agent, age }) => ({
     ...agent,
     updatedAt: nowSeconds - age,
+    subagents: agent.subagents.map((sub) => ({
+      ...sub,
+      startedAt: nowSeconds - age - 40,
+    })),
   }))
 }
 

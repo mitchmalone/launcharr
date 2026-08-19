@@ -277,6 +277,9 @@ export function BarAgents({
       onClick={() => onJump?.(a.session)}
     >
       {agentGlyph(a.state)}
+      {a.subagents.length > 0 && (
+        <span className="bar-agent-subs">{a.subagents.length}</span>
+      )}
     </button>
   )
 
@@ -305,6 +308,17 @@ export function BarAgents({
           </BarCardLine>
           {hovered.detail && <BarCardDim>{hovered.detail}</BarCardDim>}
           <BarCardDim>{agentLocation(hovered)}</BarCardDim>
+          {hovered.subagents.length > 0 && (
+            <div className="bar-card-subagents">
+              {hovered.subagents.map((sub) => (
+                <BarCardDim key={sub.id}>
+                  ⑂ {sub.kind}
+                  {sub.description && ` · ${sub.description}`} ·{' '}
+                  {agentAge(sub.startedAt, now)}
+                </BarCardDim>
+              ))}
+            </div>
+          )}
           <BarCardHint>click cell to jump</BarCardHint>
         </BarCard>
       )}

@@ -11,8 +11,8 @@ state and launcharr reads it from there, so the hook enriches herdr's record
 with the user's prompt instead of emitting a second, competing cell.
 
 Install: point every Claude hook group (SessionStart, UserPromptSubmit,
-PreToolUse, PostToolUse, PermissionRequest, Notification, Stop, SessionEnd)
-at this script in ~/.claude/settings.json.
+PreToolUse, PostToolUse, PermissionRequest, Notification, Stop, SessionEnd,
+SubagentStart, SubagentStop) at this script in ~/.claude/settings.json.
 """
 
 import json
@@ -31,7 +31,17 @@ STATES = {
     # done, not idle: a finished turn stays "unread" (blue) until visited.
     "Stop": "done",
     "SessionEnd": "ended",
+    # Subagents run inside the parent, which is still working; the event
+    # itself rides in the `subagent` field.
+    "SubagentStart": "working",
+    "SubagentStop": "working",
 }
+
+# Claude Code's background daemon (`claude daemon run` → `--bg-pty-host` →
+# `bg-spare` / pty sessions) runs these hooks too, with TMUX_PANE scrubbed. It
+# is plumbing, not an agent: launcharr shows a background session only once it
+# is actually driven (first prompt), so we mark rather than drop (agents.rs).
+BACKGROUND_MARKERS = ("daemon run", "--bg-pty-host", "bg-spare")
 
 
 # Process names that are never the agent itself — the hook runs as
@@ -70,6 +80,31 @@ def agent_pid() -> int:
             return pid
         pid = parent
     return pid
+
+
+def background_ancestry() -> bool:
+    """Is a Claude background-daemon process among our ancestors?"""
+    pid = os.getpid()
+    for _ in range(12):
+        try:
+            out = subprocess.run(
+                ["/bin/ps", "-o", "ppid=,command=", "-p", str(pid)],
+                capture_output=True, text=True, timeout=2,
+            ).stdout.split(None, 1)
+        except Exception:
+            return False
+        if len(out) < 2:
+            return False
+        parent, command = int(out[0]), out[1]
+        # Only the leading argv — `claude daemon run`, `claude --bg-pty-host …`,
+        # `claude bg-spare …` — never a shell whose *arguments* mention them.
+        head = " ".join(command.split()[:3])
+        if any(marker in head for marker in BACKGROUND_MARKERS):
+            return True
+        if parent <= 1:
+            return False
+        pid = parent
+    return False
 
 
 def socket_path() -> str:
@@ -150,20 +185,26 @@ def main() -> None:
         report_to_herdr(herdr_pane, prompt, detail)
         return
 
-    send_line(
-        socket_path(),
-        json.dumps(
-            {
-                "session": session,
-                "agent": "claude",
-                "state": STATES.get(event, "unknown"),
-                "title": prompt[:100],
-                "detail": detail,
-                "tmux": os.environ.get("TMUX_PANE", ""),
-                "pid": agent_pid(),
-            }
-        ),
-    )
+    line = {
+        "session": session,
+        "agent": "claude",
+        "state": STATES.get(event, "unknown"),
+        "title": prompt[:100],
+        "detail": detail,
+        "tmux": os.environ.get("TMUX_PANE", ""),
+        "pid": agent_pid(),
+        "background": background_ancestry(),
+    }
+    if event in ("SubagentStart", "SubagentStop"):
+        line["subagent"] = {
+            "op": "start" if event == "SubagentStart" else "stop",
+            "id": str(payload.get("agent_id") or ""),
+            "type": str(payload.get("agent_type") or ""),
+            "description": str(payload.get("description") or "")
+            .replace("\n", " ")
+            .strip()[:100],
+        }
+    send_line(socket_path(), json.dumps(line))
 
 
 if __name__ == "__main__":

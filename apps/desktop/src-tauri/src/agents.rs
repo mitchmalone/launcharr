@@ -99,6 +99,35 @@ pub struct AgentSession {
     /// matched against a known agent name: a new adapter needs no reaper change.
     #[serde(default)]
     pub pid_comm: Option<String>,
+    /// Subagents the session has forked and not yet finished (Claude's
+    /// `SubagentStart`/`SubagentStop`). They belong to the parent — shown in
+    /// its hover card, never as cells of their own.
+    #[serde(default)]
+    pub subagents: Vec<Subagent>,
+}
+
+/// One running subagent of a session. Mirrored as `Subagent` in the frontend.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Subagent {
+    pub id: String,
+    /// The agent type: `Explore`, `general-purpose`, a custom name.
+    pub kind: String,
+    pub description: String,
+    pub started_at: u64,
+}
+
+/// A subagent lifecycle event riding on a session event.
+#[derive(Debug, Clone, Default, Deserialize)]
+struct SubagentEvent {
+    #[serde(default)]
+    op: String,
+    #[serde(default)]
+    id: String,
+    #[serde(default, rename = "type")]
+    kind: String,
+    #[serde(default)]
+    description: String,
 }
 
 /// Incoming wire event: an `AgentSession` minus the timestamp, all fields
@@ -120,6 +149,14 @@ struct AgentEvent {
     /// Optional: the agent process's pid, for liveness checks off tmux.
     #[serde(default)]
     pid: Option<u32>,
+    /// The emitter is infrastructure (Claude's background daemon: spare and
+    /// pty-hosted sessions). Such an event updates a session we already show
+    /// but never creates one — unless it carries a prompt, i.e. someone is
+    /// actually driving that session (diagnosis 2026-08-19).
+    #[serde(default)]
+    background: bool,
+    #[serde(default)]
+    subagent: Option<SubagentEvent>,
 }
 
 static SESSIONS: Mutex<Vec<AgentSession>> = Mutex::new(Vec::new());
@@ -438,6 +475,10 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         return true;
     }
     let previous = sessions.iter().position(|s| s.session == event.session);
+    if previous.is_none() && event.background && event.title.is_empty() {
+        return false;
+    }
+    let session_id = event.session.clone();
     let mut next = AgentSession {
         session: event.session,
         agent: event.agent,
@@ -473,9 +514,30 @@ fn apply(sessions: &mut Vec<AgentSession>, event: AgentEvent, now: u64, stale: u
         if next.pid == old.pid {
             next.pid_comm = old.pid_comm.clone();
         }
+        // A finished turn has no subagents left; anything else carries them on.
+        if next.state != "done" {
+            next.subagents = old.subagents.clone();
+        }
         sessions[i] = next;
     } else {
         sessions.push(next);
+    }
+    if let Some(sub) = event.subagent {
+        if let Some(s) = sessions.iter_mut().find(|s| s.session == session_id) {
+            match sub.op.as_str() {
+                "start" if !sub.id.is_empty() => {
+                    s.subagents.retain(|x| x.id != sub.id);
+                    s.subagents.push(Subagent {
+                        id: sub.id,
+                        kind: sub.kind,
+                        description: sub.description,
+                        started_at: now,
+                    });
+                }
+                "stop" => s.subagents.retain(|x| x.id != sub.id),
+                _ => {}
+            }
+        }
     }
     true
 }
@@ -766,6 +828,62 @@ mod tests {
         apply(&mut s, retitled, 300, DEFAULT_STALE_SECS);
         assert_eq!(s[0].title, "New task");
         assert_eq!(s[0].mux_target, "%3");
+    }
+
+    #[test]
+    fn background_events_never_create_a_session_without_a_prompt() {
+        // Claude's daemon spare / idle pty sessions: SessionStart, then tool
+        // chatter, never a prompt — no cell.
+        let mut s = Vec::new();
+        let mut bg = event("spare", "idle");
+        bg.background = true;
+        assert!(!apply(&mut s, bg.clone(), 100, DEFAULT_STALE_SECS));
+        bg.state = "working".into();
+        assert!(!apply(&mut s, bg, 101, DEFAULT_STALE_SECS));
+        assert!(s.is_empty());
+        // Someone drives it: the prompt surfaces it, and later events stick.
+        let mut driven = event("pty", "working");
+        driven.background = true;
+        driven.title = "fix the build".into();
+        assert!(apply(&mut s, driven, 200, DEFAULT_STALE_SECS));
+        let mut follow = event("pty", "done");
+        follow.background = true;
+        assert!(apply(&mut s, follow, 201, DEFAULT_STALE_SECS));
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].state, "done");
+        assert_eq!(s[0].title, "fix the build");
+    }
+
+    #[test]
+    fn subagents_ride_the_session_and_clear_on_done() {
+        let mut s = Vec::new();
+        apply(&mut s, event("a", "working"), 100, DEFAULT_STALE_SECS);
+        let sub = |op: &str, id: &str| SubagentEvent {
+            op: op.into(),
+            id: id.into(),
+            kind: "Explore".into(),
+            description: "find the bar code".into(),
+        };
+        let mut start = event("a", "working");
+        start.subagent = Some(sub("start", "s1"));
+        apply(&mut s, start, 110, DEFAULT_STALE_SECS);
+        let mut start2 = event("a", "working");
+        start2.subagent = Some(sub("start", "s2"));
+        apply(&mut s, start2, 111, DEFAULT_STALE_SECS);
+        assert_eq!(s[0].subagents.len(), 2);
+        assert_eq!(s[0].subagents[0].kind, "Explore");
+        assert_eq!(s[0].subagents[0].started_at, 110);
+        // Ordinary events in between keep them.
+        apply(&mut s, event("a", "working"), 120, DEFAULT_STALE_SECS);
+        assert_eq!(s[0].subagents.len(), 2);
+        let mut stop = event("a", "working");
+        stop.subagent = Some(sub("stop", "s1"));
+        apply(&mut s, stop, 130, DEFAULT_STALE_SECS);
+        assert_eq!(s[0].subagents.len(), 1);
+        assert_eq!(s[0].subagents[0].id, "s2");
+        // The turn finishing clears whatever is left.
+        apply(&mut s, event("a", "done"), 140, DEFAULT_STALE_SECS);
+        assert!(s[0].subagents.is_empty());
     }
 
     #[test]

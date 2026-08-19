@@ -6,6 +6,22 @@
 
 ---
 
+### 2026-08-19 · Claude's background daemon runs your hooks too — with `TMUX_PANE` scrubbed
+
+Two "outside a multiplexer" cells that were nobody's agent: Claude Code's daemon
+(`claude daemon run` → `--bg-pty-host` → `bg-spare` / `--session-id` pty sessions),
+spawned by an interactive session, runs the same hook config, and the pty-host strips
+`TMUX`/`TMUX_PANE` from its children (the daemon itself still carries them). Each got a
+fresh session id → its own pane-less cell, alive by every liveness check (`pidComm` said
+`claude bg-spare` — the tell). Fix is a flag, not a drop: the hook walks its ancestry
+(leading argv only — a shell whose _arguments_ mention `bg-spare` must not count; a probe
+matched its own test string) and marks `background: true`; `apply` refuses to _create_ a
+session from a background event unless it carries a prompt, so a driven background session
+still surfaces on its first prompt. Sessions recorded before the fix stay until forgotten.
+Also: hooks are snapshotted at session start — adding `SubagentStart`/`SubagentStop` to
+settings.json does nothing for sessions already running, so probe new hook groups through
+the socket, not from the session that added them.
+
 ### 2026-08-19 · Tauri's monitor API is why nothing was multi-display — ask CoreGraphics
 
 Two screens, one bar, launcher always on the primary — and both paths were _written_ for
