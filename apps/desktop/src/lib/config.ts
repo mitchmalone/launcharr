@@ -38,6 +38,9 @@ export type Config = {
   colorLoupeZoom: number
   /** Loupe diameter in points (default 264). */
   colorLoupeSize: number
+  /** Plain widget settings: widget id → KEY → value (manifest `settings`,
+   * docs/WIDGETS.md). Secrets are Keychain-only and never appear here. */
+  widgets: Record<string, Record<string, string>>
 }
 
 export type BarConfig = {

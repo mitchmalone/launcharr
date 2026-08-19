@@ -129,6 +129,23 @@ export interface WidgetView {
   card?: WidgetCard | null
 }
 
+/** Mirrors WidgetSetting in widgets.rs — one setting a manifest declares. */
+export interface WidgetSetting {
+  /** Env-var name the widget reads. */
+  key: string
+  label: string
+  hint?: string | null
+  /** Keychain-stored; the UI only ever learns whether it's set. */
+  secret?: boolean
+  /** Unset → the widget isn't run ("needs setup"). */
+  required?: boolean
+}
+
+/** Mirrors WidgetAuth in widgets.rs — the widget answers `auth`. */
+export interface WidgetAuth {
+  label: string
+}
+
 /** Mirrors WidgetState in widgets.rs — a user widget as the bar sees it. */
 export interface BarWidget {
   id: string
@@ -143,6 +160,11 @@ export interface BarWidget {
   /** Epoch seconds. */
   lastOk: number | null
   updatedAt: number | null
+  /** Declared settings (manifest) and whether the widget owns a sign-in. */
+  settings?: WidgetSetting[]
+  auth?: WidgetAuth | null
+  /** Required settings still unset — the widget isn't ticked while non-empty. */
+  needs?: string[]
 }
 
 /** One 1 Hz push from bar.rs. */

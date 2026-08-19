@@ -1,5 +1,5 @@
 import type { Link } from '@launcharr/core/types'
-import type { BarSnapshot, BarWidget } from '@launcharr/tui'
+import type { BarSnapshot, BarWidget, WidgetSetting } from '@launcharr/tui'
 import { GithubIcon, XIcon } from '@launcharr/tui/icons'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
@@ -16,7 +16,7 @@ import {
   Settings,
   Tag,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   type BarZones,
@@ -776,6 +776,7 @@ function widgetStatus(w: BarWidget, now: number): string {
     if (s < 3600) return `${Math.round(s / 60)}m ago`
     return `${Math.round(s / 3600)}h ago`
   }
+  if (w.needs?.length) return `needs setup · ${w.needs.join(', ')}`
   if (w.error) {
     return `error · ${w.error}${w.lastOk ? ` · last ok ${ago(w.lastOk)}` : ''}`
   }
@@ -792,7 +793,225 @@ type WidgetSource =
  * — read in the webview, no dialog plugin — or a URL, one user-initiated
  * fetch) and remove. Layout lives on the board above; this is the inventory.
  */
-function WidgetsSection({ widgets }: { widgets: BarWidget[] }) {
+/** One `widget-auth` event from widgets.rs (`AuthEvent`). */
+type WidgetAuthEvent =
+  | { phase: 'code'; id: string; url: string; code: string }
+  | { phase: 'message'; id: string; message: string }
+  | { phase: 'done'; id: string }
+  | { phase: 'error'; id: string; error: string }
+
+/**
+ * A widget's declared settings (docs/WIDGETS.md): plain values bind to
+ * `config.widgets[id]`; secrets go to the Keychain through `widget_secret_set`
+ * and the UI only learns which are set. `auth` renders the widget's sign-in
+ * button and the code the flow hands back.
+ */
+function WidgetSettings({
+  widget,
+  config,
+  set,
+}: {
+  widget: BarWidget
+  config: Config
+  set: SetFn
+}) {
+  const settings = widget.settings ?? []
+  const plain = config.widgets[widget.id] ?? {}
+  const [present, setPresent] = useState<string[]>([])
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [auth, setAuth] = useState<WidgetAuthEvent | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const hasSecrets = settings.some((s) => s.secret)
+
+  const refreshPresent = useCallback(() => {
+    if (!hasSecrets) return
+    invoke<string[]>('widget_secret_keys', { id: widget.id })
+      .then(setPresent)
+      .catch(console.error)
+  }, [widget.id, hasSecrets])
+  useEffect(refreshPresent, [refreshPresent])
+
+  useEffect(() => {
+    if (!widget.auth) return
+    const un = listen<WidgetAuthEvent>('widget-auth', (e) => {
+      if (e.payload.id !== widget.id) return
+      setAuth(e.payload)
+      if (e.payload.phase === 'done') refreshPresent()
+    })
+    return () => {
+      un.then((u) => u())
+    }
+  }, [widget.id, widget.auth, refreshPresent])
+
+  if (!settings.length && !widget.auth) return null
+
+  const setPlain = (key: string, value: string) => {
+    const mine = { ...plain }
+    if (value) mine[key] = value
+    else delete mine[key]
+    const all = { ...config.widgets }
+    if (Object.keys(mine).length) all[widget.id] = mine
+    else delete all[widget.id]
+    set('widgets', all)
+  }
+  const saveSecret = (key: string, value: string | null) => {
+    setNote(null)
+    invoke('widget_secret_set', { id: widget.id, key, value })
+      .then(() => {
+        setDrafts((d) => ({ ...d, [key]: '' }))
+        refreshPresent()
+      })
+      .catch((e) => setNote(String(e)))
+  }
+  const startAuth = () => {
+    setNote(null)
+    setAuth({ phase: 'message', id: widget.id, message: 'starting…' })
+    invoke('widget_auth', { id: widget.id }).catch((e) => setNote(String(e)))
+  }
+  const cancelAuth = () => {
+    invoke('widget_auth_cancel', { id: widget.id }).catch(console.error)
+    setAuth(null)
+  }
+  const authBusy =
+    auth != null && (auth.phase === 'code' || auth.phase === 'message')
+
+  const field = (s: WidgetSetting) => {
+    const missing = widget.needs?.includes(s.key)
+    if (!s.secret) {
+      return (
+        <div className="linkrow widgetsetting" key={s.key}>
+          <label
+            className="widgetsetting-label"
+            htmlFor={`ws-${widget.id}-${s.key}`}
+          >
+            {s.label}
+            {s.required && !plain[s.key] && (
+              <span className="widgetsetting-req"> · required</span>
+            )}
+          </label>
+          <input
+            id={`ws-${widget.id}-${s.key}`}
+            type="text"
+            className="grow"
+            placeholder={s.hint ?? s.key}
+            value={plain[s.key] ?? ''}
+            onChange={(e) => setPlain(s.key, e.target.value)}
+          />
+        </div>
+      )
+    }
+    const isSet = present.includes(s.key)
+    return (
+      <div className="linkrow widgetsetting" key={s.key}>
+        <label
+          className="widgetsetting-label"
+          htmlFor={`ws-${widget.id}-${s.key}`}
+        >
+          {s.label}
+          {isSet ? (
+            <span className="widgetsetting-set"> · set</span>
+          ) : (
+            missing && <span className="widgetsetting-req"> · required</span>
+          )}
+        </label>
+        <input
+          id={`ws-${widget.id}-${s.key}`}
+          type="password"
+          className="grow"
+          autoComplete="off"
+          placeholder={
+            isSet ? '••••••••  (paste to replace)' : (s.hint ?? s.key)
+          }
+          value={drafts[s.key] ?? ''}
+          onChange={(e) =>
+            setDrafts((d) => ({ ...d, [s.key]: e.target.value }))
+          }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && drafts[s.key])
+              saveSecret(s.key, drafts[s.key]!)
+          }}
+        />
+        <button
+          type="button"
+          className="ghost"
+          disabled={!drafts[s.key]}
+          onClick={() => saveSecret(s.key, drafts[s.key]!)}
+        >
+          save
+        </button>
+        {isSet && (
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => saveSecret(s.key, null)}
+          >
+            clear
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="widgetsettings">
+      {settings.map(field)}
+      {widget.auth && (
+        <div className="linkrow widgetsetting">
+          <span className="widgetsetting-label">Sign in</span>
+          <div className="grow widgetauth">
+            {!authBusy && (
+              <button type="button" className="ghost" onClick={startAuth}>
+                {widget.auth.label}
+              </button>
+            )}
+            {auth?.phase === 'code' && (
+              <>
+                <span>
+                  enter code{' '}
+                  <code className="widgetauth-code">{auth.code}</code>
+                </span>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() =>
+                    invoke('open_url', { url: auth.url }).catch(console.error)
+                  }
+                >
+                  open {auth.url.replace(/^https?:\/\//, '')}
+                </button>
+              </>
+            )}
+            {auth?.phase === 'message' && (
+              <span className="hint">{auth.message}</span>
+            )}
+            {authBusy && (
+              <button type="button" className="ghost" onClick={cancelAuth}>
+                cancel
+              </button>
+            )}
+            {auth?.phase === 'done' && (
+              <span className="widgetsetting-set">signed in</span>
+            )}
+            {auth?.phase === 'error' && (
+              <span className="widgetstatus-error">{auth.error}</span>
+            )}
+          </div>
+        </div>
+      )}
+      {note && <p className="hint widgetstatus-error">{note}</p>}
+    </div>
+  )
+}
+
+function WidgetsSection({
+  widgets,
+  config,
+  set,
+}: {
+  widgets: BarWidget[]
+  config: Config
+  set: SetFn
+}) {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -838,33 +1057,36 @@ function WidgetsSection({ widgets }: { widgets: BarWidget[] }) {
         <p className="hint">No custom widgets installed.</p>
       )}
       {widgets.map((w) => (
-        <div className="linkrow" key={w.id}>
-          <div className="grow widgetmeta">
-            <span className="widgetname">{w.name}</span>
-            <span className="widgetid">{widgetModuleId(w.id)}</span>
-            <span
-              className={`widgetstatus ${w.error ? 'widgetstatus-error' : ''}`}
-              title={w.error ?? undefined}
+        <div className="widgetentry" key={w.id}>
+          <div className="linkrow">
+            <div className="grow widgetmeta">
+              <span className="widgetname">{w.name}</span>
+              <span className="widgetid">{widgetModuleId(w.id)}</span>
+              <span
+                className={`widgetstatus ${w.error ? 'widgetstatus-error' : ''}`}
+                title={w.error ?? undefined}
+              >
+                {widgetStatus(w, now)}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="ghost"
+              title="run the widget now"
+              onClick={() => tick(w)}
             >
-              {widgetStatus(w, now)}
-            </span>
+              tick
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              title="delete the widget file"
+              onClick={() => remove(w)}
+            >
+              remove
+            </button>
           </div>
-          <button
-            type="button"
-            className="ghost"
-            title="run the widget now"
-            onClick={() => tick(w)}
-          >
-            tick
-          </button>
-          <button
-            type="button"
-            className="ghost"
-            title="delete the widget file"
-            onClick={() => remove(w)}
-          >
-            remove
-          </button>
+          <WidgetSettings widget={w} config={config} set={set} />
         </div>
       ))}
       <div className="linkrow widgetadd">
@@ -940,7 +1162,9 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
   return (
     <>
       <SubTabs tabs={MENUBAR_SUBTABS} value={sub} onChange={setSub} />
-      {sub === 'widgets' && <WidgetsSection widgets={widgets} />}
+      {sub === 'widgets' && (
+        <WidgetsSection widgets={widgets} config={config} set={set} />
+      )}
       {sub === 'layout' && (
         <>
           <Row label="Menubar">

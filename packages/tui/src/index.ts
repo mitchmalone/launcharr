@@ -108,6 +108,8 @@ export type {
   BarModule,
   BarSnapshot,
   BarWidget,
+  WidgetAuth,
+  WidgetSetting,
   BarZones,
   BatteryDetail,
   WidgetAction,

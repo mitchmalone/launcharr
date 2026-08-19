@@ -46,46 +46,57 @@ describe('uptime', () => {
 })
 
 describe('github-actions', () => {
-  const feed = {
-    items: [
-      {
-        repo_label: '@x/a',
-        workflow: 'CI',
-        latest: {
-          state: 'success',
-          url: 'https://gh/a',
-          created_at: '2026-08-19T11:00:00Z',
-        },
-      },
-      {
-        repo_label: '@x/b',
-        workflow: 'Deploy',
-        latest: {
-          conclusion: 'failure',
-          url: 'https://gh/b',
-          created_at: '2026-08-19T11:30:00Z',
-        },
-      },
-    ],
-  }
+  const items = [
+    {
+      repo: 'x/a',
+      workflow: 'CI',
+      state: 'success',
+      url: 'https://gh/a',
+      createdAt: '2026-08-19T11:00:00Z',
+    },
+    {
+      repo: 'x/b',
+      workflow: 'Deploy',
+      state: 'failure',
+      url: 'https://gh/b',
+      createdAt: '2026-08-19T11:30:00Z',
+    },
+  ]
+
+  it('declares the token as a required secret and owns a sign-in', () => {
+    const m = actions.manifest()
+    expect(m.auth).toEqual({ label: 'Sign in with GitHub' })
+    expect(m.settings.find((s) => s.key === 'GITHUB_TOKEN')).toMatchObject({
+      secret: true,
+      required: true,
+    })
+    expect(m.settings.find((s) => s.key === 'GITHUB_CLIENT_ID')).toBeDefined()
+  })
 
   it('sorts newest first, tones by state, and counts failures', () => {
-    const v = actions.view(feed, NOW)
+    const v = actions.view(items, 'https://gh', NOW)
     expect(v).toMatchObject({ tone: 'error', icon: 'monitor-x', label: '1' })
+    expect(v.click).toEqual({ type: 'open', value: 'https://gh' })
     expect(v.card?.rows?.map((r) => r.text)).toEqual([
-      '@x/b · Deploy',
-      '@x/a · CI',
+      'x/b · Deploy',
+      'x/a · CI',
     ])
     expect(v.card?.rows?.[0]).toMatchObject({ dot: 'error', hint: '30m' })
     expect(v.card?.rows?.[1]).toMatchObject({ dot: 'ok', hint: '1h' })
   })
 
-  it('trusts the feed failing count and goes amber while something runs', () => {
+  it('goes amber while something runs, quiet with no runs', () => {
     const v = actions.view(
-      {
-        failing: 0,
-        items: [{ repo: 'r', latest: { state: 'in_progress' } }],
-      },
+      [
+        {
+          repo: 'r',
+          workflow: 'w',
+          state: 'in_progress',
+          url: '',
+          createdAt: '',
+        },
+      ],
+      'https://gh',
       NOW,
     )
     expect(v).toMatchObject({
@@ -93,6 +104,13 @@ describe('github-actions', () => {
       label: null,
       icon: 'monitor-check',
     })
+    expect(actions.view([], 'https://gh', NOW).card?.subtitle).toBe('no runs')
+  })
+
+  it('parses the repo list setting', () => {
+    expect(actions.parseRepos('a/b, c/d\n a/b')).toEqual(['a/b', 'c/d'])
+    expect(actions.parseRepos('not a repo')).toEqual([])
+    expect(actions.parseRepos(undefined)).toEqual([])
   })
 
   it('formats ages', () => {
@@ -104,6 +122,16 @@ describe('github-actions', () => {
 })
 
 describe('vercel', () => {
+  it('declares a secret token and a plain team id, neither required', () => {
+    const m = vercel.manifest()
+    expect(m.settings.map((s) => s.key)).toEqual([
+      'VERCEL_TOKEN',
+      'VERCEL_TEAM_ID',
+    ])
+    expect(m.settings[0]).toMatchObject({ secret: true })
+    expect(m.settings.some((s) => 'required' in s)).toBe(false)
+  })
+
   it('picks the newest production deployment per project and links its inspector', () => {
     const v = vercel.view(
       [

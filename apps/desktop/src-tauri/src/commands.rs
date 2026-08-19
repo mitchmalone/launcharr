@@ -589,6 +589,41 @@ pub fn widget_tick(id: String) {
     crate::widgets::poke(&id)
 }
 
+/// Settings → Menubar → Custom widgets → a secret setting: store (or clear
+/// with null/empty) one Keychain value. The key must be one the widget's
+/// manifest declares `secret` — plain settings go through `config.widgets`.
+#[tauri::command]
+pub fn widget_secret_set(id: String, key: String, value: Option<String>) -> CmdResult<()> {
+    if !crate::widgets::valid_id(&id) || !crate::widgets::valid_setting_key(&key) {
+        return Err(CmdError::Internal(format!("bad widget secret {id}/{key}")));
+    }
+    if !crate::widgets::declares_secret(&id, &key) {
+        return Err(CmdError::Internal(format!("{id} declares no secret {key}")));
+    }
+    crate::widget_secrets::set(&id, &key, value.as_deref().unwrap_or(""))
+        .map_err(CmdError::Internal)?;
+    crate::widgets::poke(&id);
+    Ok(())
+}
+
+/// Which of a widget's secret settings are set — never the values.
+#[tauri::command]
+pub fn widget_secret_keys(id: String) -> Vec<String> {
+    crate::widgets::secret_keys_present(&id)
+}
+
+/// Start the widget's own sign-in (`<widget> auth`); progress arrives as
+/// `widget-auth` events.
+#[tauri::command]
+pub fn widget_auth(app: AppHandle, id: String) -> CmdResult<()> {
+    crate::widgets::auth(app, id).map_err(CmdError::Internal)
+}
+
+#[tauri::command]
+pub fn widget_auth_cancel(id: String) {
+    crate::widgets::auth_cancel(&id)
+}
+
 /// ⌥⏎ on an app: dismiss and reveal the bundle in Finder.
 #[tauri::command]
 pub fn reveal_item(app: AppHandle, path: String) -> CmdResult<()> {

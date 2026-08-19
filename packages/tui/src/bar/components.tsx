@@ -820,7 +820,10 @@ export function BarWidgetCard({
 }) {
   const view = widget.view
   const card = view?.card
-  const health = widgetHealth(widget.error, widget.lastOk, now)
+  const needs = widget.needs ?? []
+  const health = needs.length
+    ? `needs setup: ${needs.join(', ')} — Settings → Menubar → Custom widgets`
+    : widgetHealth(widget.error, widget.lastOk, now)
   const rows = card?.rows ?? []
   return (
     <BarCard variant="widget" cardRef={cardRef}>
@@ -834,7 +837,11 @@ export function BarWidgetCard({
         </div>
       </div>
       {health && (
-        <div className="bar-widget-health bar-tone-error">{health}</div>
+        <div
+          className={`bar-widget-health ${needs.length ? 'bar-tone-muted' : 'bar-tone-error'}`}
+        >
+          {health}
+        </div>
       )}
       {rows.length > 0 && (
         <div className="bar-widget-rows">
@@ -900,7 +907,9 @@ export function BarWidgetCell({
 }) {
   const view = widget.view
   if (view?.hidden) return null
-  const tone = widget.error ? 'error' : view?.tone
+  // Needs setup: a quiet cell (manifest glyph, dim) rather than an alarmed one.
+  const needs = (widget.needs?.length ?? 0) > 0
+  const tone = needs ? 'muted' : widget.error ? 'error' : view?.tone
   const className = `bar-cell ${widgetToneClass(tone)}`
   const body = (
     <>

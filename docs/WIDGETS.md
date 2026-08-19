@@ -61,6 +61,8 @@ Print a JSON manifest to stdout and exit 0:
 - `icon` — a [lucide](https://lucide.dev/icons) icon name (kebab-case), shown until the
   first tick. Default `puzzle`.
 - `timeout` — seconds a tick may run before it is killed. Default 10, maximum 60.
+- `settings` — what the widget needs from the user; see **Settings and sign-in** below.
+- `auth` — `{ "label": "Sign in with GitHub" }`: the widget answers `auth` (below).
 
 ### `<widget> tick`
 
@@ -106,6 +108,48 @@ Every field is optional; `{}` is a valid blank cell.
   not alarmed (no request, no red cell — DECISIONS 2026-08-16). The widget stays
   registered and re-ticks on schedule.
 
+## Settings and sign-in
+
+A widget that needs a token or an id declares it; launcharr collects it in **Settings →
+Menubar → Custom widgets** and hands it to every `tick` as an **environment variable**.
+The widget never touches a store (try-out, 2026-08-19; plan `docs/plans/active/widget-settings.md`).
+
+```json
+"settings": [
+  { "key": "VERCEL_TOKEN", "label": "Token", "hint": "vercel.com/account/tokens", "secret": true, "required": true },
+  { "key": "VERCEL_TEAM_ID", "label": "Team ID", "hint": "team_… — empty = the CLI's current team" }
+]
+```
+
+- `key` — the env-var name (`[A-Z][A-Z0-9_]*`, ≤ 40). `label`/`hint` are the field copy.
+- `secret: true` — stored in the **macOS Keychain** (service `launcharr`, account
+  `widget/<id>/<KEY>`), masked in the UI, never sent to the settings webview or written to
+  `config.json`. Plain settings live in `config.json` under `widgets.<id>.<KEY>` — edit
+  either place.
+- `required: true` — until it's set the widget is **not run**: the cell is a dim glyph, the
+  card and the settings row say `needs setup: <KEYS>`. Optional settings just arrive unset.
+- Up to 16 settings. A widget still owns its fallbacks: `vercel.ts` reads `VERCEL_TOKEN`,
+  else the Vercel CLI's own login.
+
+### `<widget> auth` (optional)
+
+A widget can own an OAuth / device flow. Declare `"auth": { "label": "Sign in with X" }`
+and answer `auth`: launcharr runs it (same env as a tick; up to 15 minutes; **cancel**
+kills it) and reads **one JSON object per stdout line**:
+
+- `{"url": "https://github.com/login/device", "code": "ABCD-1234"}` — shown with an
+  **open** button; the user types the code in the browser.
+- `{"message": "waiting for approval…"}` — progress, shown dim. A non-JSON line is
+  treated as a message.
+- `{"settings": {"GITHUB_TOKEN": "gho_…"}}` — stored. Only keys declared **`secret`** may
+  be set this way (an auth result is a credential); anything else fails the sign-in.
+
+Exit 0 = signed in (the widget ticks at once); non-zero = the stderr tail is the error.
+`github-actions.ts` is the worked example: GitHub's device flow against the OAuth App
+client id you put in its `GITHUB_CLIENT_ID` setting (github.com/settings/applications/new,
+tick "Enable Device Flow" — the id is public, no secret involved). The widget can't refresh
+a token on its own yet; when one expires it should fail with a "sign in again" message.
+
 ## Refresh, failure, and the rules of the road
 
 - **On demand:** `touch ~/.config/launcharr/triggers/widget.<id>` ticks a widget now —
@@ -118,10 +162,10 @@ Every field is optional; `{}` is a valid blank cell.
   silently. Debug by running `<widget> tick` by hand.
 - **Off the hot path:** ticks run on their own thread and are stateless child processes —
   nothing resident between ticks, nothing on the 1 Hz push.
-- **Network and secrets are the widget's business.** launcharr core is zero-network;
-  what your widget fetches, and with which credential, is yours (DECISIONS 2026-08-15).
-  Resolve tokens yourself (env, the CLI's own store, `secret`); launcharr never sees or
-  stores them.
+- **Network is the widget's business.** launcharr core is zero-network; what your widget
+  fetches, and with which credential, is yours (DECISIONS 2026-08-15). Credentials come
+  from declared **settings** (above) or wherever you like (env, the CLI's own store,
+  `secret`); launcharr stores only what a manifest declares, and never calls a provider.
 - **Layout:** the widget appears in `bar.layout` as `widget:<id>`; toggle or move it in
   Settings → Menubar. Removed widgets keep their slot in the layout, so a re-install lands
   where you left it.
@@ -143,12 +187,12 @@ Every field is optional; `{}` is a valid blank cell.
 
 ## Reference widgets
 
-| Widget              | Source                           | Cadence | Notes                                                                                                                    |
-| ------------------- | -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `uptime.ts`         | Upptime `summary.json`           | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                    |
-| `github-actions.ts` | a runs feed (`{failing, items}`) | 2 min   | Monitor glyph, failing count, latest 10 runs (opens the run). Set `GITHUB_ACTIONS_FEED_URL`.                             |
-| `vercel.ts`         | Vercel API `/v9/projects`        | 2 min   | Token from the Vercel CLI's own login (or `VERCEL_TOKEN`); latest production deployment per project; hidden without one. |
-| `trmnl.ts`          | TRMNL `/api/devices`             | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                            |
+| Widget              | Source                          | Cadence | Notes                                                                                                                                                               |
+| ------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uptime.ts`         | Upptime `summary.json`          | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                                                               |
+| `github-actions.ts` | GitHub API, latest run per repo | 2 min   | **Sign in with GitHub** (device flow via `GITHUB_CLIENT_ID`) or paste `GITHUB_TOKEN`; `GITHUB_REPOS` or your 10 most recently pushed; failing count, opens the run. |
+| `vercel.ts`         | Vercel API `/v9/projects`       | 2 min   | `VERCEL_TOKEN` setting (Keychain) or the Vercel CLI's own login; `VERCEL_TEAM_ID` optional; latest production deployment per project; hidden without a token.       |
+| `trmnl.ts`          | TRMNL `/api/devices`            | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                                                                       |
 
 Install one: `cp apps/desktop/widgets/uptime.ts ~/.config/launcharr/widgets/` (or
 Settings → Menubar → Custom widgets → add file) — then it's yours to edit in place.

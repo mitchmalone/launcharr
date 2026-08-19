@@ -1,23 +1,24 @@
-// launcharr widget: latest GitHub Actions runs (docs/WIDGETS.md).
+// launcharr widget: latest GitHub Actions run per repo (docs/WIDGETS.md).
 //
-// Reads a JSON feed of workflow runs — the shape the retired Sketchybar module
-// consumed: `{"failing": N, "items": [{"repo_label", "workflow", "latest":
-// {"state" | "conclusion", "url", "created_at"}}]}` — and paints a monitor
-// glyph that goes red while anything is failing, with the failing count as the
-// label. The card lists the ten most recent runs; a row opens the run.
+// The reference widget for the **OAuth** half of widget settings: `auth` runs
+// GitHub's device flow with the OAuth App client id you set in Settings →
+// Menubar → Custom widgets (register one at github.com/settings/applications/new
+// with "Enable Device Flow" ticked — the id is public, no secret involved) and
+// hands the resulting token back to launcharr, which keeps it in the Keychain
+// and passes it to every tick as GITHUB_TOKEN. Pasting a personal token into
+// the same field works too; the widget doesn't care how the token got there.
 //
-// Point GITHUB_ACTIONS_FEED_URL at your own feed (or rewrite `fetchRuns` to
-// call `gh api` — the widget contract doesn't care where the data comes from).
+// Each tick: the repos named in GITHUB_REPOS (`owner/repo,owner/repo`) — or,
+// unset, the ten you pushed to most recently — and each one's latest workflow
+// run. The cell is a monitor, red with the failing count while anything is
+// failing, amber while something runs; the card lists runs newest first.
 //
 // Install: copy into ~/.config/launcharr/widgets/. Runs under Bun.
 import type { WidgetTone, WidgetView } from '@launcharr/tui/bar/types'
 
-const FEED_URL =
-  process.env.GITHUB_ACTIONS_FEED_URL ??
-  'https://0juxenscsxe5h3ff.public.blob.vercel-storage.com/glance/github-actions.json'
-const HOME_URL =
-  process.env.GITHUB_ACTIONS_HOME_URL ?? 'https://github.com/RamenAmok'
+const API = 'https://api.github.com'
 const MAX_ROWS = 10
+const DEFAULT_REPOS = 10
 
 const TONES: Record<string, WidgetTone> = {
   success: 'ok',
@@ -25,29 +26,23 @@ const TONES: Record<string, WidgetTone> = {
   cancelled: 'error',
   timed_out: 'error',
   action_required: 'error',
-  running: 'warn',
+  startup_failure: 'error',
   queued: 'warn',
+  waiting: 'warn',
+  pending: 'warn',
+  requested: 'warn',
   in_progress: 'warn',
 }
 
-export type FeedItem = {
-  repo_label?: string
-  repo?: string
-  workflow?: string
-  workflow_url?: string
-  repo_url?: string
-  latest_state?: string
-  sort_time?: string
-  latest?: {
-    name?: string
-    state?: string
-    conclusion?: string
-    url?: string
-    created_at?: string
-  } | null
+/** One repo's latest run, as `view` wants it. */
+export type RunItem = {
+  repo: string
+  workflow: string
+  /** `conclusion` once completed, else `status` (queued, in_progress, …). */
+  state: string
+  url: string
+  createdAt: string
 }
-
-export type Feed = { failing?: number; items: FeedItem[] }
 
 export function manifest() {
   return {
@@ -56,7 +51,27 @@ export function manifest() {
     interval: 120,
     zone: 'right',
     icon: 'monitor-check',
-    timeout: 15,
+    timeout: 20,
+    settings: [
+      {
+        key: 'GITHUB_TOKEN',
+        label: 'Token',
+        hint: 'sign in below, or paste a personal access token',
+        secret: true,
+        required: true,
+      },
+      {
+        key: 'GITHUB_CLIENT_ID',
+        label: 'OAuth client ID',
+        hint: 'an OAuth App with device flow enabled — only needed to sign in',
+      },
+      {
+        key: 'GITHUB_REPOS',
+        label: 'Repos',
+        hint: 'owner/repo, owner/repo — empty = your 10 most recently pushed',
+      },
+    ],
+    auth: { label: 'Sign in with GitHub' },
   }
 }
 
@@ -71,32 +86,27 @@ export function age(iso: string | undefined, now = Date.now()): string | null {
   return `${Math.floor(s / 86400)}d`
 }
 
-/** The view for one feed — pure, so it's testable. */
-export function view(feed: Feed, now = Date.now()): WidgetView {
-  const runs = feed.items
-    .filter((i) => i.latest && typeof i.latest === 'object')
-    .map((i) => ({
-      repo: i.repo_label ?? i.repo ?? 'repo',
-      workflow: i.workflow ?? i.latest?.name ?? 'workflow',
-      state:
-        i.latest?.state ?? i.latest?.conclusion ?? i.latest_state ?? 'unknown',
-      url: i.latest?.url ?? i.workflow_url ?? i.repo_url ?? HOME_URL,
-      createdAt: i.latest?.created_at ?? i.sort_time ?? '',
-    }))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  const failing =
-    typeof feed.failing === 'number'
-      ? feed.failing
-      : runs.filter((r) => TONES[r.state] === 'error').length
+/** The view for a set of latest runs — pure, so it's testable. */
+export function view(
+  items: RunItem[],
+  home = 'https://github.com',
+  now = Date.now(),
+): WidgetView {
+  const runs = [...items].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  const failing = runs.filter((r) => TONES[r.state] === 'error').length
   const running = runs.some((r) => TONES[r.state] === 'warn')
   return {
     icon: failing ? 'monitor-x' : 'monitor-check',
     label: failing ? String(failing) : null,
     tone: failing ? 'error' : running ? 'warn' : 'ok',
-    click: { type: 'open', value: HOME_URL },
+    click: { type: 'open', value: home },
     card: {
       title: 'GitHub Actions',
-      subtitle: failing ? `${failing} failing` : 'all green',
+      subtitle: failing
+        ? `${failing} failing`
+        : runs.length
+          ? 'all green'
+          : 'no runs',
       rows: runs.slice(0, MAX_ROWS).map((r) => ({
         dot: TONES[r.state] ?? 'muted',
         text: `${r.repo} · ${r.workflow}`,
@@ -108,35 +118,196 @@ export function view(feed: Feed, now = Date.now()): WidgetView {
   }
 }
 
-async function fetchRuns(): Promise<Feed> {
-  const res = await fetch(FEED_URL, {
-    headers: { 'User-Agent': 'launcharr-widget' },
-    signal: AbortSignal.timeout(8000),
+/** `owner/repo,owner/repo` → trimmed, deduped, empties dropped. */
+export function parseRepos(raw: string | undefined): string[] {
+  return [
+    ...new Set(
+      (raw ?? '')
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter((s) => /^[\w.-]+\/[\w.-]+$/.test(s)),
+    ),
+  ]
+}
+
+async function gh<T>(path: string, token: string): Promise<T> {
+  const res = await fetch(API + path, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'launcharr-widget',
+    },
+    signal: AbortSignal.timeout(12000),
   })
-  if (!res.ok) throw new Error(`feed ${res.status}`)
-  const feed: unknown = await res.json()
-  if (
-    !feed ||
-    typeof feed !== 'object' ||
-    !Array.isArray((feed as Feed).items)
-  ) {
-    throw new Error('feed is not {items: [...]}')
+  if (res.status === 401) {
+    throw new Error(
+      'GitHub rejected the token — sign in again or set a new one',
+    )
   }
-  return feed as Feed
+  if (!res.ok) throw new Error(`github api ${res.status} on ${path}`)
+  return (await res.json()) as T
+}
+
+type Repo = { full_name: string; html_url?: string }
+type WorkflowRun = {
+  name?: string
+  status?: string
+  conclusion?: string | null
+  html_url?: string
+  created_at?: string
+}
+
+async function tick(): Promise<WidgetView> {
+  const token = process.env.GITHUB_TOKEN
+  if (!token) {
+    console.error(
+      'no GITHUB_TOKEN — sign in from Settings → Menubar → Custom widgets',
+    )
+    return { hidden: true }
+  }
+  let repos = parseRepos(process.env.GITHUB_REPOS)
+  if (!repos.length) {
+    const mine = await gh<Repo[]>(
+      `/user/repos?sort=pushed&per_page=${DEFAULT_REPOS}&affiliation=owner,collaborator,organization_member`,
+      token,
+    )
+    repos = mine.map((r) => r.full_name)
+  }
+  const items = await Promise.all(
+    repos.map(async (repo): Promise<RunItem | null> => {
+      const { workflow_runs } = await gh<{ workflow_runs: WorkflowRun[] }>(
+        `/repos/${repo}/actions/runs?per_page=1`,
+        token,
+      )
+      const run = workflow_runs?.[0]
+      if (!run) return null
+      return {
+        repo,
+        workflow: run.name ?? 'workflow',
+        state:
+          run.status === 'completed'
+            ? (run.conclusion ?? 'unknown')
+            : (run.status ?? 'unknown'),
+        url: run.html_url ?? `https://github.com/${repo}/actions`,
+        createdAt: run.created_at ?? '',
+      }
+    }),
+  )
+  const me = await gh<{ login?: string }>('/user', token)
+  const home = me.login
+    ? `https://github.com/${me.login}?tab=repositories`
+    : 'https://github.com'
+  return view(
+    items.filter((i): i is RunItem => i != null),
+    home,
+  )
+}
+
+/** A line of the auth protocol (widgets.rs): printed as one JSON object. */
+function say(obj: Record<string, unknown>) {
+  console.log(JSON.stringify(obj))
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * GitHub's OAuth device flow (docs.github.com → "Authorizing OAuth apps" →
+ * device flow): ask for a code, show it, poll until the user approves, hand
+ * the token back to launcharr as a secret setting.
+ */
+async function auth(): Promise<void> {
+  const clientId = process.env.GITHUB_CLIENT_ID
+  if (!clientId) {
+    throw new Error(
+      'set the OAuth client ID first (github.com/settings/applications/new, tick "Enable Device Flow")',
+    )
+  }
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    'User-Agent': 'launcharr-widget',
+  }
+  const start = await fetch('https://github.com/login/device/code', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ client_id: clientId, scope: 'repo' }),
+    signal: AbortSignal.timeout(12000),
+  })
+  if (!start.ok) throw new Error(`device code request failed (${start.status})`)
+  const dev = (await start.json()) as {
+    device_code?: string
+    user_code?: string
+    verification_uri?: string
+    interval?: number
+    expires_in?: number
+    error?: string
+    error_description?: string
+  }
+  if (!dev.device_code || !dev.user_code) {
+    throw new Error(dev.error_description ?? dev.error ?? 'no device code')
+  }
+  say({
+    url: dev.verification_uri ?? 'https://github.com/login/device',
+    code: dev.user_code,
+  })
+  let interval = (dev.interval ?? 5) * 1000
+  const deadline = Date.now() + (dev.expires_in ?? 900) * 1000
+  while (Date.now() < deadline) {
+    await sleep(interval)
+    const poll = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        client_id: clientId,
+        device_code: dev.device_code,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+      }),
+      signal: AbortSignal.timeout(12000),
+    })
+    const body = (await poll.json()) as {
+      access_token?: string
+      error?: string
+      error_description?: string
+    }
+    if (body.access_token) {
+      say({ settings: { GITHUB_TOKEN: body.access_token } })
+      return
+    }
+    switch (body.error) {
+      case 'authorization_pending':
+        continue
+      case 'slow_down':
+        interval += 5000
+        continue
+      case 'expired_token':
+        throw new Error('the code expired — sign in again')
+      case 'access_denied':
+        throw new Error('sign-in was cancelled on GitHub')
+      default:
+        throw new Error(
+          body.error_description ?? body.error ?? 'sign-in failed',
+        )
+    }
+  }
+  throw new Error('the code expired — sign in again')
 }
 
 if (import.meta.main) {
   const cmd = process.argv[2]
+  const fail = (e: unknown) => {
+    console.error(e instanceof Error ? e.message : String(e))
+    process.exit(1)
+  }
   if (cmd === 'manifest') console.log(JSON.stringify(manifest()))
   else if (cmd === 'tick') {
-    fetchRuns()
-      .then((feed) => console.log(JSON.stringify(view(feed))))
-      .catch((e) => {
-        console.error(e instanceof Error ? e.message : String(e))
-        process.exit(1)
-      })
+    tick()
+      .then((v) => console.log(JSON.stringify(v)))
+      .catch(fail)
+  } else if (cmd === 'auth') {
+    auth().catch(fail)
   } else {
-    console.error('usage: github-actions.ts manifest|tick')
+    console.error('usage: github-actions.ts manifest|tick|auth')
     process.exit(1)
   }
 }

@@ -552,3 +552,52 @@ button {
 .widgetadd {
   margin-top: 10px;
 }
+
+/* A widget's declared settings (docs/WIDGETS.md), indented under its row. */
+.widgetentry {
+  margin-bottom: 4px;
+}
+
+.widgetsettings {
+  margin: -2px 0 10px 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+
+.widgetsetting {
+  margin-bottom: 6px;
+}
+
+.widgetsetting-label {
+  width: 140px;
+  flex-shrink: 0;
+  color: var(--dim);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widgetsetting-req {
+  color: var(--warn, var(--bang));
+}
+
+.widgetsetting-set {
+  color: var(--fg);
+}
+
+.widgetauth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.widgetauth-code {
+  color: var(--fg);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  user-select: text;
+  -webkit-user-select: text;
+}

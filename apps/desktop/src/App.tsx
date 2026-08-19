@@ -129,6 +129,7 @@ const DEFAULT_CONFIG: Config = {
   colorLoupe: false,
   colorLoupeZoom: 8,
   colorLoupeSize: 264,
+  widgets: {},
 }
 
 /** Panel rows draw their lucide icon; everything else keeps its text glyph. */

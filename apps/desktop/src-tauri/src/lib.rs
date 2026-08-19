@@ -50,6 +50,7 @@ mod system_commands;
 mod terminal;
 mod tray;
 mod usage;
+mod widget_secrets;
 mod widgets;
 mod wifi;
 
@@ -162,6 +163,10 @@ pub fn run() {
             commands::widget_install,
             commands::widget_remove,
             commands::widget_tick,
+            commands::widget_secret_set,
+            commands::widget_secret_keys,
+            commands::widget_auth,
+            commands::widget_auth_cancel,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).

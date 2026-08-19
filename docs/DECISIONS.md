@@ -5,6 +5,34 @@
 
 ---
 
+### 2026-08-19 · Widget settings: declared in the manifest, kept by launcharr, delivered as env; OAuth is the widget's (try-out)
+
+- **Decision.** A widget manifest may declare `settings: [{key, label, hint?, secret?,
+required?}]` and `auth: {label}`. launcharr renders the fields in Settings → Menubar →
+  Custom widgets, stores **secrets in the macOS Keychain** (`security-framework`; service
+  `launcharr`, account `widget/<id>/<KEY>`; never to a webview, never in config.json) and
+  **plain values in `config.widgets[id]`**, and sets each declared key as an **env var**
+  on every `tick`/`auth`. A widget with an unset `required` setting is not run — it shows
+  "needs setup" (dim cell, keys named) instead of a red one. `auth` is the widget's own
+  flow: launcharr runs `<widget> auth`, reads JSON lines (`{url,code}` → shown with an
+  open button, `{message}`, `{settings:{KEY:v}}` → stored, secrets only), exit 0 = signed
+  in → tick. Four new IPC commands: `widget_secret_set`, `widget_secret_keys`,
+  `widget_auth`, `widget_auth_cancel` (invariant 3: recorded). Reference widgets:
+  `vercel.ts` = stored token (`VERCEL_TOKEN`, CLI fallback), `github-actions.ts` = OAuth
+  device flow against a user-supplied `GITHUB_CLIENT_ID`.
+- **Why.** The "credentials the provider CLI already stores" rule (2026-08-16) broke on
+  Vercel CLI 58's short-lived tokens (JOURNAL 2026-08-19), and it never matched how a
+  user installs a widget — they expect to paste a token or sign in. Declaring needs in
+  the manifest keeps widgets data-not-code; env delivery keeps the widget contract a
+  child process; Keychain keeps secrets out of dotfiles. OAuth stays widget-owned so
+  provider quirks and product opinion stay in TypeScript and launcharr is a store + env
+  injector — invariant 2 holds (launcharr still makes no requests; the widget does,
+  opt-in, as before). `security-framework` over `/usr/bin/security` because argv leaks
+  the secret to `ps`. **Explicitly a try-out** (Mitch, 2026-08-19): built in a worktree
+  to judge on use; not a commitment to the final shape.
+- **Not decided.** Cross-widget shared secrets (namespaced per widget for now), a
+  launcharr-hosted OAuth app, refresh tokens (the widget re-auths), non-secret auth results.
+
 ### 2026-08-19 · Bar colours are theme tokens only; "fine" is fg, `warn` joins the theme
 
 - **Decision.** Every colour on the strip resolves to a theme token — no more literal

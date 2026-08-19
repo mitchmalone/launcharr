@@ -42,6 +42,14 @@ Config). Settings opened from the panel comes to the front (`activation.rs`; JOU
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 
+**Widget settings + OAuth (try-out, branch `worktree-widget-settings`, 2026-08-19):**
+manifest `settings[]` → fields in Custom widgets → Keychain (secrets) / `config.widgets`
+(plain) → env on tick; `required` gate ("needs setup"); `auth` protocol (JSON lines,
+`widget-auth` events). `vercel.ts` = stored token; `github-actions.ts` rewritten onto the
+GitHub API with device-flow sign-in (`GITHUB_CLIENT_ID` setting). Both proven by hand
+against the real APIs; UI + sign-in flow **await Mitch's hands-check** before merge.
+DECISIONS 2026-08-19; plan `plans/active/widget-settings.md`.
+
 **Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widget follow-ups, settings-in-panels,
 per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD
 revision). Open hands-checks: hover a cell while a session has an Agent running (subagent

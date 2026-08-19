@@ -222,6 +222,10 @@ pub struct Config {
     pub color_loupe_zoom: u32,
     /// Loupe diameter in points (default 264, Mitch 2026-08-17).
     pub color_loupe_size: u32,
+    /// Plain (non-secret) widget settings: widget id → KEY → value, as declared by
+    /// each widget's manifest `settings` (docs/WIDGETS.md). Secrets never land here —
+    /// they're in the Keychain (widget_secrets.rs). Delivered to the widget as env.
+    pub widgets: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 }
 
 impl Default for Config {
@@ -245,6 +249,7 @@ impl Default for Config {
             color_loupe: false,
             color_loupe_zoom: 8,
             color_loupe_size: 264,
+            widgets: std::collections::HashMap::new(),
         }
     }
 }
