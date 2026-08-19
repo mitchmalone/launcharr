@@ -5,6 +5,27 @@
 
 ---
 
+### 2026-08-19 · Plugins are TypeScript, run under Bun — never Python
+
+- **Decision.** Bundled scripts, reference widgets, and any example plugin launcharr ships
+  are **TypeScript**. A `.ts`/`.js` file in `~/.config/launcharr/{scripts,widgets}/`
+  needs no shebang and no `chmod`: `runtime.rs` runs it under **Bun** (PATH → Homebrew →
+  `~/.bun`), falling back to Node (PATH → Homebrew → Volta/fnm/nvm, newest first; Node
+  ≥ 22.6 strips types), located once per process because a Finder-launched app has a
+  bare PATH. Neither found → the widget cell goes red with `needs bun — brew install
+oven-sh/bun/bun`; a script is skipped with a log line. Any executable in any language
+  still works — TS is the paved road, not a fence. The Python bundle (`ip.py`,
+  `json-format.py`) is retired on sight (`*.py.retired`, mode 644, edits preserved) and
+  replaced by `ip.ts`, `json-format.ts`; the four widgets were rewritten in TS with their
+  pure `view()` halves under Vitest and shared types from `@launcharr/tui/bar/types`.
+- **Why.** Mitch, on seeing `.py` reference widgets: "we've clearly tried to use
+  TypeScript wherever possible… TypeScript is far more universal for the user." The
+  reference set sets the culture; TS plugins share the repo's types and its gate. Runtime
+  paths weighed: user-shebang (dies on Finder's bare PATH), bundling Bun (~60 MB, kills
+  "lightweight"), build-to-executable (kills "edit it in place, it's live"); resolving
+  the user's own Bun/Node in ~40 lines of Rust keeps both values. Bun first because it
+  runs `.ts` natively and starts in ~10 ms — negligible tick latency.
+
 ### 2026-08-19 · Bar widgets are the scripts protocol pointed at the bar — data-driven, never code
 
 - **Decision.** User-built bar cells ("widgets", the ROADMAP's Module API) are executables

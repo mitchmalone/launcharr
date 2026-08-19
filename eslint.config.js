@@ -34,6 +34,16 @@ export default tseslint.config(
     },
   },
   {
+    files: [
+      'apps/desktop/widgets/**/*.ts',
+      'apps/desktop/src-tauri/scripts/**/*.ts',
+    ],
+    rules: {
+      // Plugins (widgets, bundled scripts) speak the protocol on stdout.
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['scripts/**/*.mjs'],
     rules: {
       // Operational scripts talk to a human via stdout.

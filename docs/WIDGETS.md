@@ -1,10 +1,32 @@
 # launcharr widgets
 
-Widgets are the bar's scripts: drop an executable into `~/.config/launcharr/widgets/` and
-it owns a cell in the menubar — a glyph, an optional short label, a tone, a click, and a
-hover card of rows. Any language, no restart, no store. The reference widgets in
-`apps/desktop/widgets/` (`uptime`, `github-actions`, `vercel`, `trmnl`) are yours to copy
-and edit; the shape is deliberately the same as `docs/SCRIPTS.md`.
+Widgets are the bar's scripts: drop a **TypeScript file** into
+`~/.config/launcharr/widgets/` and it owns a cell in the menubar — a glyph, an optional
+short label, a tone, a click, and a hover card of rows. No build, no shebang, no chmod,
+no restart: `.ts` runs under **Bun** (or Node when Bun is absent — DECISIONS 2026-08-19).
+Any other executable in any language works too. The reference widgets in
+`apps/desktop/widgets/` (`uptime.ts`, `github-actions.ts`, `vercel.ts`, `trmnl.ts`) are
+yours to copy and edit; the shape is deliberately the same as `docs/SCRIPTS.md`.
+
+```ts
+// ~/.config/launcharr/widgets/hello.ts
+import type { WidgetView } from '@launcharr/tui/bar/types'
+
+// erased at run time
+
+if (process.argv[2] === 'manifest') {
+  console.log(
+    JSON.stringify({ id: 'hello', name: 'Hello', interval: 60, icon: 'smile' }),
+  )
+} else {
+  const view: WidgetView = {
+    icon: 'smile',
+    tone: 'ok',
+    card: { title: 'Hello', rows: [] },
+  }
+  console.log(JSON.stringify(view))
+}
+```
 
 **Widgets are data, never code.** A widget prints JSON; launcharr renders it with one
 generic cell and card, in the theme, on every display. Nothing a widget says can put
@@ -13,7 +35,7 @@ launcharr.com's demo.
 
 ## The contract
 
-Any executable that answers two invocations:
+Any `.ts`/`.js` file (run under Bun/Node) or executable that answers two invocations:
 
 ### `<widget> manifest`
 
@@ -103,8 +125,10 @@ Every field is optional; `{}` is a valid blank cell.
 - **Layout:** the widget appears in `bar.layout` as `widget:<id>`; toggle or move it in
   Settings → Menubar. Removed widgets keep their slot in the layout, so a re-install lands
   where you left it.
-- **Python gotcha** (same as scripts): the widgets dir is `sys.path[0]` for python
-  widgets — don't name one after a stdlib module.
+- **Runtime:** Bun is found on PATH, Homebrew, or `~/.bun`; Node on PATH, Homebrew,
+  Volta/fnm/nvm. Neither → the cell reads `needs bun — brew install oven-sh/bun/bun`.
+  Guard your entry point with `if (import.meta.main)` so the file also imports cleanly
+  into a test (the reference widgets do; their `view()` halves are under Vitest).
 
 ## Installing, arranging, removing
 
@@ -119,12 +143,12 @@ Every field is optional; `{}` is a valid blank cell.
 
 ## Reference widgets
 
-| Widget              | Source                           | Cadence | Notes                                                                                                |
-| ------------------- | -------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| `uptime.py`         | Upptime `summary.json`           | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                |
-| `github-actions.py` | a runs feed (`{failing, items}`) | 2 min   | Monitor glyph, failing count, latest 10 runs (opens the run). Set `GITHUB_ACTIONS_FEED_URL`.         |
-| `vercel.py`         | Vercel API `/v9/projects`        | 2 min   | Token from the Vercel CLI's own login (or `VERCEL_TOKEN`); latest production deployment per project. |
-| `trmnl.py`          | TRMNL `/api/devices`             | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                        |
+| Widget              | Source                           | Cadence | Notes                                                                                                                    |
+| ------------------- | -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `uptime.ts`         | Upptime `summary.json`           | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                    |
+| `github-actions.ts` | a runs feed (`{failing, items}`) | 2 min   | Monitor glyph, failing count, latest 10 runs (opens the run). Set `GITHUB_ACTIONS_FEED_URL`.                             |
+| `vercel.ts`         | Vercel API `/v9/projects`        | 2 min   | Token from the Vercel CLI's own login (or `VERCEL_TOKEN`); latest production deployment per project; hidden without one. |
+| `trmnl.ts`          | TRMNL `/api/devices`             | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                            |
 
-Install one: `ln -s "$(pwd)/apps/desktop/widgets/uptime.py" ~/.config/launcharr/widgets/`
-(or copy it — then it's yours to edit in place). `chmod +x` if you copied.
+Install one: `cp apps/desktop/widgets/uptime.ts ~/.config/launcharr/widgets/` (or
+Settings → Menubar → Custom widgets → add file) — then it's yours to edit in place.

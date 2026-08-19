@@ -58,7 +58,11 @@ Contract (full text: `docs/WIDGETS.md`):
       lucide `DynamicIcon` glyphs.
 - [x] Desktop bar: render `widget:*` ids; `normalizeBarZones` keeps/places widget ids.
 - [x] Reference widgets in `apps/desktop/widgets/`: `uptime`, `github-actions`, `vercel`
-      (real API via the Vercel CLI's stored token), `trmnl` (token via `secret`).
+      (real API via the Vercel CLI's stored token), `trmnl` (token via `secret`) —
+      **rewritten in TypeScript under Bun** (`runtime.rs`, DECISIONS 2026-08-19); bundled
+      scripts `ip.ts` / `json-format.ts` likewise; `.py` gone.
+- [x] Settings → Menubar: Layout / Custom widgets sub-tabs; install from URL/file,
+      tick, remove, open folder (`widget_install`/`widget_remove`/`widget_tick`).
 - [x] `docs/WIDGETS.md`; DECISIONS entry; STATUS.
 - [ ] Hands-check on the live bar (see below).
 

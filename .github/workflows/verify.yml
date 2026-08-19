@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      # Bundled scripts and reference widgets are TypeScript run under Bun
+      # (DECISIONS 2026-08-19); the Rust tests exercise them through it.
+      - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt

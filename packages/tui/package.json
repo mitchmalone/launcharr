@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./themes": "./src/themes.ts",
     "./bar": "./src/bar/format.ts",
+    "./bar/types": "./src/bar/types.ts",
     "./icons": "./src/components/brand-icons.tsx",
     "./bar.css": "./src/bar/bar.css",
     "./styles.css": "./src/styles.css"

@@ -66,7 +66,7 @@ pub fn locate(bin: &str) -> Option<PathBuf> {
         .find(|p| is_executable(p))
 }
 
-fn is_executable(p: &Path) -> bool {
+pub fn is_executable(p: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     std::fs::metadata(p)
         .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)

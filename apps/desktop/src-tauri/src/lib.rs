@@ -37,6 +37,7 @@ mod logbook;
 mod loupe;
 mod panel;
 mod power;
+mod runtime;
 mod screens;
 mod screenshots;
 mod scripts;

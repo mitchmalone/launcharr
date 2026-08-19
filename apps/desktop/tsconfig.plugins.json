@@ -1,0 +1,14 @@
+{
+  "//": "The plugin sources — reference widgets and bundled scripts — run under Bun (DECISIONS 2026-08-19), not in the webview, so they typecheck against bun-types instead of DOM.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["bun-types"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["widgets", "src-tauri/scripts"]
+}

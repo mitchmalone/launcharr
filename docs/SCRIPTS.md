@@ -1,12 +1,14 @@
 # launcharr scripts
 
-Scripts are first-class citizens: drop an executable into `~/.config/launcharr/scripts/` and
-its trigger word joins the launcher grammar — no restart, no store, no manifest file. The
-bundled scripts (`lorem`, `json`, `ip`) are reference implementations and yours to edit.
+Scripts are first-class citizens: drop a **TypeScript file** (or any executable) into
+`~/.config/launcharr/scripts/` and its trigger word joins the launcher grammar — no
+build, no chmod, no restart, no store, no manifest file. `.ts` runs under Bun (or Node —
+DECISIONS 2026-08-19). The bundled scripts (`json-format.ts`, `ip.ts`) are reference
+implementations and yours to edit; `lorem` is a built-in.
 
 ## The contract
 
-Any executable (any language) that answers two invocations:
+Any `.ts`/`.js` file (Bun/Node) or executable (any language) that answers two invocations:
 
 ### `<script> manifest`
 
@@ -54,9 +56,13 @@ Called on every keystroke (debounced ~120ms). Print results to stdout and exit 0
 - **stderr is ignored**, exit non-zero = no results. Debug by running the script by hand.
 - **Zero-network is culture, not enforcement** for scripts: launcharr core never touches the
   network; what your own scripts do is your business.
-- **Python gotcha:** the scripts dir is `sys.path[0]` for python scripts run from it — a
-  script named `json.py`/`string.py` shadows the stdlib for its neighbours. Bundled scripts
-  `del sys.path[0]` first; do the same (and don't name scripts after stdlib modules).
+- **TypeScript:** guard the entry point with `if (import.meta.main)` (see the bundled
+  scripts) so the file also imports cleanly into a test; type-only imports from
+  `@launcharr/core/types` are erased at run time. No Bun or Node on the machine → the
+  script is skipped with a log line (`needs bun — brew install oven-sh/bun/bun`).
+- **Python gotcha** (if you still write one): the scripts dir is `sys.path[0]` for python
+  scripts — don't name one after a stdlib module. The old bundled `.py` scripts are parked
+  as `*.py.retired` on first launch of a TS-era build.
 
 ## Widgets
 

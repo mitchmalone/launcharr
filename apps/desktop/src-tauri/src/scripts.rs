@@ -14,7 +14,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::error::{CmdError, CmdResult};
 
 /// The script protocol (v2 pulled forward — see docs/SCRIPTS.md):
-/// - executables in `~/.config/launcharr/scripts/`
+/// - `.ts` files (run under Bun/Node, runtime.rs) or executables in
+///   `~/.config/launcharr/scripts/`
 /// - `<script> manifest` → `{"trigger": "...", "name": "...", "description": "..."}`
 /// - `<script> query <args>` → `{"items": [{"title", "subtitle"?, "action"?}]}`
 /// - actions: `{"type": "copy", "value": ...}` | `{"type": "open", "value": ...}` |
@@ -106,15 +107,17 @@ pub fn discover() -> Vec<ScriptInfo> {
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        let is_executable_file = path.is_file()
-            && fs::metadata(&path)
-                .map(|m| m.permissions().mode() & 0o111 != 0)
-                .unwrap_or(false);
-        if !is_executable_file {
+        if !crate::runtime::is_plugin_file(&path) {
             continue;
         }
-        let Some(out) = run_with_timeout(Command::new(&path).arg("manifest"), MANIFEST_TIMEOUT)
-        else {
+        let mut cmd = match crate::runtime::command_for(&path) {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                eprintln!("[launcharr] script {}: {e}", path.display());
+                continue;
+            }
+        };
+        let Some(out) = run_with_timeout(cmd.arg("manifest"), MANIFEST_TIMEOUT) else {
             continue;
         };
         if let Ok(mut info) = serde_json::from_str::<ScriptInfo>(&out) {
@@ -141,7 +144,9 @@ pub fn query(app: &AppHandle, trigger: &str, args: &str) -> CmdResult<Vec<Script
             .map(|s| s.path.clone())
             .ok_or_else(|| CmdError::NotFound(format!("script {trigger}")))?
     };
-    let out = run_with_timeout(Command::new(&path).arg("query").arg(args), QUERY_TIMEOUT)
+    let mut cmd = crate::runtime::command_for(std::path::Path::new(&path))
+        .map_err(|e| CmdError::Internal(format!("script {trigger}: {e}")))?;
+    let out = run_with_timeout(cmd.arg("query").arg(args), QUERY_TIMEOUT)
         .ok_or_else(|| CmdError::Internal(format!("script {trigger} failed or timed out")))?;
     let parsed: QueryResponse = serde_json::from_str(&out)
         .map_err(|e| CmdError::Internal(format!("script {trigger} bad output: {e}")))?;
@@ -157,27 +162,45 @@ pub fn refresh(app: &AppHandle) {
 }
 
 /// Bundled reference scripts: installed on startup if absent, never overwritten — they're
-/// the user's to edit (that's the point).
+/// the user's to edit (that's the point). TypeScript, run under Bun (DECISIONS
+/// 2026-08-19); the Python originals are retired on sight (renamed `.py.retired`,
+/// mode 644) so the two never fight over a trigger.
 // `lorem.py` left the bundle 2026-08-17: `lorem` is a built-in now (five volumes,
 // semi-random) and built-ins win the trigger, so the script would only shadow itself.
 const BUNDLED: &[(&str, &str)] = &[
-    // NB: not "json.py" — a script named after a python stdlib module shadows it for every
-    // script in the dir (the test suite caught exactly that).
-    ("json-format.py", include_str!("../scripts/json-format.py")),
-    ("ip.py", include_str!("../scripts/ip.py")),
+    ("json-format.ts", include_str!("../scripts/json-format.ts")),
+    ("ip.ts", include_str!("../scripts/ip.ts")),
 ];
+
+/// The Python twins the bundle used to ship (v0.5.0 and earlier).
+const RETIRED: &[&str] = &["json-format.py", "ip.py"];
+
+/// Park a retired file: renamed and made non-executable, so discovery skips it
+/// but the user's edits (if any) survive.
+fn retire(dir: &std::path::Path, name: &str) {
+    let old = dir.join(name);
+    if !old.exists() {
+        return;
+    }
+    let parked = dir.join(format!("{name}.retired"));
+    if fs::rename(&old, &parked).is_ok() {
+        let _ = fs::set_permissions(&parked, fs::Permissions::from_mode(0o644));
+        eprintln!("[launcharr] retired bundled script {name} → {name}.retired");
+    }
+}
 
 pub fn install_bundled() {
     let dir = scripts_dir();
     let _ = fs::create_dir_all(&dir);
+    for name in RETIRED {
+        retire(&dir, name);
+    }
     for (name, body) in BUNDLED {
         let dest = dir.join(name);
         if dest.exists() {
             continue;
         }
-        if fs::write(&dest, body).is_ok() {
-            let _ = fs::set_permissions(&dest, fs::Permissions::from_mode(0o755));
-        }
+        let _ = fs::write(&dest, body);
     }
 }
 
@@ -235,28 +258,43 @@ mod tests {
     }
 
     #[test]
-    fn bundled_scripts_have_valid_python_and_manifests() {
-        // The bundled sources must at least be syntactically valid python3.
+    fn bundled_scripts_answer_manifest_under_the_js_runtime() {
+        // Needs bun or node on the machine (CI installs bun); without either
+        // there is nothing to prove here.
+        if crate::runtime::js_runtime().is_none() {
+            eprintln!("skipping: no JS runtime");
+            return;
+        }
+        let dir =
+            std::env::temp_dir().join(format!("launcharr-script-test-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
         for (name, body) in BUNDLED {
-            let dir = std::env::temp_dir().join("launcharr-script-test");
-            let _ = fs::create_dir_all(&dir);
             let p = dir.join(name);
             fs::write(&p, body).unwrap();
-            let ok = Command::new("python3")
-                .arg("-m")
-                .arg("py_compile")
-                .arg(&p)
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
-            assert!(ok, "{name} failed py_compile");
-            // And their manifests must parse per the contract.
-            let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o755));
-            let out = run_with_timeout(Command::new(&p).arg("manifest"), MANIFEST_TIMEOUT)
+            let mut cmd = crate::runtime::command_for(&p).unwrap();
+            let out = run_with_timeout(cmd.arg("manifest"), Duration::from_secs(5))
                 .unwrap_or_else(|| panic!("{name} manifest failed"));
             let info: ScriptInfo = serde_json::from_str(&out).unwrap();
             assert!(!info.trigger.is_empty());
         }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn retire_parks_python_twins_out_of_discovery() {
+        let dir = std::env::temp_dir().join(format!("launcharr-retire-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let old = dir.join("ip.py");
+        fs::write(&old, "#!/usr/bin/env python3\n").unwrap();
+        fs::set_permissions(&old, fs::Permissions::from_mode(0o755)).unwrap();
+        retire(&dir, "ip.py");
+        assert!(!old.exists());
+        let parked = dir.join("ip.py.retired");
+        assert!(parked.exists());
+        assert!(!crate::runtime::is_plugin_file(&parked));
+        retire(&dir, "json-format.py"); // absent: a no-op
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

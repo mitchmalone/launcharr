@@ -1,6 +1,6 @@
-//! Bar widgets: user executables in `~/.config/launcharr/widgets/` that own a
-//! cell (and hover card) in the bar. The scripts protocol, pointed at the bar
-//! (docs/WIDGETS.md):
+//! Bar widgets: user plugins in `~/.config/launcharr/widgets/` — `.ts` files
+//! run under Bun (runtime.rs), or any executable — that own a cell (and hover
+//! card) in the bar. The scripts protocol, pointed at the bar (docs/WIDGETS.md):
 //!
 //! - `<widget> manifest` → `{"id", "name", "interval"?, "zone"?, "icon"?, "timeout"?}`
 //! - `<widget> tick`     → `{"icon"?, "label"?, "tone"?, "click"?, "card"?}`
@@ -275,15 +275,16 @@ fn drain<R: Read + Send + 'static>(pipe: Option<R>) -> std::thread::JoinHandle<S
     })
 }
 
-fn is_executable(path: &Path) -> bool {
-    path.is_file()
-        && fs::metadata(path)
-            .map(|m| m.permissions().mode() & 0o111 != 0)
-            .unwrap_or(false)
+/// `<widget> <arg>` through the plugin runtime (runtime.rs): `.ts` under
+/// Bun/Node, executables directly. A missing runtime is an Err like any other
+/// failure — it lands on the cell as the install hint.
+fn run_widget(path: &Path, arg: &str, timeout: Duration) -> Result<String, String> {
+    let mut cmd = crate::runtime::command_for(path)?;
+    run(cmd.arg(arg), timeout)
 }
 
-/// Scan the dir, run manifests, return (manifest, path) sorted by id, first
-/// registration winning a duplicate id.
+/// Scan the dir (`.ts`/`.js` sources and executables), run manifests, return
+/// (manifest, path) sorted by id, first registration winning a duplicate id.
 fn discover(dir: &Path) -> Vec<(WidgetManifest, PathBuf)> {
     let mut found = Vec::new();
     let Ok(entries) = fs::read_dir(dir) else {
@@ -292,12 +293,10 @@ fn discover(dir: &Path) -> Vec<(WidgetManifest, PathBuf)> {
     let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
     paths.sort();
     for path in paths {
-        if !is_executable(&path) {
+        if !crate::runtime::is_plugin_file(&path) {
             continue;
         }
-        match run(Command::new(&path).arg("manifest"), MANIFEST_TIMEOUT)
-            .and_then(|out| parse_manifest(&out))
-        {
+        match run_widget(&path, "manifest", MANIFEST_TIMEOUT).and_then(|out| parse_manifest(&out)) {
             Ok(m) => found.push((m, path)),
             Err(e) => eprintln!("[launcharr widgets] {} manifest: {e}", path.display()),
         }
@@ -356,7 +355,7 @@ fn refresh() {
 
 /// One tick of one widget, off-thread; records the outcome and pushes the bar.
 fn tick(app: AppHandle, id: String, path: PathBuf, timeout: Duration) {
-    let result = run(Command::new(&path).arg("tick"), timeout).and_then(|out| parse_view(&out));
+    let result = run_widget(&path, "tick", timeout).and_then(|out| parse_view(&out));
     let now = now_epoch();
     {
         let mut reg = WIDGETS.lock().unwrap();
@@ -455,9 +454,7 @@ pub fn install(source: WidgetSource) -> Result<String, String> {
     }
     fs::write(&dest, bytes).map_err(|e| e.to_string())?;
     let _ = fs::set_permissions(&dest, fs::Permissions::from_mode(0o755));
-    match run(Command::new(&dest).arg("manifest"), MANIFEST_TIMEOUT)
-        .and_then(|o| parse_manifest(&o))
-    {
+    match run_widget(&dest, "manifest", MANIFEST_TIMEOUT).and_then(|o| parse_manifest(&o)) {
         Ok(m) => Ok(m.id),
         Err(e) => {
             let _ = fs::remove_file(&dest);
@@ -654,11 +651,25 @@ mod tests {
         fs::write(&bad, "#!/bin/sh\necho 'nope'\n").unwrap();
         fs::set_permissions(&bad, fs::Permissions::from_mode(0o755)).unwrap();
 
+        // A TypeScript widget needs no chmod — the runtime runs it (when
+        // a runtime is present; without one it is skipped with a log line).
+        let ts = dir.join("e-ts.ts");
+        fs::write(
+            &ts,
+            "if (process.argv[2] === 'manifest') console.log(JSON.stringify({ id: 'tsw' }))\n",
+        )
+        .unwrap();
+
         let found = discover(&dir);
-        assert_eq!(found.len(), 1);
-        assert_eq!(found[0].0.id, "good");
-        assert_eq!(found[0].0.interval, 30);
-        assert_eq!(found[0].1, good);
+        let ids: Vec<&str> = found.iter().map(|(m, _)| m.id.as_str()).collect();
+        assert!(ids.contains(&"good"), "{ids:?}");
+        let good_entry = found.iter().find(|(m, _)| m.id == "good").unwrap();
+        assert_eq!(good_entry.0.interval, 30);
+        assert_eq!(good_entry.1, good);
+        if crate::runtime::js_runtime().is_some() {
+            assert!(ids.contains(&"tsw"), "{ids:?}");
+        }
+        assert!(!ids.contains(&"nope"));
         let _ = fs::remove_dir_all(&dir);
     }
 }
