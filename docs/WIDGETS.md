@@ -108,7 +108,7 @@ Every field is optional; `{}` is a valid blank cell.
 
 ## Installing, arranging, removing
 
-- **Settings → Menubar → Custom widgets** lists what's installed with its health ("ok ·
+- **Settings → Menubar → Custom widgets** (its own sub-tab) lists what's installed with its health ("ok ·
   2m ago", "error · exit 1: …", "hidden"), and offers **install from URL** (one download,
   on click — the file must answer `manifest` or it's discarded with the reason), **add
   file…**, **tick** (run now), **remove** (deletes the file), and **open folder**.

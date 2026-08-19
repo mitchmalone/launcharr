@@ -885,7 +885,16 @@ function WidgetsSection({ widgets }: { widgets: BarWidget[] }) {
   )
 }
 
+const MENUBAR_SUBTABS = [
+  { id: 'layout', label: 'Layout' },
+  { id: 'widgets', label: 'Custom widgets' },
+] as const
+type MenubarSubTab = (typeof MENUBAR_SUBTABS)[number]['id']
+
+/** Settings → Menubar: the strip + zone boards, and the custom-widget
+ * inventory on its own sub-tab (Mitch, 2026-08-19: not jammed into the page). */
 function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
+  const [sub, setSub] = useState<MenubarSubTab>('layout')
   const widgets = useWidgets()
   const homes = widgets.map((w) => ({ id: w.id, zone: w.zone }))
   const layout = normalizeBarZones(config.bar.layout, homes)
@@ -896,75 +905,79 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
     : null
   return (
     <>
-      <Row label="Menubar">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={config.bar.enabled}
-            onChange={(e) =>
-              set('bar', { ...config.bar, enabled: e.target.checked })
-            }
-          />
-          Enable the launcharr bar
-        </label>
-        <p className="hint">
-          Replaces the macOS menu bar with an Omarchy-style strip. Applies
-          immediately.
-        </p>
-      </Row>
-      <hr />
-      {/* Boards break the 160px-label grid on purpose (Mitch, 2026-08-16):
+      <SubTabs tabs={MENUBAR_SUBTABS} value={sub} onChange={setSub} />
+      {sub === 'widgets' && <WidgetsSection widgets={widgets} />}
+      {sub === 'layout' && (
+        <>
+          <Row label="Menubar">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={config.bar.enabled}
+                onChange={(e) =>
+                  set('bar', { ...config.bar, enabled: e.target.checked })
+                }
+              />
+              Enable the launcharr bar
+            </label>
+            <p className="hint">
+              Replaces the macOS menu bar with an Omarchy-style strip. Applies
+              immediately.
+            </p>
+          </Row>
+          <hr />
+          {/* Boards break the 160px-label grid on purpose (Mitch, 2026-08-16):
           three drag columns need the whole content width. */}
-      <section className="row-full">
-        <div className="zonehead">Widgets</div>
-        <p className="hint">
-          Drag widgets between the zones; ✕ retires one to the tray below,
-          dragging it back restores it. Custom widgets join here as soon as
-          they're installed.
-        </p>
-        <ZoneBoard
-          zones={layout}
-          zoneNames={['left', 'center', 'right']}
-          widgets={widgets}
-          onChange={(next) => set('bar', { ...config.bar, layout: next })}
-        />
-      </section>
-      <hr />
-      <WidgetsSection widgets={widgets} />
-      <hr />
-      <section className="row-full">
-        <div className="zonehead">Notched displays</div>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={notched !== null}
-            onChange={(e) =>
-              set('bar', {
-                ...config.bar,
-                // Seeded from what a notched display shows today (center
-                // folded into right); unchecking falls back to that derivation.
-                notchedLayout: e.target.checked
-                  ? notchedZones(config.bar, homes)
-                  : null,
-              })
-            }
-          />
-          Separate arrangement for notched displays
-        </label>
-        <p className="hint">
-          Notched displays have no center zone — the camera housing owns it.
-        </p>
-        {notched && (
-          <ZoneBoard
-            zones={notched}
-            zoneNames={['left', 'right']}
-            widgets={widgets}
-            onChange={(next) =>
-              set('bar', { ...config.bar, notchedLayout: next })
-            }
-          />
-        )}
-      </section>
+          <section className="row-full">
+            <div className="zonehead">Widgets</div>
+            <p className="hint">
+              Drag widgets between the zones; ✕ retires one to the tray below,
+              dragging it back restores it. Custom widgets join here as soon as
+              they're installed (next tab).
+            </p>
+            <ZoneBoard
+              zones={layout}
+              zoneNames={['left', 'center', 'right']}
+              widgets={widgets}
+              onChange={(next) => set('bar', { ...config.bar, layout: next })}
+            />
+          </section>
+          <hr />
+          <section className="row-full">
+            <div className="zonehead">Notched displays</div>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={notched !== null}
+                onChange={(e) =>
+                  set('bar', {
+                    ...config.bar,
+                    // Seeded from what a notched display shows today (center
+                    // folded into right); unchecking falls back to that derivation.
+                    notchedLayout: e.target.checked
+                      ? notchedZones(config.bar, homes)
+                      : null,
+                  })
+                }
+              />
+              Separate arrangement for notched displays
+            </label>
+            <p className="hint">
+              Notched displays have no center zone — the camera housing owns it.
+            </p>
+            {notched && (
+              <ZoneBoard
+                zones={notched}
+                zoneNames={['left', 'right']}
+                widgets={widgets}
+                onChange={(next) =>
+                  set('bar', { ...config.bar, notchedLayout: next })
+                }
+              />
+            )}
+          </section>
+        </>
+      )}
     </>
   )
 }
