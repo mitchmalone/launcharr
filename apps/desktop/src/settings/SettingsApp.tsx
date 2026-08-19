@@ -290,7 +290,7 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
         </p>
       </Row>
       <hr />
-      <Row label="Hackables">
+      <Row label="Config">
         <div className="buttonrow">
           <button
             className="ghost"
