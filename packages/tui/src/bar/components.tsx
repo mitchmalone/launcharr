@@ -138,6 +138,12 @@ export const ICON_PROPS = {
   'aria-hidden': true,
 } as const
 
+/** Landscape glyphs (battery ≈ 20×12, wifi ≈ 20×15 of lucide's 24-box) get a
+ * bigger box so their *visual* height lands where the squarer icons' does —
+ * at a flat 14 they read as squat beside the coffee cup (Mitch, 2026-08-19).
+ * Optical sizing, not a different icon. */
+export const WIDE_ICON_PROPS = { ...ICON_PROPS, size: 17 } as const
+
 /** Which battery glyph a reading gets. Lives here so no consumer re-derives it. */
 /** The lucide icon for a battery glyph tier (format.ts `batteryLook`). */
 export const BATTERY_ICONS = {
@@ -466,7 +472,7 @@ export function BarBatteryCell({
     // Desktop Mac: no pack to report on, so no card either.
     return onAc ? (
       <BarCell>
-        <BatteryCharging {...ICON_PROPS} />
+        <BatteryCharging {...WIDE_ICON_PROPS} />
         AC
       </BarCell>
     ) : null
@@ -497,7 +503,7 @@ export function BarBatteryCell({
         )
       }
     >
-      <Icon {...ICON_PROPS} />
+      <Icon {...WIDE_ICON_PROPS} />
       {look.showPct && `${pct}%`}
     </BarHoverCell>
   )
@@ -710,7 +716,7 @@ export function WifiStrengthIcon({
 function WifiGlyph({
   online,
   rssi,
-  size = ICON_PROPS.size,
+  size = WIDE_ICON_PROPS.size,
 }: {
   online: boolean
   rssi: number | null

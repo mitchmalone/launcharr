@@ -74,6 +74,7 @@ export {
   WidgetGlyph,
   WifiStrengthIcon,
   ICON_PROPS,
+  WIDE_ICON_PROPS,
   BATTERY_ICONS,
   formatHold,
 } from './bar/components'

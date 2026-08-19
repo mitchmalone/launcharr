@@ -33,7 +33,9 @@ from URL. trmnl is hidden until its key resolves (JOURNAL 2026-08-19).
 now in the panel var set. Agents done/idle/unknown fg, working accent, attention danger;
 widget `ok` fg; battery charging/good fg; awake armed fg; wifi poor link warn (`wifiTone`).
 Wifi glyph no longer shrinks with strength: `WifiStrengthIcon` draws all four arcs and ghosts
-the lost ones (lucide's tiers drop arcs); the wifi panel rows use it too.
+the lost ones (lucide's tiers drop arcs); the wifi panel rows use it too. Battery + wifi
+are landscape glyphs, so they get `WIDE_ICON_PROPS` (17 px box) to match the cup's visual
+height — optical sizing. **Hands-check:** does 17 sit right, or nudge to 16/18?
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 
