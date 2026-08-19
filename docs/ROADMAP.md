@@ -73,12 +73,14 @@ Candidates carried over from v0.4, to be cut down in the 0.5 scope session:
 - **Multi-display** — ✅ bar per display, launcher on the mouse's screen (2026-08-19,
   plans/done/multi-display.md). Left: per-monitor workspace lists (aerospace
   `--monitor`), a screen-parameters observer instead of the 5 s heartbeat.
-- **Bar polish** — per-workspace app hints, NSWorkspace-observer front-app, bluetooth
-  glyph. Saved for last by request: Vercel / GitHub Actions / uptime modules.
+- **Bar polish** — glyph-only strip landed 2026-08-19 (DECISIONS: wifi arcs, battery
+  tiers by adjusted charge, awake timer card-side). Left: NSWorkspace-observer front-app,
+  bluetooth glyph; per-workspace app hints only as hover. Saved for last by request:
+  Vercel / GitHub Actions / uptime modules.
 - **Settings into panels** — the native window retires (re-decide: 0.4 invested in it).
   Drill-down panel menu.
 - **awake loose ends** — timed agents-idle release observed end-to-end, lid-closed-on-AC,
-  slice E.
+  slice E. (Relaunch persistence shipped 2026-08-19, DECISIONS.)
 - **Site/app single-source gaps** — `PANEL_INFO` is hand-mirrored in `apps/www`
   (invariant 10 smell); extract to a package.
 - **PRD revision pass** — predates the control-surface direction (DECISIONS 2026-08-15 is

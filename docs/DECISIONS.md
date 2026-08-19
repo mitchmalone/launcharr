@@ -5,6 +5,39 @@
 
 ---
 
+### 2026-08-19 · The strip is glyph-only: information lives in the hover, not the bar
+
+- **Decision.** Bar cells carry a glyph and a colour, nothing else, unless a value is an
+  alarm (battery < 10 % prints its number; wifi offline prints "Offline"). Today that
+  retired three always-visible strings: the wifi SSID (the glyph is now a four-arc
+  strength indicator from `CWWiFiClient rssiValue`, no permission), the awake
+  elapsed/remaining timer, and the battery percentage (lucide tier + colour from the
+  **adjusted charge** — the macOS charge limit read from
+  `/Library/Preferences/com.apple.powerd.charging.plist` counts as full; blue while
+  charging, green ≥ 50 %, amber below, red < 10 %). Every retired value moved into the
+  cell's hover card, where the true numbers stay (real %, "limit 80 %", "−66 dBm · good").
+- **Why.** "Minimal is the theme" (2026-08-17, workspace app icons rejected on sight) is
+  the bar's standing rule, and each of these strings was requested away as clutter within
+  hours of being looked at. Colour and glyph carry the state a glance needs; the number is
+  a hover away.
+- **How to apply.** New bar modules ship glyph-first; a string in the strip needs an alarm
+  to justify it. Rich detail is card-side by default.
+
+### 2026-08-19 · A keep-awake hold survives quit/relaunch — persisted at arm, resumed under rules
+
+- **Decision.** `power.rs` mirrors the armed session to `~/.local/state/launcharr/awake.json`
+  when it is armed and removes it on any release; `resume()` at launch re-arms it if it
+  still makes sense: a deadline only while still ahead; a condition hold always (the TS
+  evaluator releases it on its first tick if the condition already fails); `manual` only
+  within 12 h of arming; never across a reboot (`kern.boottime` stamped). Rust peeks at the
+  spec exactly once (`until.kind == "manual"`) — the spec's meaning stays TypeScript's. A
+  resumed hold toasts and the panel says "since relaunch". No helper process: assertions
+  stay per-process and crash-safe.
+- **Why.** Every rebuild-and-`ditto` (and any quit) silently dropped the running timer.
+  Persisting at quit would miss exactly the paths that lose it (kill, crash, reinstall over
+  the running app). Proved the same day: an "until agents idle" hold armed 13:06 resumed
+  13:11 across a relaunch.
+
 ### 2026-08-18 · herdr is a second agent _store_, not a second hook source; the monitor goes multiplexer-agnostic
 
 - **Decision.** launcharr reads [herdr](https://herdr.dev) directly over its unix socket

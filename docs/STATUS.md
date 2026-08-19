@@ -8,14 +8,19 @@
 ## Where we are
 
 **v0.5.0 released 2026-08-19** (signed + notarized; docs/releases/v0.5.0.md; fan-out
-green: cask 0.5.0, Notion, mitchmalone.com hook; launcharr.com redeploys on the release
-commit). Headline: multi-display (bar per screen, launcher on the mouse's screen), agent
-liveness + herdr, colorpicker loupe, lorem, `?` turns. launcharr is a keyboard control surface: launcher + bar + panels + agents +
-desktop layer, all in Mitch's daily use. **Next: the v0.5 scope talk** (ROADMAP "v0.5 —
-plugins" lists the carried-over candidates: module API, multi-display, settings-in-
-panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision). **The
-2026-08-17 Notion "Ready" column (6 tickets) landed on main** — see the first bullet
-below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check.
+green: cask 0.5.0, Notion, mitchmalone.com hook). Headline: multi-display, agent
+liveness + herdr, colorpicker loupe, lorem, `?` turns. **Post-release the same day, on
+main and running (unreleased):** claude's background daemon filtered + subagents in the
+hover; awake holds survive relaunch (proved live); the strip went **glyph-only** — wifi
+strength arcs, no SSID, no awake timer, battery by lucide tier + colour from the adjusted
+charge (see the first three bullets below). launcharr is a keyboard control surface:
+launcher + bar + panels + agents + desktop layer, all in Mitch's daily use.
+
+**Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": module API, settings-in-panels,
+per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD
+revision). Open hands-checks: hover a cell while a session has an Agent running (subagent
+lines), the awake "resumed" toast, wifi arcs at 14 px against the theme, unplug/replug a
+display. Consider a v0.5.1 for the post-release batch once those pass.
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
