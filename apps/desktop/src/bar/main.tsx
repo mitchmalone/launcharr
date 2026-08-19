@@ -281,7 +281,6 @@ function BarWindow() {
           <BarAwakeCell
             key={id}
             armed={a?.armed ?? false}
-            timeLabel={remaining ?? formatSeconds(a?.elapsedSeconds ?? 0)}
             hover={hover}
             onRelease={() => invoke('awake_release').catch(console.error)}
             card={

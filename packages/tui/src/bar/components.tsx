@@ -567,20 +567,18 @@ export function formatHold(seconds: number): string {
 
 /**
  * The awake cell: a coffee cup, dim while the Mac sleeps normally, lit while
- * a session holds it awake. Clicking an armed cell releases the session —
- * the same promise the panel's ⏎ makes.
+ * a session holds it awake — glyph only; elapsed/remaining live in the card
+ * (minimal is the theme, 2026-08-19). Clicking an armed cell releases the
+ * session — the same promise the panel's ⏎ makes.
  */
 export function BarAwakeCell({
   armed,
-  timeLabel,
   hover,
   cardHeight = 150,
   onRelease,
   card,
 }: {
   armed: boolean
-  /** Compact elapsed/remaining shown next to the icon while armed. */
-  timeLabel?: string | null
   hover: BarHoverApi
   cardHeight?: number
   onRelease?: () => void
@@ -597,7 +595,6 @@ export function BarAwakeCell({
       card={card}
     >
       <Coffee {...ICON_PROPS} />
-      {armed && timeLabel ? timeLabel : null}
     </BarHoverCell>
   )
 }
