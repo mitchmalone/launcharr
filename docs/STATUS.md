@@ -7,9 +7,10 @@
 
 ## Where we are
 
-**v0.4.0 released 2026-08-17** (signed + notarized; docs/releases/v0.4.0.md; fan-out
-green: cask 0.4.0, Notion, mitchmalone.com hook; launcharr.com redeployed on the release
-commit). launcharr is a keyboard control surface: launcher + bar + panels + agents +
+**v0.5.0 released 2026-08-19** (signed + notarized; docs/releases/v0.5.0.md; fan-out
+green: cask 0.5.0, Notion, mitchmalone.com hook; launcharr.com redeploys on the release
+commit). Headline: multi-display (bar per screen, launcher on the mouse's screen), agent
+liveness + herdr, colorpicker loupe, lorem, `?` turns. launcharr is a keyboard control surface: launcher + bar + panels + agents +
 desktop layer, all in Mitch's daily use. **Next: the v0.5 scope talk** (ROADMAP "v0.5 —
 plugins" lists the carried-over candidates: module API, multi-display, settings-in-
 panels, bar polish, awake loose ends, PANEL_INFO single-source, PRD revision). **The
