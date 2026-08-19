@@ -24,6 +24,7 @@ mod colorpicker;
 mod commands;
 mod config;
 mod coreaudio;
+mod corewlan;
 mod deps;
 mod desktop;
 mod error;
@@ -208,6 +209,19 @@ pub fn run() {
                 "[launcharr perf] cold start {}ms",
                 boot.elapsed().as_millis()
             );
+
+            // A keep-awake hold the previous run left behind (awake.json) is
+            // re-armed now — assertions first, then a toast once the webview
+            // can render it, so a resumed hold never goes unannounced.
+            if let Some(resumed) = power::resume() {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+                    let text = power::resume_toast(&resumed);
+                    let inner = handle.clone();
+                    let _ = handle.run_on_main_thread(move || panel::flash(&inner, &text));
+                });
+            }
 
             // First run: show the panel once with the hint line (PRD §4.5). Delayed so the
             // webview has rendered by the time the panel appears.

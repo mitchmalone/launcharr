@@ -2,7 +2,7 @@
 title: awake — keep-alive sessions
 status: active # planned | active | done — only the slice actually in flight is `active`
 created: 2026-08-16
-updated: 2026-08-17
+updated: 2026-08-19
 links:
   - ../done/battery-hover-card.md # battery readings + hover card this reuses
   - ../done/agent-monitoring.md # agent state that drives the "while agents work" trigger
@@ -220,6 +220,14 @@ while <app>/off`); `caffeine`/`caffeinate`/`keep-awake` are fuzzy aliases of the
 - [ ] `pmset -g assertions` shows launcharr's assertions by name while armed, and nothing
       after release/quit/crash. _Verify live after first real arm._
 - [x] No other process's `caffeinate` is ever killed.
+- [x] **A hold survives a relaunch** (2026-08-19): the armed session is mirrored to
+      `~/.local/state/launcharr/awake.json` at arm time and removed on any release;
+      `power::resume()` at launch re-arms it if it still makes sense — a deadline only
+      while ahead, a condition hold always (the TS evaluator ends it if the condition
+      already fails), `manual` only within 12 h of arming, never across a reboot
+      (`kern.boottime` stamped). A resumed hold toasts "awake resumed — N min left" and
+      the panel subtitle says "since relaunch". Verified: planted 30-min timer re-armed
+      after `ditto` + relaunch; a past-deadline file dropped and removed.
 - [x] Trigger evaluation costs no new spawn per bar tick; budgets unregressed (idle bar
       pays only the in-memory `awake` field on the existing snapshot).
 - [ ] Lid closed **on AC** keeps the machine up with no helper and no prompt.

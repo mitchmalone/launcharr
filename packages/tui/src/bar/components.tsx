@@ -5,7 +5,10 @@ import {
   BatteryMedium,
   Coffee,
   Wifi,
+  WifiHigh,
+  WifiLow,
   WifiOff,
+  WifiZero,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -19,6 +22,8 @@ import {
   groupAgents,
   timeLeft,
   toneClass,
+  wifiBars,
+  wifiSignalLabel,
 } from './format'
 import type {
   AgentSession,
@@ -606,29 +611,29 @@ export function BarAwakeCell({
 export function BarWifiCard({
   detail,
   ssid,
+  rssi = null,
   online,
   cardRef,
 }: {
   detail: WifiDetail | null
   ssid: string | null
+  rssi?: number | null
   online: boolean
   cardRef?: (el: HTMLElement | null) => void
 }) {
   const d = detail
+  const signal = online ? wifiSignalLabel(rssi) : ''
   return (
     <BarCard variant="wifi" cardRef={cardRef}>
       <div className="bar-wifi-head">
-        {online ? (
-          <Wifi size={20} strokeWidth={2.2} aria-hidden />
-        ) : (
-          <WifiOff size={20} strokeWidth={2.2} aria-hidden />
-        )}
+        <WifiGlyph online={online} rssi={rssi} size={20} />
         <div>
           <BarCardTitle>
             {online ? (ssid ?? 'SSID hidden') : 'Wi-Fi offline'}
           </BarCardTitle>
           <div className="bar-card-dim bar-wifi-state">
             {online ? 'connected' : 'no connection'}
+            {signal ? ` · ${signal}` : ''}
             {d?.iface ? ` · ${d.iface}` : ''}
           </div>
         </div>
@@ -649,13 +654,40 @@ export function BarWifiCard({
   )
 }
 
+/** The Wi-Fi glyph as a strength indicator: four lucide arcs by RSSI band. */
+function WifiGlyph({
+  online,
+  rssi,
+  size = ICON_PROPS.size,
+}: {
+  online: boolean
+  rssi: number | null
+  size?: number
+}) {
+  const props = { ...ICON_PROPS, size }
+  if (!online) return <WifiOff {...props} />
+  switch (wifiBars(rssi)) {
+    case 4:
+      return <Wifi {...props} />
+    case 3:
+      return <WifiHigh {...props} />
+    case 2:
+      return <WifiLow {...props} />
+    default:
+      return <WifiZero {...props} />
+  }
+}
+
 /**
- * The wifi cell; with `hover` it opens the wifi card (the site strip and any
- * consumer without hover machinery get the plain cell).
+ * The wifi cell — glyph only, a strength indicator (the SSID is card-side:
+ * "minimal is the theme", 2026-08-19); with `hover` it opens the wifi card
+ * (the site strip and any consumer without hover machinery get the plain
+ * cell). Offline reads as an alarmed "Offline".
  */
 export function BarWifiCell({
   online,
   ssid,
+  rssi = null,
   hover,
   detail = null,
   cardHeight = 190,
@@ -663,6 +695,7 @@ export function BarWifiCell({
 }: {
   online: boolean
   ssid: string | null
+  rssi?: number | null
   hover?: BarHoverApi
   detail?: WifiDetail | null
   cardHeight?: number
@@ -670,15 +703,15 @@ export function BarWifiCell({
 }) {
   const body = (
     <>
-      {online ? <Wifi {...ICON_PROPS} /> : <WifiOff {...ICON_PROPS} />}
-      {online ? (ssid ?? 'SSID hidden') : 'Offline'}
+      <WifiGlyph online={online} rssi={rssi} />
+      {!online && 'Offline'}
     </>
   )
   if (!hover) {
     return (
       <BarCell
         className={`bar-cell ${online ? '' : 'bar-danger'}`}
-        title={ssid ?? undefined}
+        title={online ? (ssid ?? undefined) : undefined}
       >
         {body}
       </BarCell>
@@ -696,6 +729,7 @@ export function BarWifiCell({
         <BarWifiCard
           detail={detail}
           ssid={ssid}
+          rssi={rssi}
           online={online}
           cardRef={hover.cardRef}
         />

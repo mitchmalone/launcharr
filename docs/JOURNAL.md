@@ -6,6 +6,18 @@
 
 ---
 
+### 2026-08-19 · A keep-awake hold now survives quit/reinstall — persist intent at arm, not at quit
+
+Every rebuild-and-`ditto` cycle lost the running `awake` timer: IOKit assertions are
+per-process, and the session lived in a `static`. The fix writes `awake.json` the moment
+a hold is armed (never on quit — kill, crash, and reinstall-over-running all skip quit)
+and removes it on any release; launch re-arms under rules that keep it honest (deadline
+still ahead; `manual` capped at 12 h; never across a reboot — `sysctl kern.boottime`
+stamped in the file). Rust peeks at the spec exactly once, for `until.kind == "manual"`,
+to apply the cap; the spec's meaning stays TypeScript's. `CoreWLAN rssiValue` also
+landed today for the Wi-Fi strength glyph — RSSI needs no Location Services, unlike the
+SSID; the SSID text left the strip (minimal is the theme) and lives in the card.
+
 ### 2026-08-19 · Claude's background daemon runs your hooks too — with `TMUX_PANE` scrubbed
 
 Two "outside a multiplexer" cells that were nobody's agent: Claude Code's daemon

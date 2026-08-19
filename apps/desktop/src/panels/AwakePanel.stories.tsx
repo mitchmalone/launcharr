@@ -24,6 +24,7 @@ const SLEEPING: AwakeStatus = {
     batteryFloor: null,
     spec: null,
     released: null,
+    resumed: false,
   },
   others: [
     { app: 'Terminal', seconds: 4 * 3600 + 12 * 60, display: false },
@@ -46,6 +47,7 @@ const ARMED_AGENTS: AwakeStatus = {
       floor: 20,
     }),
     released: null,
+    resumed: false,
   },
   others: SLEEPING.others,
 }

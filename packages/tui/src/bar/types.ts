@@ -77,6 +77,8 @@ export interface AwakeBarState {
   spec: string | null
   /** Why the last session ended on its own ("deadline" | "floor"). */
   released: string | null
+  /** Re-armed at launch from the previous run's persisted hold. */
+  resumed: boolean
 }
 
 /** Another process keeping the Mac awake (mirrors OtherHolder in power.rs). */
@@ -94,7 +96,7 @@ export interface BarSnapshot {
   batteryPct: number | null
   onAc: boolean
   charging: boolean
-  wifi: { online: boolean; ssid: string | null }
+  wifi: { online: boolean; ssid: string | null; rssi: number | null }
   agents: AgentSession[]
   /** Optional so fixtures without a keep-awake session stay valid. */
   awake?: AwakeBarState | null

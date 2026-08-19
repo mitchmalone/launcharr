@@ -13,7 +13,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{CmdError, CmdResult};
 
@@ -143,6 +143,8 @@ struct Session {
     until_epoch_ms: Option<i64>,
     battery_floor: Option<u8>,
     spec: Option<String>,
+    /// Re-armed from `awake.json` at launch rather than asked for this run.
+    resumed: bool,
 }
 
 static SESSION: Mutex<Option<Session>> = Mutex::new(None);
@@ -158,6 +160,17 @@ pub fn arm(
     until_epoch_ms: Option<i64>,
     battery_floor: Option<u8>,
     spec: Option<String>,
+) -> CmdResult<()> {
+    arm_with(display, disks, until_epoch_ms, battery_floor, spec, false)
+}
+
+fn arm_with(
+    display: bool,
+    disks: bool,
+    until_epoch_ms: Option<i64>,
+    battery_floor: Option<u8>,
+    spec: Option<String>,
+    resumed: bool,
 ) -> CmdResult<()> {
     let mut kinds = vec![Kind::System, Kind::SystemOnAc];
     if display {
@@ -180,8 +193,22 @@ pub fn arm(
         since: Instant::now(),
         until_epoch_ms,
         battery_floor,
-        spec,
+        spec: spec.clone(),
+        resumed,
     });
+    // Intent is written the moment it is set — never at quit, which a kill,
+    // a crash, or a reinstall over the running app all skip.
+    if !resumed {
+        persist(&Persisted {
+            display,
+            disks,
+            until_epoch_ms,
+            battery_floor,
+            spec,
+            armed_epoch_ms: now_epoch_ms(),
+            boot_epoch_secs: boot_epoch_secs(),
+        });
+    }
     start_watchdog();
     Ok(())
 }
@@ -190,6 +217,7 @@ pub fn arm(
 pub fn release() {
     *RELEASED.lock().unwrap() = None;
     *SESSION.lock().unwrap() = None;
+    forget_persisted();
 }
 
 fn release_because(reason: &'static str) {
@@ -197,6 +225,159 @@ fn release_because(reason: &'static str) {
     if session.is_some() {
         *session = None;
         *RELEASED.lock().unwrap() = Some(reason);
+        forget_persisted();
+    }
+}
+
+// ---- Persistence across relaunch ----------------------------------------------
+//
+// Assertions are per-process kernel state and die with us — a feature (crash-safe
+// by construction) that also means a rebuild-and-relaunch, or a plain quit,
+// silently drops the user's "keep awake for 90 minutes". The armed session is
+// therefore mirrored to `awake.json` in the state dir at arm time and removed
+// on any release; `resume()` at launch re-arms it if it still makes sense:
+//
+// - a deadline (`timer`/`clock`) is a wall-clock promise, honoured only while
+//   it's still ahead;
+// - a condition hold (`agents`/`app`/`power`/…) is re-armed and the TypeScript
+//   evaluator releases it on its first tick if the condition already fails;
+// - `manual` — "until I say stop" — has no natural end, so it resumes only
+//   within `MANUAL_RESUME_MAX_MS` of arming;
+// - never across a reboot: the boot time is stamped, and a mismatch discards.
+//
+// This is the one place Rust peeks at the spec (`until.kind == "manual"`),
+// and only to cap it — the spec's semantics stay TypeScript's.
+
+/// How long a `manual` hold may still resume after it was armed.
+const MANUAL_RESUME_MAX_MS: i64 = 12 * 60 * 60 * 1000;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Persisted {
+    display: bool,
+    disks: bool,
+    until_epoch_ms: Option<i64>,
+    battery_floor: Option<u8>,
+    spec: Option<String>,
+    armed_epoch_ms: i64,
+    /// `kern.boottime` when armed — a different boot means the machine
+    /// slept/reset for real and the hold is not intent any more.
+    boot_epoch_secs: Option<i64>,
+}
+
+fn persisted_path() -> std::path::PathBuf {
+    std::env::var_os("XDG_STATE_HOME")
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".local/state"))
+        .join("launcharr")
+        .join("awake.json")
+}
+
+fn persist(p: &Persisted) {
+    let path = persisted_path();
+    let Some(dir) = path.parent() else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(dir);
+    if let Ok(json) = serde_json::to_vec(p) {
+        if let Err(e) = std::fs::write(&path, json) {
+            eprintln!("[launcharr awake] persist failed: {e}");
+        }
+    }
+}
+
+fn forget_persisted() {
+    let _ = std::fs::remove_file(persisted_path());
+}
+
+/// Seconds since the epoch at which this kernel booted (`kern.boottime`).
+fn boot_epoch_secs() -> Option<i64> {
+    let out = Command::new("/usr/sbin/sysctl")
+        .args(["-n", "kern.boottime"])
+        .output()
+        .ok()?;
+    parse_boottime(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// `{ sec = 1787000000, usec = 123456 } Wed Aug 19 09:00:00 2026` → 1787000000.
+fn parse_boottime(out: &str) -> Option<i64> {
+    let rest = out.split("sec =").nth(1)?;
+    rest.trim_start()
+        .split(|c: char| !c.is_ascii_digit())
+        .next()?
+        .parse()
+        .ok()
+}
+
+/// Whether a persisted session should be re-armed now, given the current
+/// time and boot. Pure, so the rules are testable without IOKit.
+fn should_resume(p: &Persisted, now_ms: i64, boot: Option<i64>) -> bool {
+    if p.boot_epoch_secs.is_some() && boot.is_some() && p.boot_epoch_secs != boot {
+        return false;
+    }
+    if let Some(at) = p.until_epoch_ms {
+        return now_ms < at;
+    }
+    let manual = p
+        .spec
+        .as_deref()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+        .map(|v| v["until"]["kind"] == "manual")
+        .unwrap_or(true);
+    !manual || now_ms - p.armed_epoch_ms < MANUAL_RESUME_MAX_MS
+}
+
+/// The launch toast for a resumed hold: what's still holding, and for how long
+/// when there is a deadline.
+pub fn resume_toast(state: &AwakeState) -> String {
+    let left = state.until_epoch_ms.map(|at| {
+        let mins = ((at - now_epoch_ms()).max(0) + 30_000) / 60_000;
+        if mins >= 90 {
+            format!("{}h {}m left", mins / 60, mins % 60)
+        } else {
+            format!("{mins} min left")
+        }
+    });
+    match left {
+        Some(left) => format!("awake resumed — {left}"),
+        None => "awake resumed from before the relaunch".to_owned(),
+    }
+}
+
+/// Re-arm the session a previous run left behind, if it still makes sense.
+/// Returns the resumed state for a launch toast, None when nothing resumed
+/// (the stale file is removed either way).
+pub fn resume() -> Option<AwakeState> {
+    let path = persisted_path();
+    let json = std::fs::read_to_string(&path).ok()?;
+    let p: Persisted = match serde_json::from_str(&json) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("[launcharr awake] awake.json unreadable ({e}); dropped");
+            forget_persisted();
+            return None;
+        }
+    };
+    if !should_resume(&p, now_epoch_ms(), boot_epoch_secs()) {
+        eprintln!("[launcharr awake] not resuming a stale hold");
+        forget_persisted();
+        return None;
+    }
+    match arm_with(
+        p.display,
+        p.disks,
+        p.until_epoch_ms,
+        p.battery_floor,
+        p.spec,
+        true,
+    ) {
+        Ok(()) => Some(state()),
+        Err(e) => {
+            eprintln!("[launcharr awake] resume failed: {e:?}");
+            forget_persisted();
+            None
+        }
     }
 }
 
@@ -257,6 +438,8 @@ pub struct AwakeState {
     /// Why the last session ended on its own ("deadline" | "floor"), until
     /// the next arm. User releases clear it — nothing surprising happened.
     pub released: Option<String>,
+    /// This session was re-armed at launch from the previous run's `awake.json`.
+    pub resumed: bool,
 }
 
 /// Cheap in-memory snapshot; rails are re-checked inline so a passed deadline
@@ -274,6 +457,7 @@ pub fn state() -> AwakeState {
             battery_floor: s.battery_floor,
             spec: s.spec.clone(),
             released,
+            resumed: s.resumed,
         },
         None => AwakeState {
             released,
@@ -396,6 +580,59 @@ fn parse_hms(s: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn persisted(until: Option<i64>, spec: &str, armed: i64) -> Persisted {
+        Persisted {
+            display: false,
+            disks: false,
+            until_epoch_ms: until,
+            battery_floor: None,
+            spec: Some(spec.into()),
+            armed_epoch_ms: armed,
+            boot_epoch_secs: Some(1000),
+        }
+    }
+
+    #[test]
+    fn parses_boottime() {
+        assert_eq!(
+            parse_boottime("{ sec = 1787000000, usec = 123456 } Wed Aug 19 09:00:00 2026\n"),
+            Some(1787000000)
+        );
+        assert_eq!(parse_boottime("garbage"), None);
+    }
+
+    #[test]
+    fn resume_honours_a_deadline_only_while_ahead() {
+        let timer = persisted(Some(5_000), r#"{"until":{"kind":"timer","minutes":5}}"#, 0);
+        assert!(should_resume(&timer, 4_999, Some(1000)));
+        assert!(!should_resume(&timer, 5_000, Some(1000)));
+    }
+
+    #[test]
+    fn resume_never_crosses_a_reboot() {
+        let timer = persisted(Some(5_000), r#"{"until":{"kind":"timer","minutes":5}}"#, 0);
+        assert!(!should_resume(&timer, 100, Some(2000)));
+        // Unknown boot on either side: can't tell, so the other rules decide.
+        assert!(should_resume(&timer, 100, None));
+    }
+
+    #[test]
+    fn resume_caps_manual_and_keeps_conditions() {
+        let manual = persisted(None, r#"{"until":{"kind":"manual"}}"#, 0);
+        assert!(should_resume(&manual, MANUAL_RESUME_MAX_MS - 1, Some(1000)));
+        assert!(!should_resume(&manual, MANUAL_RESUME_MAX_MS, Some(1000)));
+        // A condition hold has no deadline; the TS evaluator ends it if the
+        // condition already fails, so Rust always resumes it.
+        let agents = persisted(None, r#"{"until":{"kind":"agents"}}"#, 0);
+        assert!(should_resume(&agents, MANUAL_RESUME_MAX_MS * 3, Some(1000)));
+        // No spec at all is treated as manual (the conservative reading).
+        let bare = Persisted {
+            spec: None,
+            ..persisted(None, "", 0)
+        };
+        assert!(!should_resume(&bare, MANUAL_RESUME_MAX_MS, Some(1000)));
+    }
 
     /// Trimmed from a real `pmset -g assertions`: the summary table (which
     /// must not parse as holders), process lines in the shapes macOS prints,

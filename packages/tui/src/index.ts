@@ -81,6 +81,8 @@ export {
   agentGlyph,
   agentLocation,
   agentStateLabel,
+  wifiBars,
+  wifiSignalLabel,
   batteryState,
   batteryTone,
   formatBarClock,

@@ -69,6 +69,7 @@ export function DemoBar({
             key="wifi"
             online={snap.wifi.online}
             ssid={snap.wifi.ssid}
+            rssi={snap.wifi.rssi}
             hover={hover}
             // The card is the shipping component; only the addresses are fake.
             detail={{

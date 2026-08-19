@@ -120,3 +120,21 @@ export function batteryTone(
   if (pct < 50) return 'warn'
   return 'normal'
 }
+
+/** Wi-Fi bars from RSSI (dBm): 4 = full, 1 = poor; unknown reads as full so a
+ * missing reading never looks like a bad link. Thresholds follow the usual
+ * client bands (≥ −60 excellent, −60…−70 good, −70…−80 fair, below poor). */
+export function wifiBars(rssi: number | null): 1 | 2 | 3 | 4 {
+  if (rssi == null) return 4
+  if (rssi >= -60) return 4
+  if (rssi >= -70) return 3
+  if (rssi >= -80) return 2
+  return 1
+}
+
+/** "−66 dBm · good" for the card; empty when unknown. */
+export function wifiSignalLabel(rssi: number | null): string {
+  if (rssi == null) return ''
+  const word = ['', 'poor', 'fair', 'good', 'excellent'][wifiBars(rssi)]
+  return `${rssi} dBm · ${word}`
+}

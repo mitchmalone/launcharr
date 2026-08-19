@@ -102,7 +102,7 @@ function ArmedView({ status, onRelease, onClose }: AwakePanelProps) {
       autoFocus
       icon={<Coffee {...HEAD_ICON} />}
       title="Awake"
-      subtitle={`${formatSeconds(s.elapsedSeconds)} · ${ends}`}
+      subtitle={`${formatSeconds(s.elapsedSeconds)}${s.resumed ? ' since relaunch' : ''} · ${ends}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault()

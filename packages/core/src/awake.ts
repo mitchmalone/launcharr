@@ -63,6 +63,8 @@ export interface AwakeState {
   spec: string | null
   /** Why the last session ended without the user asking ('floor' | 'deadline'). */
   released: string | null
+  /** Re-armed at launch from the previous run's persisted hold. */
+  resumed: boolean
 }
 
 /** Mirrors OtherHolder in power.rs. */

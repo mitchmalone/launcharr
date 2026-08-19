@@ -15,11 +15,15 @@ pub struct WifiState {
     pub online: bool,
     /// None while online means the SSID couldn't be recovered ("SSID hidden").
     pub ssid: Option<String>,
+    /// Signal strength in dBm (corewlan.rs); None when unknown. The bar's
+    /// glyph is a strength indicator, the SSID lives in the hover card.
+    pub rssi: Option<i32>,
 }
 
 static WIFI: Mutex<WifiState> = Mutex::new(WifiState {
     online: false,
     ssid: None,
+    rssi: None,
 });
 
 pub fn wifi() -> WifiState {
@@ -139,6 +143,7 @@ pub(crate) fn read_wifi() -> WifiState {
     WifiState {
         online: probe.online,
         ssid,
+        rssi: probe.online.then(crate::corewlan::rssi).flatten(),
     }
 }
 
@@ -151,9 +156,11 @@ fn refresh_wifi() {
         return;
     };
     let probe = probe_wifi(&iface);
+    let rssi = probe.online.then(crate::corewlan::rssi).flatten();
     let cheap = WifiState {
         online: probe.online,
         ssid: probe.ssid.clone().or_else(|| resolved_for(&probe.join_key)),
+        rssi,
     };
     *WIFI.lock().unwrap() = cheap.clone();
     if cheap.ssid.is_some() || !probe.online || !needs_resolve(&probe.join_key) {
@@ -169,6 +176,7 @@ fn refresh_wifi() {
         *WIFI.lock().unwrap() = WifiState {
             online: probe.online,
             ssid,
+            rssi,
         };
     }
 }
@@ -189,6 +197,7 @@ pub(crate) fn note_scan_output(json: &str) {
         *WIFI.lock().unwrap() = WifiState {
             online: true,
             ssid: Some(ssid),
+            rssi: crate::corewlan::rssi(),
         };
     }
 }

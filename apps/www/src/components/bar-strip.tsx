@@ -56,6 +56,7 @@ export function BarStrip() {
             key="wifi"
             online={snap.wifi.online}
             ssid={snap.wifi.ssid}
+            rssi={snap.wifi.rssi}
           />,
           <BarBatteryCell
             key="battery"

@@ -258,6 +258,7 @@ function BarWindow() {
             key={id}
             online={snap!.wifi.online}
             ssid={snap!.wifi.ssid}
+            rssi={snap!.wifi.rssi}
             hover={hover}
             detail={wifiDetail}
             onClick={() =>

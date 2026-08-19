@@ -11,6 +11,8 @@ import {
   groupAgents,
   timeLeft,
   toneClass,
+  wifiBars,
+  wifiSignalLabel,
 } from './format'
 import type { AgentSession, BatteryDetail } from './types'
 
@@ -197,5 +199,22 @@ describe('cell tones', () => {
     expect(toneClass('normal')).toBe('bar-cell')
     expect(toneClass('warn')).toBe('bar-cell bar-warn')
     expect(toneClass('danger')).toBe('bar-cell bar-danger')
+  })
+})
+
+describe('wifi strength', () => {
+  it('maps RSSI to bars, unknown to full', () => {
+    expect(wifiBars(null)).toBe(4)
+    expect(wifiBars(-45)).toBe(4)
+    expect(wifiBars(-60)).toBe(4)
+    expect(wifiBars(-61)).toBe(3)
+    expect(wifiBars(-70)).toBe(3)
+    expect(wifiBars(-75)).toBe(2)
+    expect(wifiBars(-81)).toBe(1)
+  })
+  it('labels the card line', () => {
+    expect(wifiSignalLabel(null)).toBe('')
+    expect(wifiSignalLabel(-66)).toBe('-66 dBm · good')
+    expect(wifiSignalLabel(-85)).toBe('-85 dBm · poor')
   })
 })

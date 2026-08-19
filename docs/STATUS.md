@@ -19,6 +19,11 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
+- **Awake survives relaunch + Wi-Fi strength glyph, 2026-08-19** (plans/active/awake.md
+  slice A, JOURNAL 2026-08-19): armed holds are mirrored to `awake.json` and re-armed at
+  launch (deadline ahead / condition / manual ≤ 12 h / same boot), toast + "since
+  relaunch" in the panel. Bar wifi cell is glyph-only, four lucide arcs by RSSI
+  (`corewlan.rs`, no permission); SSID + "−66 dBm · good" moved into the hover card.
 - **Daemon filter + subagents, 2026-08-19** (plans/done/agent-daemon-and-subagents.md,
   JOURNAL 2026-08-19): Claude's background daemon (`bg-spare`, pty sessions) no longer
   gets cells — the hook flags `background`, `apply` won't create from it without a prompt.
