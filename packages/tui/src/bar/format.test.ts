@@ -16,6 +16,7 @@ import {
   widgetToneClass,
   wifiBars,
   wifiSignalLabel,
+  wifiTone,
 } from './format'
 import type { AgentSession, BatteryDetail } from './types'
 
@@ -253,6 +254,16 @@ describe('cell tones', () => {
     expect(toneClass('normal')).toBe('bar-cell')
     expect(toneClass('warn')).toBe('bar-cell bar-warn')
     expect(toneClass('danger')).toBe('bar-cell bar-danger')
+  })
+})
+
+describe('wifiTone', () => {
+  it('offline is danger, poor is warn, fair and up plain', () => {
+    expect(wifiTone(false, -40)).toBe('danger')
+    expect(wifiTone(true, -85)).toBe('warn')
+    expect(wifiTone(true, -75)).toBe('normal')
+    expect(wifiTone(true, -50)).toBe('normal')
+    expect(wifiTone(true, null)).toBe('normal')
   })
 })
 

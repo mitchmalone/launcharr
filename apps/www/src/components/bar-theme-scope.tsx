@@ -22,13 +22,7 @@ export function BarThemeScope({
   return (
     <div
       className={className}
-      style={
-        {
-          ...themeVars(tokens, 'panel'),
-          // `.bar-danger` reaches for it; the panel set doesn't carry it.
-          '--danger': tokens.danger,
-        } as React.CSSProperties
-      }
+      style={themeVars(tokens, 'panel') as React.CSSProperties}
     >
       {children}
     </div>

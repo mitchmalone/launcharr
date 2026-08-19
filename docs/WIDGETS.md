@@ -94,7 +94,7 @@ Every field is optional; `{}` is a valid blank cell.
 - `icon` — lucide name for this tick (falls back to the manifest icon).
 - `label` — short text beside the glyph. Keep it to a count or a percentage: the strip is
   glyph-first, details belong in the card.
-- `tone` — colours the cell: `ok` (green) · `warn` (amber) · `error` (red) · `muted` ·
+- `tone` — colours the cell: `ok` (plain fg) · `warn` (theme warn) · `error` (theme danger) · `muted` ·
   `accent`; omitted = plain foreground.
 - `click` — what clicking the cell does; the scripts action vocabulary:
   `{"type":"open","value":…}` (URL/file/app via `open`), `{"type":"copy","value":…}`,

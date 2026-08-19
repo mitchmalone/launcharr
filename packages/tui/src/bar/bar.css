@@ -72,8 +72,9 @@
 }
 
 /* Agent session cells: same flat glyph language as the rest of the bar.
- * WIP color set (2026-08-16): blocked red breathing, working accent, done
- * (unread) blue, idle/unknown green. Cells are boxed by tmux session and
+ * Theme-mapped colours (2026-08-19): working accent, attention/blocked danger
+ * breathing, done/idle/unknown plain fg — a quiet cell is a fine cell; only
+ * "needs you" and "busy" earn a colour. Cells are boxed by tmux session and
  * ordered by tab; hover opens a dropdown card below the strip (the window
  * grows — see bar_set_dropdown). Bar isn't the launcher hot path; animation
  * is allowed here. */
@@ -104,8 +105,8 @@
   height: 18px;
   line-height: 18px;
   text-align: center;
-  /* idle + unknown */
-  color: #00c853;
+  /* idle + unknown + done */
+  color: var(--fg, #dde1f0);
 }
 
 /* Running subagents: a small count riding the cell's shoulder. */
@@ -130,11 +131,11 @@
 }
 
 .bar .bar-agent-done {
-  color: #00b0ff;
+  color: var(--fg, #dde1f0);
 }
 
 .bar .bar-agent-attention {
-  color: #ff2d2d;
+  color: var(--danger, #f85149);
   animation: bar-agent-breathe 1.6s ease-in-out infinite;
 }
 
@@ -149,7 +150,7 @@
 }
 
 .bar .bar-agent-idle {
-  color: #00c853;
+  color: var(--fg, #dde1f0);
 }
 
 /* Hover cards: hang below the strip, inside the grown window (the window's
@@ -178,7 +179,7 @@
 
 .bar-card-line {
   /* idle + unknown agent state; state classes above override. */
-  color: #00c853;
+  color: var(--fg, #dde1f0);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -389,26 +390,25 @@
   color: var(--fg, #dde1f0);
 }
 
-/* Module alert states (battery low, wifi offline). Scoped under
+/* Module alert states (battery low, wifi weak/offline). Scoped under
  * .bar-right so they outrank .bar-cell — specificity bites (JOURNAL 2026-08-16). */
 .bar-right .bar-warn {
-  color: var(--bang, #d29922);
+  color: var(--warn, #d29922);
 }
 
 .bar-right .bar-danger {
   color: var(--danger, #f85149);
 }
 
-/* Battery tiers (format.ts batteryLook): blue while charging, green healthy,
- * amber running down, red nearly empty. Same greens/blues as the agent cells. */
-.bar-right .bar-battery-charging {
-  color: #00b0ff;
-}
+/* Battery tiers (format.ts batteryLook): charging and healthy are plain fg
+ * (the glyph tier carries the level; "okay" is never a colour, 2026-08-19),
+ * amber running down, red nearly empty. */
+.bar-right .bar-battery-charging,
 .bar-right .bar-battery-good {
-  color: #00c853;
+  color: var(--fg, #dde1f0);
 }
 .bar-right .bar-battery-warn {
-  color: var(--bang, #d29922);
+  color: var(--warn, #d29922);
 }
 .bar-right .bar-battery-danger {
   color: var(--danger, #f85149);
@@ -417,14 +417,14 @@
 /* ---- awake ------------------------------------------------------------ */
 
 /* Dim while sleeping normally — the one cell whose resting state is
- * deliberately quiet; lit (accent) is the unmissable "armed" signal the
- * plan's crash-risk note asks for. */
+ * deliberately quiet; armed reads as plain fg like every other "on and fine"
+ * cell (2026-08-19: dim → fg is the whole signal, no accent). */
 .bar-right .bar-awake-off {
   color: var(--dim, #8b90a5);
 }
 
 .bar-right .bar-awake-on {
-  color: var(--accent, #9db2ff);
+  color: var(--fg, #dde1f0);
 }
 
 .bar-awake {
@@ -455,26 +455,26 @@
 
 /* ---- widgets (docs/WIDGETS.md) --------------------------------------- */
 
-/* Tones a widget may name for its cell and its card dots. `ok` is the same
- * blue as the agent cells (Mitch, 2026-08-19: one "fine" colour across the
- * strip, not green for widgets and blue for agents); `error` is the danger
- * red, muted a touch. Scoped like the other module states so they outrank
+/* Tones a widget may name for its cell and its card dots — all theme tokens
+ * (2026-08-19): `ok` is plain fg (one "fine" colour across the strip: fg,
+ * same as a done agent or a healthy battery), `warn`/`error` the theme's
+ * warn/danger. Scoped like the other module states so they outrank
  * .bar-cell (JOURNAL 2026-08-16); the card rules below re-declare them for
  * dots, which sit outside a zone. */
 .bar-right .bar-tone-ok,
 .bar-left .bar-tone-ok,
 .bar-center .bar-tone-ok {
-  color: #00b0ff;
+  color: var(--fg, #dde1f0);
 }
 .bar-right .bar-tone-warn,
 .bar-left .bar-tone-warn,
 .bar-center .bar-tone-warn {
-  color: var(--bang, #d29922);
+  color: var(--warn, #d29922);
 }
 .bar-right .bar-tone-error,
 .bar-left .bar-tone-error,
 .bar-center .bar-tone-error {
-  color: #e2534b;
+  color: var(--danger, #f85149);
 }
 .bar-right .bar-tone-muted,
 .bar-left .bar-tone-muted,
@@ -566,13 +566,13 @@
 
 /* Dots and the health line live in a card, outside any zone. */
 .bar-card .bar-tone-ok {
-  color: #00b0ff;
+  color: var(--fg, #dde1f0);
 }
 .bar-card .bar-tone-warn {
-  color: var(--bang, #d29922);
+  color: var(--warn, #d29922);
 }
 .bar-card .bar-tone-error {
-  color: #e2534b;
+  color: var(--danger, #f85149);
 }
 .bar-card .bar-tone-muted {
   color: var(--dim, #8b90a5);

@@ -29,6 +29,13 @@ Mitch** (colour feedback applied); still to eyeball: the Custom widgets sub-tab,
 from URL. trmnl is hidden until its key resolves (JOURNAL 2026-08-19). Parked one-liner:
 the wifi glyph shrinks below full strength (ghost the outer arcs).
 
+**Bar colours → theme tokens, 2026-08-19 (on main, running):** one rule — a fine cell is
+`fg`; accent = busy, warn/danger = needs you. New `warn` theme token; `--warn`/`--danger`
+now in the panel var set. Agents done/idle/unknown fg, working accent, attention danger;
+widget `ok` fg; battery charging/good fg; awake armed fg; wifi poor link warn (`wifiTone`).
+DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
+themes; is a charging battery < 90 % readable without its blue?
+
 **Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widget follow-ups, settings-in-panels,
 per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD
 revision). Open hands-checks: hover a cell while a session has an Agent running (subagent

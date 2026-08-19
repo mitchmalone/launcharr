@@ -23,10 +23,12 @@ import {
   batteryState,
   groupAgents,
   timeLeft,
+  toneClass,
   widgetHealth,
   widgetToneClass,
   wifiBars,
   wifiSignalLabel,
+  wifiTone,
 } from './format'
 import type {
   AgentSession,
@@ -689,7 +691,7 @@ function WifiGlyph({
  * The wifi cell — glyph only, a strength indicator (the SSID is card-side:
  * "minimal is the theme", 2026-08-19); with `hover` it opens the wifi card
  * (the site strip and any consumer without hover machinery get the plain
- * cell). Offline reads as an alarmed "Offline".
+ * cell). Offline reads as an alarmed "Offline"; a poor link tints the arcs warn.
  */
 export function BarWifiCell({
   online,
@@ -717,7 +719,7 @@ export function BarWifiCell({
   if (!hover) {
     return (
       <BarCell
-        className={`bar-cell ${online ? '' : 'bar-danger'}`}
+        className={toneClass(wifiTone(online, rssi))}
         title={online ? (ssid ?? undefined) : undefined}
       >
         {body}
@@ -729,7 +731,7 @@ export function BarWifiCell({
       id="wifi"
       cardHeight={cardHeight}
       hover={hover}
-      className={`bar-cell ${online ? '' : 'bar-danger'}`}
+      className={toneClass(wifiTone(online, rssi))}
       wrapperClassName="bar-wifi"
       onClick={onClick}
       card={

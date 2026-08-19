@@ -5,6 +5,28 @@
 
 ---
 
+### 2026-08-19 · Bar colours are theme tokens only; "fine" is fg, `warn` joins the theme
+
+- **Decision.** Every colour on the strip resolves to a theme token — no more literal
+  greens/blues/reds in `bar.css`. The theme grows one token, **`warn`** (each built-in
+  seeds it from its `bang`), and the panel-kind var set now ships `--warn` and `--danger`
+  (the bar is a panel-kind window; before this `--danger` only reached settings, and the
+  bar's red was the CSS fallback). Mapping: **agents** working → `accent`, attention /
+  blocked → `danger` (still breathing), done / idle / unknown → `fg`. **Widgets** `ok` →
+  `fg`, `warn` → `warn`, `error` → `danger`, `muted` → `dim`, `accent` → `accent`.
+  **Battery** charging / good → `fg`, low → `warn`, critical → `danger`. **Awake** off →
+  `dim`, armed → `fg`. **Wifi** offline → `danger`, poor (1 bar, below −80 dBm) → `warn`,
+  otherwise `fg` (`wifiTone` in format.ts). `apps/www` drops its two hand-added
+  `--danger` overrides since the kit's `themeVars` carries it.
+- **Why.** Mitch: the icons were "all over the place" — a green idle agent beside a blue
+  done one beside a blue `ok` widget beside a green battery. Rule now: **if everything is
+  `fg`, life is good**; colour is spent only on "busy" (accent) and "needs you" (warn /
+  danger), and it retints with the theme like everything else. Custom themes that
+  predate `warn` fall through to the built-in they overlay, so nothing blanks.
+- **Trade.** A charging battery below 90 % is now visually the same as a healthy one
+  (same tier glyph, both `fg`); the card still says charging. Revisit by showing the
+  bolt glyph whenever on power if that reads as a loss.
+
 ### 2026-08-19 · Plugins are TypeScript, run under Bun — never Python
 
 - **Decision.** Bundled scripts, reference widgets, and any example plugin launcharr ships

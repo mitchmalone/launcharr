@@ -28,6 +28,8 @@ export interface ThemeTokens {
   bang: string
   /** Selected-row background (panel). */
   selected: string
+  /** Alert tier below danger: bar cells and widget tones (battery low, weak wifi). */
+  warn: string
   danger: string
 }
 
@@ -43,6 +45,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#ff6b8c',
     bang: '#d29922',
     selected: 'rgba(181, 185, 217, 0.12)',
+    warn: '#d29922',
     danger: '#f85149',
   },
   dracula: {
@@ -56,6 +59,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#50fa7b',
     bang: '#f1fa8c',
     selected: 'rgba(68, 71, 90, 0.55)',
+    warn: '#f1fa8c',
     danger: '#ff5555',
   },
   terminal: {
@@ -69,6 +73,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#33ff33',
     bang: '#33ff33',
     selected: 'rgba(51, 255, 51, 0.12)',
+    warn: '#33ff33',
     danger: '#ff3333',
   },
   amber: {
@@ -82,6 +87,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#ffb000',
     bang: '#ffcf60',
     selected: 'rgba(255, 176, 0, 0.12)',
+    warn: '#ffcf60',
     danger: '#ff5533',
   },
   catppuccin: {
@@ -95,6 +101,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#a6e3a1',
     bang: '#f9e2af',
     selected: 'rgba(203, 166, 247, 0.14)',
+    warn: '#f9e2af',
     danger: '#f38ba8',
   },
   gruvbox: {
@@ -108,6 +115,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#b8bb26',
     bang: '#fabd2f',
     selected: 'rgba(254, 128, 25, 0.14)',
+    warn: '#fabd2f',
     danger: '#fb4934',
   },
   monokai: {
@@ -121,6 +129,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#a6e22e',
     bang: '#e6db74',
     selected: 'rgba(249, 38, 114, 0.14)',
+    warn: '#e6db74',
     danger: '#ff6188',
   },
   nord: {
@@ -134,6 +143,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#a3be8c',
     bang: '#ebcb8b',
     selected: 'rgba(136, 192, 208, 0.14)',
+    warn: '#ebcb8b',
     danger: '#bf616a',
   },
   'one-dark': {
@@ -147,6 +157,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#98c379',
     bang: '#e5c07b',
     selected: 'rgba(97, 175, 239, 0.14)',
+    warn: '#e5c07b',
     danger: '#e06c75',
   },
   'rose-pine': {
@@ -160,6 +171,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#9ccfd8',
     bang: '#f6c177',
     selected: 'rgba(235, 188, 186, 0.12)',
+    warn: '#f6c177',
     danger: '#eb6f92',
   },
   solarized: {
@@ -173,6 +185,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#859900',
     bang: '#b58900',
     selected: 'rgba(38, 139, 210, 0.14)',
+    warn: '#b58900',
     danger: '#dc322f',
   },
   'solarized-light': {
@@ -186,6 +199,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#859900',
     bang: '#b58900',
     selected: 'rgba(38, 139, 210, 0.12)',
+    warn: '#b58900',
     danger: '#dc322f',
   },
   synthwave: {
@@ -199,6 +213,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#72f1b8',
     bang: '#fede5d',
     selected: 'rgba(255, 126, 219, 0.14)',
+    warn: '#fede5d',
     danger: '#fe4450',
   },
   'tokyo-night': {
@@ -212,6 +227,7 @@ export const BUILTIN_THEMES: Record<string, ThemeTokens> = {
     sigil: '#9ece6a',
     bang: '#e0af68',
     selected: 'rgba(122, 162, 247, 0.14)',
+    warn: '#e0af68',
     danger: '#f7768e',
   },
 }
@@ -260,6 +276,9 @@ export function themeVars(
     '--dim': t.dim,
     '--accent': t.accent,
     '--sigil': t.sigil,
+    // Alert tiers: the bar (a panel-kind window) and settings both reach for them.
+    '--warn': t.warn,
+    '--danger': t.danger,
   }
   if (kind === 'panel') {
     return {
@@ -273,7 +292,6 @@ export function themeVars(
     ...shared,
     '--bg': t.bg,
     '--panel': t.surface,
-    '--danger': t.danger,
     '--check': checkUrl(t.fg),
   }
 }

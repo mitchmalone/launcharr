@@ -79,6 +79,9 @@ describe('themeVars', () => {
     expect(vars['--bg']).toBe(BUILTIN_THEMES.launcharr!.glass)
     expect(vars['--sigil']).toBe(BUILTIN_THEMES.launcharr!.sigil)
     expect(vars['--selected']).toBe(BUILTIN_THEMES.launcharr!.selected)
+    // The bar is a panel-kind window and its alert tiers reach for these.
+    expect(vars['--warn']).toBe(BUILTIN_THEMES.launcharr!.warn)
+    expect(vars['--danger']).toBe(BUILTIN_THEMES.launcharr!.danger)
   })
 
   it('maps settings vars with the opaque background and surface', () => {

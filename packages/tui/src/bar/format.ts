@@ -182,6 +182,16 @@ export function wifiBars(rssi: number | null): 1 | 2 | 3 | 4 {
   return 1
 }
 
+/**
+ * Cell tone for the wifi glyph (2026-08-19): offline is danger, a poor link
+ * (1 bar, below −80 dBm) is warn, anything better is plain fg — "fair" still
+ * works, and the arcs already say it's not full.
+ */
+export function wifiTone(online: boolean, rssi: number | null): CellTone {
+  if (!online) return 'danger'
+  return wifiBars(rssi) <= 1 ? 'warn' : 'normal'
+}
+
 /** "−66 dBm · good" for the card; empty when unknown. */
 export function wifiSignalLabel(rssi: number | null): string {
   if (rssi == null) return ''

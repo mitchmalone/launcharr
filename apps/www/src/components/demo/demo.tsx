@@ -191,7 +191,6 @@ export function Demo() {
     '--tui-accent': theme.accent,
     '--tui-selected': theme.selected,
     ...themeVars(theme, 'panel'),
-    '--danger': theme.danger,
   } as React.CSSProperties
 
   const panelBody = () => {
