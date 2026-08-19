@@ -1,15 +1,15 @@
 {
-  "version": "0.4.0",
-  "date": "2026-08-17",
+  "version": "0.5.0",
+  "date": "2026-08-19",
   "signed": true,
   "artifacts": {
     "zip": {
-      "url": "https://github.com/mitchmalone/launcharr/releases/download/v0.4.0/launcharr-0.4.0.zip",
-      "sha256": "73f3102c9700b5973c22ce7b6ccf9a592e8171b47146032162c83190112e359b"
+      "url": "https://github.com/mitchmalone/launcharr/releases/download/v0.5.0/launcharr-0.5.0.zip",
+      "sha256": "798a31418edee05e8234c4ce10867d2a8e32f8cfe3c40933a684200287688a3b"
     },
     "dmg": {
-      "url": "https://github.com/mitchmalone/launcharr/releases/download/v0.4.0/launcharr-0.4.0.dmg",
-      "sha256": "3272f7fe7b573b9bf0c650277825961f027a84bf6e44f06bb6e510eddfd1ca35"
+      "url": "https://github.com/mitchmalone/launcharr/releases/download/v0.5.0/launcharr-0.5.0.dmg",
+      "sha256": "ec74f63df0c8efcc87f124a757fe87205cb360329a08489a4182664b80ca0798"
     }
   }
 }
