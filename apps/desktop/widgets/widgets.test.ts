@@ -63,14 +63,11 @@ describe('github-actions', () => {
     },
   ]
 
-  it('declares the token as a required secret and owns a sign-in', () => {
+  it('declares one required secret — the token — and owns a sign-in', () => {
     const m = actions.manifest()
     expect(m.auth).toEqual({ label: 'Sign in with GitHub' })
-    expect(m.settings.find((s) => s.key === 'GITHUB_TOKEN')).toMatchObject({
-      secret: true,
-      required: true,
-    })
-    expect(m.settings.find((s) => s.key === 'GITHUB_CLIENT_ID')).toBeDefined()
+    expect(m.settings.map((s) => s.key)).toEqual(['GITHUB_TOKEN'])
+    expect(m.settings[0]).toMatchObject({ secret: true, required: true })
   })
 
   it('sorts newest first, tones by state, and counts failures', () => {
@@ -122,14 +119,11 @@ describe('github-actions', () => {
 })
 
 describe('vercel', () => {
-  it('declares a secret token and a plain team id, neither required', () => {
+  it('declares one secret token, not required (the CLI login is the fallback)', () => {
     const m = vercel.manifest()
-    expect(m.settings.map((s) => s.key)).toEqual([
-      'VERCEL_TOKEN',
-      'VERCEL_TEAM_ID',
-    ])
+    expect(m.settings.map((s) => s.key)).toEqual(['VERCEL_TOKEN'])
     expect(m.settings[0]).toMatchObject({ secret: true })
-    expect(m.settings.some((s) => 'required' in s)).toBe(false)
+    expect('required' in m.settings[0]!).toBe(false)
   })
 
   it('picks the newest production deployment per project and links its inspector', () => {

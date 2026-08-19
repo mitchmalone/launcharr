@@ -803,8 +803,9 @@ type WidgetAuthEvent =
 /**
  * A widget's declared settings (docs/WIDGETS.md): plain values bind to
  * `config.widgets[id]`; secrets go to the Keychain through `widget_secret_set`
- * and the UI only learns which are set. `auth` renders the widget's sign-in
- * button and the code the flow hands back.
+ * and the UI only learns which are set. A widget with `auth` puts its sign-in
+ * button on the row of its first secret — the user signs in *or* pastes a
+ * token, one row either way (Mitch, 2026-08-19).
  */
 function WidgetSettings({
   widget,
@@ -822,6 +823,7 @@ function WidgetSettings({
   const [auth, setAuth] = useState<WidgetAuthEvent | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const hasSecrets = settings.some((s) => s.secret)
+  const authKey = widget.auth ? settings.find((s) => s.secret)?.key : undefined
 
   const refreshPresent = useCallback(() => {
     if (!hasSecrets) return
@@ -843,7 +845,7 @@ function WidgetSettings({
     }
   }, [widget.id, widget.auth, refreshPresent])
 
-  if (!settings.length && !widget.auth) return null
+  if (!settings.length) return null
 
   const setPlain = (key: string, value: string) => {
     const mine = { ...plain }
@@ -859,6 +861,7 @@ function WidgetSettings({
     invoke('widget_secret_set', { id: widget.id, key, value })
       .then(() => {
         setDrafts((d) => ({ ...d, [key]: '' }))
+        setAuth(null)
         refreshPresent()
       })
       .catch((e) => setNote(String(e)))
@@ -875,8 +878,59 @@ function WidgetSettings({
   const authBusy =
     auth != null && (auth.phase === 'code' || auth.phase === 'message')
 
+  /** The sign-in controls, inline on the token row. */
+  const authControls = () => {
+    if (!widget.auth) return null
+    if (auth?.phase === 'code') {
+      return (
+        <>
+          <span className="widgetauth-text">
+            enter <code className="widgetauth-code">{auth.code}</code> at
+          </span>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() =>
+              invoke('open_url', { url: auth.url }).catch(console.error)
+            }
+          >
+            {auth.url.replace(/^https?:\/\//, '')}
+          </button>
+          <button type="button" className="ghost" onClick={cancelAuth}>
+            cancel
+          </button>
+        </>
+      )
+    }
+    if (auth?.phase === 'message') {
+      return (
+        <>
+          <span className="widgetauth-text">{auth.message}</span>
+          <button type="button" className="ghost" onClick={cancelAuth}>
+            cancel
+          </button>
+        </>
+      )
+    }
+    return (
+      <>
+        <button type="button" className="ghost" onClick={startAuth}>
+          {widget.auth.label}
+        </button>
+        {auth?.phase === 'error' && (
+          <span className="widgetauth-text widgetstatus-error">
+            {auth.error}
+          </span>
+        )}
+      </>
+    )
+  }
+
   const field = (s: WidgetSetting) => {
     const missing = widget.needs?.includes(s.key)
+    const req = (s.required || missing) && (
+      <span className="widgetsetting-req"> · required</span>
+    )
     if (!s.secret) {
       return (
         <div className="linkrow widgetsetting" key={s.key}>
@@ -885,9 +939,7 @@ function WidgetSettings({
             htmlFor={`ws-${widget.id}-${s.key}`}
           >
             {s.label}
-            {s.required && !plain[s.key] && (
-              <span className="widgetsetting-req"> · required</span>
-            )}
+            {!plain[s.key] && req}
           </label>
           <input
             id={`ws-${widget.id}-${s.key}`}
@@ -901,6 +953,27 @@ function WidgetSettings({
       )
     }
     const isSet = present.includes(s.key)
+    const withAuth = s.key === authKey
+    if (isSet) {
+      // Set: say so, offer clear — no input until they want to replace it.
+      return (
+        <div className="linkrow widgetsetting" key={s.key}>
+          <span className="widgetsetting-label">{s.label}</span>
+          <span className="widgetsetting-set">
+            {withAuth && auth?.phase === 'done' ? 'signed in' : 'set'}
+          </span>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => saveSecret(s.key, null)}
+          >
+            {withAuth ? 'sign out' : 'clear'}
+          </button>
+        </div>
+      )
+    }
+    // Unset with a sign-in: the button leads; paste is the fallback.
+    const busy = withAuth && authBusy
     return (
       <div className="linkrow widgetsetting" key={s.key}>
         <label
@@ -908,45 +981,36 @@ function WidgetSettings({
           htmlFor={`ws-${widget.id}-${s.key}`}
         >
           {s.label}
-          {isSet ? (
-            <span className="widgetsetting-set"> · set</span>
-          ) : (
-            missing && <span className="widgetsetting-req"> · required</span>
-          )}
+          {req}
         </label>
-        <input
-          id={`ws-${widget.id}-${s.key}`}
-          type="password"
-          className="grow"
-          autoComplete="off"
-          placeholder={
-            isSet ? '••••••••  (paste to replace)' : (s.hint ?? s.key)
-          }
-          value={drafts[s.key] ?? ''}
-          onChange={(e) =>
-            setDrafts((d) => ({ ...d, [s.key]: e.target.value }))
-          }
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && drafts[s.key])
-              saveSecret(s.key, drafts[s.key]!)
-          }}
-        />
-        <button
-          type="button"
-          className="ghost"
-          disabled={!drafts[s.key]}
-          onClick={() => saveSecret(s.key, drafts[s.key]!)}
-        >
-          save
-        </button>
-        {isSet && (
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => saveSecret(s.key, null)}
-          >
-            clear
-          </button>
+        {withAuth && authControls()}
+        {!busy && (
+          <>
+            {withAuth && <span className="widgetsetting-or">or paste</span>}
+            <input
+              id={`ws-${widget.id}-${s.key}`}
+              type="password"
+              className="grow"
+              autoComplete="off"
+              placeholder={s.hint ?? s.key}
+              value={drafts[s.key] ?? ''}
+              onChange={(e) =>
+                setDrafts((d) => ({ ...d, [s.key]: e.target.value }))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && drafts[s.key])
+                  saveSecret(s.key, drafts[s.key]!)
+              }}
+            />
+            <button
+              type="button"
+              className="ghost"
+              disabled={!drafts[s.key]}
+              onClick={() => saveSecret(s.key, drafts[s.key]!)}
+            >
+              save
+            </button>
+          </>
         )}
       </div>
     )
@@ -955,49 +1019,6 @@ function WidgetSettings({
   return (
     <div className="widgetsettings">
       {settings.map(field)}
-      {widget.auth && (
-        <div className="linkrow widgetsetting">
-          <span className="widgetsetting-label">Sign in</span>
-          <div className="grow widgetauth">
-            {!authBusy && (
-              <button type="button" className="ghost" onClick={startAuth}>
-                {widget.auth.label}
-              </button>
-            )}
-            {auth?.phase === 'code' && (
-              <>
-                <span>
-                  enter code{' '}
-                  <code className="widgetauth-code">{auth.code}</code>
-                </span>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() =>
-                    invoke('open_url', { url: auth.url }).catch(console.error)
-                  }
-                >
-                  open {auth.url.replace(/^https?:\/\//, '')}
-                </button>
-              </>
-            )}
-            {auth?.phase === 'message' && (
-              <span className="hint">{auth.message}</span>
-            )}
-            {authBusy && (
-              <button type="button" className="ghost" onClick={cancelAuth}>
-                cancel
-              </button>
-            )}
-            {auth?.phase === 'done' && (
-              <span className="widgetsetting-set">signed in</span>
-            )}
-            {auth?.phase === 'error' && (
-              <span className="widgetstatus-error">{auth.error}</span>
-            )}
-          </div>
-        </div>
-      )}
       {note && <p className="hint widgetstatus-error">{note}</p>}
     </div>
   )

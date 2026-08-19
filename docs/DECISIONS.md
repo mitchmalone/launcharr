@@ -19,7 +19,9 @@ required?}]` and `auth: {label}`. launcharr renders the fields in Settings → M
   in → tick. Four new IPC commands: `widget_secret_set`, `widget_secret_keys`,
   `widget_auth`, `widget_auth_cancel` (invariant 3: recorded). Reference widgets:
   `vercel.ts` = stored token (`VERCEL_TOKEN`, CLI fallback), `github-actions.ts` = OAuth
-  device flow against a user-supplied `GITHUB_CLIENT_ID`.
+  device flow against launcharr's own OAuth App (client id baked into the widget; one
+  row: sign in _or_ paste a token — the first cut's client-id + repo-list fields were
+  rejected on sight as "far too much for a user", Mitch 2026-08-19).
 - **Why.** The "credentials the provider CLI already stores" rule (2026-08-16) broke on
   Vercel CLI 58's short-lived tokens (JOURNAL 2026-08-19), and it never matched how a
   user installs a widget — they expect to paste a token or sign in. Declaring needs in

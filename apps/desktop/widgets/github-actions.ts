@@ -1,17 +1,16 @@
 // launcharr widget: latest GitHub Actions run per repo (docs/WIDGETS.md).
 //
-// The reference widget for the **OAuth** half of widget settings: `auth` runs
-// GitHub's device flow with the OAuth App client id you set in Settings →
-// Menubar → Custom widgets (register one at github.com/settings/applications/new
-// with "Enable Device Flow" ticked — the id is public, no secret involved) and
-// hands the resulting token back to launcharr, which keeps it in the Keychain
-// and passes it to every tick as GITHUB_TOKEN. Pasting a personal token into
-// the same field works too; the widget doesn't care how the token got there.
+// The reference widget for the **OAuth** half of widget settings: one click
+// on "Sign in with GitHub" runs GitHub's device flow against launcharr's own
+// OAuth App (CLIENT_ID below — public by design, no secret involved) and hands
+// the token back to launcharr, which keeps it in the Keychain and passes it to
+// every tick as GITHUB_TOKEN. Pasting a personal access token into the same
+// row works too; the widget doesn't care how the token got there.
 //
-// Each tick: the repos named in GITHUB_REPOS (`owner/repo,owner/repo`) — or,
-// unset, the ten you pushed to most recently — and each one's latest workflow
-// run. The cell is a monitor, red with the failing count while anything is
-// failing, amber while something runs; the card lists runs newest first.
+// Each tick: the ten repos you pushed to most recently (edit REPOS below to
+// pin a list) and each one's latest workflow run. The cell is a monitor, red
+// with the failing count while anything is failing, amber while something
+// runs; the card lists runs newest first.
 //
 // Install: copy into ~/.config/launcharr/widgets/. Runs under Bun.
 import type { WidgetTone, WidgetView } from '@launcharr/tui/bar/types'
@@ -19,6 +18,15 @@ import type { WidgetTone, WidgetView } from '@launcharr/tui/bar/types'
 const API = 'https://api.github.com'
 const MAX_ROWS = 10
 const DEFAULT_REPOS = 10
+/** Pin repos here (`owner/repo`); empty = your most recently pushed. */
+const REPOS: string[] = []
+/**
+ * launcharr's GitHub OAuth App (device flow enabled). A client id is public —
+ * it names the app the user is approving, nothing more. Fill in once the app
+ * is registered; until then sign-in explains itself. Override for a fork with
+ * GITHUB_CLIENT_ID in the environment.
+ */
+const CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? ''
 
 const TONES: Record<string, WidgetTone> = {
   success: 'ok',
@@ -55,20 +63,10 @@ export function manifest() {
     settings: [
       {
         key: 'GITHUB_TOKEN',
-        label: 'Token',
-        hint: 'sign in below, or paste a personal access token',
+        label: 'GitHub',
+        hint: 'a personal access token',
         secret: true,
         required: true,
-      },
-      {
-        key: 'GITHUB_CLIENT_ID',
-        label: 'OAuth client ID',
-        hint: 'an OAuth App with device flow enabled — only needed to sign in',
-      },
-      {
-        key: 'GITHUB_REPOS',
-        label: 'Repos',
-        hint: 'owner/repo, owner/repo — empty = your 10 most recently pushed',
       },
     ],
     auth: { label: 'Sign in with GitHub' },
@@ -166,7 +164,7 @@ async function tick(): Promise<WidgetView> {
     )
     return { hidden: true }
   }
-  let repos = parseRepos(process.env.GITHUB_REPOS)
+  let repos = parseRepos(REPOS.join(','))
   if (!repos.length) {
     const mine = await gh<Repo[]>(
       `/user/repos?sort=pushed&per_page=${DEFAULT_REPOS}&affiliation=owner,collaborator,organization_member`,
@@ -217,10 +215,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
  * the token back to launcharr as a secret setting.
  */
 async function auth(): Promise<void> {
-  const clientId = process.env.GITHUB_CLIENT_ID
+  const clientId = CLIENT_ID
   if (!clientId) {
     throw new Error(
-      'set the OAuth client ID first (github.com/settings/applications/new, tick "Enable Device Flow")',
+      'this build has no GitHub OAuth client id yet — paste a token instead',
     )
   }
   const headers = {

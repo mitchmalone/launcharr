@@ -173,6 +173,7 @@ code {
 /* --- Controls: sized to content, not full-width. --- */
 
 input[type='text'],
+input[type='password'],
 input:not([type]),
 select {
   background: var(--panel);
@@ -586,12 +587,11 @@ button {
   color: var(--fg);
 }
 
-.widgetauth {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.widgetauth-text,
+.widgetsetting-or {
+  color: var(--dim);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .widgetauth-code {

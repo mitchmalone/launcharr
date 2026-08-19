@@ -116,10 +116,12 @@ The widget never touches a store (try-out, 2026-08-19; plan `docs/plans/active/w
 
 ```json
 "settings": [
-  { "key": "VERCEL_TOKEN", "label": "Token", "hint": "vercel.com/account/tokens", "secret": true, "required": true },
-  { "key": "VERCEL_TEAM_ID", "label": "Team ID", "hint": "team_… — empty = the CLI's current team" }
+  { "key": "VERCEL_TOKEN", "label": "Vercel", "hint": "a token from vercel.com/account/tokens", "secret": true, "required": true }
 ]
 ```
+
+Keep it to what a user must type. One token is the norm; a widget that needs a plain value
+(an id, a list) can declare it, but defaults in the file beat fields in the UI.
 
 - `key` — the env-var name (`[A-Z][A-Z0-9_]*`, ≤ 40). `label`/`hint` are the field copy.
 - `secret: true` — stored in the **macOS Keychain** (service `launcharr`, account
@@ -145,10 +147,11 @@ kills it) and reads **one JSON object per stdout line**:
   be set this way (an auth result is a credential); anything else fails the sign-in.
 
 Exit 0 = signed in (the widget ticks at once); non-zero = the stderr tail is the error.
-`github-actions.ts` is the worked example: GitHub's device flow against the OAuth App
-client id you put in its `GITHUB_CLIENT_ID` setting (github.com/settings/applications/new,
-tick "Enable Device Flow" — the id is public, no secret involved). The widget can't refresh
-a token on its own yet; when one expires it should fail with a "sign in again" message.
+`github-actions.ts` is the worked example: GitHub's device flow against launcharr's own
+OAuth App (its client id is a constant in the widget — a client id is public, it only names
+the app being approved). **One row, two ways in:** the sign-in button, or paste a token —
+never both plus plumbing (Mitch, 2026-08-19). The widget can't refresh a token on its own
+yet; when one expires it should fail with a "sign in again" message.
 
 ## Refresh, failure, and the rules of the road
 
@@ -187,12 +190,12 @@ a token on its own yet; when one expires it should fail with a "sign in again" m
 
 ## Reference widgets
 
-| Widget              | Source                          | Cadence | Notes                                                                                                                                                               |
-| ------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uptime.ts`         | Upptime `summary.json`          | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                                                               |
-| `github-actions.ts` | GitHub API, latest run per repo | 2 min   | **Sign in with GitHub** (device flow via `GITHUB_CLIENT_ID`) or paste `GITHUB_TOKEN`; `GITHUB_REPOS` or your 10 most recently pushed; failing count, opens the run. |
-| `vercel.ts`         | Vercel API `/v9/projects`       | 2 min   | `VERCEL_TOKEN` setting (Keychain) or the Vercel CLI's own login; `VERCEL_TEAM_ID` optional; latest production deployment per project; hidden without a token.       |
-| `trmnl.ts`          | TRMNL `/api/devices`            | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                                                                       |
+| Widget              | Source                          | Cadence | Notes                                                                                                                                              |
+| ------------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uptime.ts`         | Upptime `summary.json`          | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                                              |
+| `github-actions.ts` | GitHub API, latest run per repo | 2 min   | **Sign in with GitHub** (device flow) or paste a token; your 10 most recently pushed repos (pin a list in the file); failing count, opens the run. |
+| `vercel.ts`         | Vercel API `/v9/projects`       | 2 min   | `VERCEL_TOKEN` setting (Keychain) or the Vercel CLI's own login; latest production deployment per project; hidden without a token.                 |
+| `trmnl.ts`          | TRMNL `/api/devices`            | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                                                      |
 
 Install one: `cp apps/desktop/widgets/uptime.ts ~/.config/launcharr/widgets/` (or
 Settings → Menubar → Custom widgets → add file) — then it's yours to edit in place.

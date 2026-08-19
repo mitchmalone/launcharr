@@ -2,11 +2,11 @@
 //
 // The reference widget for the **stored-token** half of widget settings:
 // `VERCEL_TOKEN` (a personal token from vercel.com/account/tokens, pasted into
-// Settings → Menubar → Custom widgets, kept in the Keychain) and an optional
-// `VERCEL_TEAM_ID` arrive as env on every tick. Without them the widget falls
-// back to what the Vercel CLI stores (`vercel login`) — note CLI 58+ keeps a
-// short-lived token the widget can't refresh (JOURNAL 2026-08-19), which is
-// why the setting exists. One `GET /v9/projects` per tick: each project's
+// Settings → Menubar → Custom widgets, kept in the Keychain) arrives as env on
+// every tick; the team is the Vercel CLI's current one (or VERCEL_TEAM_ID in
+// the environment). Without a token the widget falls back to what the CLI
+// stores (`vercel login`) — note CLI 58+ keeps a short-lived token the widget
+// can't refresh (JOURNAL 2026-08-19), which is why the setting exists. One `GET /v9/projects` per tick: each project's
 // latest production deployment becomes a row; the cell is the Vercel triangle,
 // dashed and red while any deployment has failed, amber while one is building.
 // With no token from anywhere the widget is hidden (no cell, no request).
@@ -52,14 +52,9 @@ export function manifest() {
     settings: [
       {
         key: 'VERCEL_TOKEN',
-        label: 'Token',
-        hint: 'vercel.com/account/tokens — empty = use the Vercel CLI login',
+        label: 'Vercel',
+        hint: 'a token from vercel.com/account/tokens',
         secret: true,
-      },
-      {
-        key: 'VERCEL_TEAM_ID',
-        label: 'Team ID',
-        hint: "team_… — empty = the CLI's current team",
       },
     ],
   }
