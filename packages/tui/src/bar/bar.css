@@ -455,13 +455,16 @@
 
 /* ---- widgets (docs/WIDGETS.md) --------------------------------------- */
 
-/* Tones a widget may name for its cell and its card dots. Scoped like the
- * other module states so they outrank .bar-cell (JOURNAL 2026-08-16); the
- * card rules below re-declare them for dots, which sit outside a zone. */
+/* Tones a widget may name for its cell and its card dots. `ok` is the same
+ * blue as the agent cells (Mitch, 2026-08-19: one "fine" colour across the
+ * strip, not green for widgets and blue for agents); `error` is the danger
+ * red, muted a touch. Scoped like the other module states so they outrank
+ * .bar-cell (JOURNAL 2026-08-16); the card rules below re-declare them for
+ * dots, which sit outside a zone. */
 .bar-right .bar-tone-ok,
 .bar-left .bar-tone-ok,
 .bar-center .bar-tone-ok {
-  color: #00c853;
+  color: #00b0ff;
 }
 .bar-right .bar-tone-warn,
 .bar-left .bar-tone-warn,
@@ -471,7 +474,7 @@
 .bar-right .bar-tone-error,
 .bar-left .bar-tone-error,
 .bar-center .bar-tone-error {
-  color: var(--danger, #f85149);
+  color: #e2534b;
 }
 .bar-right .bar-tone-muted,
 .bar-left .bar-tone-muted,
@@ -563,13 +566,13 @@
 
 /* Dots and the health line live in a card, outside any zone. */
 .bar-card .bar-tone-ok {
-  color: #00c853;
+  color: #00b0ff;
 }
 .bar-card .bar-tone-warn {
   color: var(--bang, #d29922);
 }
 .bar-card .bar-tone-error {
-  color: var(--danger, #f85149);
+  color: #e2534b;
 }
 .bar-card .bar-tone-muted {
   color: var(--dim, #8b90a5);

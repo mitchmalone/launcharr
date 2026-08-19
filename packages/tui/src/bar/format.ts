@@ -137,16 +137,19 @@ export interface BatteryLook {
  * What the strip draws for a battery, from the adjusted charge (2026-08-19):
  * charging → blue (the charging glyph from 90 %, else the level glyph);
  * otherwise full ≥ 50 % green, medium < 50 % and low < 25 % amber,
- * warning < 10 % red with the percentage. On AC at the limit and not
- * charging is simply "full" — a limited pack that has reached its limit
- * is as full as it gets.
+ * warning < 10 % red with the percentage. Plugged in counts as charging
+ * for the strip: at the charge limit macOS reports "AC attached; not
+ * charging", and Mitch still wants the cell to read as on power (2026-08-19)
+ * — the card keeps the charging/held distinction.
  */
 export function batteryLook(
   pct: number,
   charging: boolean,
   chargeLimit: number | null,
+  onAc = false,
 ): BatteryLook {
   const adjusted = adjustedPct(pct, chargeLimit)
+  charging = charging || onAc
   const level: BatteryGlyph =
     adjusted >= 50
       ? 'full'

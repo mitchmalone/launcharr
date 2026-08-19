@@ -238,6 +238,14 @@ describe('battery look', () => {
       adjusted: 94,
     })
   })
+
+  it('reads plugged-in-but-held ("AC attached; not charging") as charging', () => {
+    expect(batteryLook(80, false, 80, true)).toMatchObject({
+      glyph: 'charging',
+      tone: 'charging',
+    })
+    expect(batteryLook(80, false, 80, false)).toMatchObject({ tone: 'good' })
+  })
 })
 
 describe('cell tones', () => {

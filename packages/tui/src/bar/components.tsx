@@ -476,7 +476,7 @@ export function BarBatteryCell({
 
   // Glyph only — colour and lucide tier carry the level; the number shows
   // only in the red tier (minimal is the theme, 2026-08-19).
-  const look = batteryLook(pct, charging, chargeLimit)
+  const look = batteryLook(pct, charging, chargeLimit, onAc)
   const Icon = BATTERY_ICONS[look.glyph]
   const live = detail && { ...detail, pct, onAc, charging, chargeLimit }
 
