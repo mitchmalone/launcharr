@@ -65,7 +65,8 @@ describe('github-actions', () => {
 
   it('declares one required secret — the token — and owns a sign-in', () => {
     const m = actions.manifest()
-    expect(m.auth).toEqual({ label: 'Sign in with GitHub' })
+    // Sign-in is offered only with a client id baked in (none in test env).
+    expect(m.auth).toBeUndefined()
     expect(m.settings.map((s) => s.key)).toEqual(['GITHUB_TOKEN'])
     expect(m.settings[0]).toMatchObject({ secret: true, required: true })
   })

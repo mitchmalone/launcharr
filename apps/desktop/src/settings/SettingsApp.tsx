@@ -913,16 +913,9 @@ function WidgetSettings({
       )
     }
     return (
-      <>
-        <button type="button" className="ghost" onClick={startAuth}>
-          {widget.auth.label}
-        </button>
-        {auth?.phase === 'error' && (
-          <span className="widgetauth-text widgetstatus-error">
-            {auth.error}
-          </span>
-        )}
-      </>
+      <button type="button" className="ghost nowrap" onClick={startAuth}>
+        {widget.auth.label}
+      </button>
     )
   }
 
@@ -972,45 +965,55 @@ function WidgetSettings({
         </div>
       )
     }
-    // Unset with a sign-in: the button leads; paste is the fallback.
+    // Unset with a sign-in: the button leads; paste is the fallback. A failed
+    // sign-in reports on its own line under the row — never inline, where a
+    // long message crushes the field (Mitch, 2026-08-19).
     const busy = withAuth && authBusy
+    const authError = withAuth && auth?.phase === 'error' ? auth.error : null
     return (
-      <div className="linkrow widgetsetting" key={s.key}>
-        <label
-          className="widgetsetting-label"
-          htmlFor={`ws-${widget.id}-${s.key}`}
-        >
-          {s.label}
-          {req}
-        </label>
-        {withAuth && authControls()}
-        {!busy && (
-          <>
-            {withAuth && <span className="widgetsetting-or">or paste</span>}
-            <input
-              id={`ws-${widget.id}-${s.key}`}
-              type="password"
-              className="grow"
-              autoComplete="off"
-              placeholder={s.hint ?? s.key}
-              value={drafts[s.key] ?? ''}
-              onChange={(e) =>
-                setDrafts((d) => ({ ...d, [s.key]: e.target.value }))
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && drafts[s.key])
-                  saveSecret(s.key, drafts[s.key]!)
-              }}
-            />
-            <button
-              type="button"
-              className="ghost"
-              disabled={!drafts[s.key]}
-              onClick={() => saveSecret(s.key, drafts[s.key]!)}
-            >
-              save
-            </button>
-          </>
+      <div key={s.key}>
+        <div className="linkrow widgetsetting">
+          <label
+            className="widgetsetting-label"
+            htmlFor={`ws-${widget.id}-${s.key}`}
+          >
+            {s.label}
+            {req}
+          </label>
+          {withAuth && authControls()}
+          {!busy && (
+            <>
+              {withAuth && <span className="widgetsetting-or">or paste</span>}
+              <input
+                id={`ws-${widget.id}-${s.key}`}
+                type="password"
+                className="grow"
+                autoComplete="off"
+                placeholder={s.hint ?? s.key}
+                value={drafts[s.key] ?? ''}
+                onChange={(e) =>
+                  setDrafts((d) => ({ ...d, [s.key]: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && drafts[s.key])
+                    saveSecret(s.key, drafts[s.key]!)
+                }}
+              />
+              <button
+                type="button"
+                className="ghost"
+                disabled={!drafts[s.key]}
+                onClick={() => saveSecret(s.key, drafts[s.key]!)}
+              >
+                save
+              </button>
+            </>
+          )}
+        </div>
+        {authError && (
+          <p className="hint widgetstatus-error widgetsetting-note">
+            {authError}
+          </p>
         )}
       </div>
     )

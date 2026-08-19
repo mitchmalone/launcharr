@@ -69,7 +69,9 @@ export function manifest() {
         required: true,
       },
     ],
-    auth: { label: 'Sign in with GitHub' },
+    // No client id baked in (a fork, a dev build) → no sign-in button at all;
+    // the token row alone is the honest UI.
+    ...(CLIENT_ID ? { auth: { label: 'Sign in with GitHub' } } : {}),
   }
 }
 

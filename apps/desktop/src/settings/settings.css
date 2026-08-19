@@ -594,6 +594,17 @@ button {
   white-space: nowrap;
 }
 
+.widgetsetting .nowrap {
+  white-space: nowrap;
+}
+
+/* A sign-in error: its own wrapped line under the row, aligned with the field. */
+.widgetsetting-note {
+  margin: -2px 0 8px 148px;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .widgetauth-code {
   color: var(--fg);
   font-weight: 700;
