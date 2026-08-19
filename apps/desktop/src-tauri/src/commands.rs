@@ -533,6 +533,11 @@ pub fn open_path(target: String) -> CmdResult<()> {
             std::fs::create_dir_all(&dir)?;
             dir
         }
+        "widgets" => {
+            let dir = crate::widgets::widgets_dir();
+            std::fs::create_dir_all(&dir)?;
+            dir
+        }
         // The same curated pane table the launcher indexes — one source of truth
         // for deep links, even for a one-off caller like the bar.
         "battery-settings" | "wifi-settings" => {
@@ -557,6 +562,31 @@ pub fn open_path(target: String) -> CmdResult<()> {
 #[tauri::command]
 pub fn open_settings(app: AppHandle, tab: Option<String>) -> CmdResult<()> {
     crate::settings_window::open_tab(&app, tab.as_deref())
+}
+
+// ---- Widgets (docs/WIDGETS.md, DECISIONS 2026-08-19) -----------------------
+
+/// Settings → Menubar → Custom widgets → add: a picked file's bytes or a URL.
+/// Async: a URL install is a network round-trip. Returns the widget id.
+#[tauri::command]
+pub async fn widget_install(source: crate::widgets::WidgetSource) -> CmdResult<String> {
+    tauri::async_runtime::spawn_blocking(move || crate::widgets::install(source))
+        .await
+        .map_err(|e| CmdError::Internal(e.to_string()))?
+        .map_err(CmdError::Internal)
+}
+
+/// Settings → Menubar → Custom widgets → remove: deletes the widget's file.
+#[tauri::command]
+pub fn widget_remove(id: String) -> CmdResult<()> {
+    crate::widgets::remove(&id).map_err(CmdError::Internal)
+}
+
+/// Settings → Menubar → Custom widgets → tick: run a widget now (the same
+/// as touching `triggers/widget.<id>`).
+#[tauri::command]
+pub fn widget_tick(id: String) {
+    crate::widgets::poke(&id)
 }
 
 /// ⌥⏎ on an app: dismiss and reveal the bundle in Finder.

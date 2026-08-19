@@ -19,8 +19,13 @@
   or any change to the dir (live add/edit/remove). Widgets join `bar.layout` as
   `widget:<id>`. Network + secrets are the widget's own business (2026-08-15 stands);
   a credentialed widget without its credential answers `{"hidden": true}` — no cell, no
-  request (2026-08-16 stands, generalised). No new Tauri command: cell/row clicks reuse
-  `script_action`.
+  request (2026-08-16 stands, generalised). Cell/row clicks reuse `script_action`.
+  **Three commands added** for Settings → Menubar → Custom widgets (same day, after
+  Mitch asked where install/uninstall lived): `widget_install` (a picked file's bytes,
+  or a URL — one user-initiated download, the favicon carve-out; the file must answer
+  `manifest` or it is removed again), `widget_remove` (registry-known files inside the
+  widgets dir only), `widget_tick` (= touching the trigger file). Settings reads the
+  live widget set from `bar_snapshot` so the zone board can place them.
 - **Why.** Data-driven keeps invariant 10 free (the site renders the same widget from a
   fixture), keeps third-party code out of the webview, and keeps every widget wearing
   the theme; the four retired Sketchybar modules (uptime, GitHub Actions, Vercel, TRMNL)

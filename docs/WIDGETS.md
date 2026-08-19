@@ -106,6 +106,17 @@ Every field is optional; `{}` is a valid blank cell.
 - **Python gotcha** (same as scripts): the widgets dir is `sys.path[0]` for python
   widgets — don't name one after a stdlib module.
 
+## Installing, arranging, removing
+
+- **Settings → Menubar → Custom widgets** lists what's installed with its health ("ok ·
+  2m ago", "error · exit 1: …", "hidden"), and offers **install from URL** (one download,
+  on click — the file must answer `manifest` or it's discarded with the reason), **add
+  file…**, **tick** (run now), **remove** (deletes the file), and **open folder**.
+- The **zone board** above it shows custom widgets beside the built-ins as soon as they
+  exist — drag them between zones, ✕ retires one to the tray.
+- Or skip the UI: `cp`/`ln -s`/`curl -o` into the folder, `rm` to remove — the dir is
+  watched either way.
+
 ## Reference widgets
 
 | Widget              | Source                           | Cadence | Notes                                                                                                |

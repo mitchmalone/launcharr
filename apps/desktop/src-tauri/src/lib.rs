@@ -157,6 +157,9 @@ pub fn run() {
             commands::list_screenshots,
             commands::screenshot_thumb,
             commands::screenshot_action,
+            commands::widget_install,
+            commands::widget_remove,
+            commands::widget_tick,
         ])
         .setup(move |app| {
             // No Dock icon, no menu bar: launcharr is an accessory (PRD §6.2).

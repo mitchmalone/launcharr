@@ -380,6 +380,108 @@ fn tick(app: AppHandle, id: String, path: PathBuf, timeout: Duration) {
     crate::bar::push(&app);
 }
 
+// ---- install / remove (Settings → Menubar → Custom widgets) --------------
+
+/// Where a new widget comes from. `File` carries the bytes the settings
+/// webview read from a picked file (no dialog plugin, no path access); `Url`
+/// is a user-initiated download — the same carve-out as the favicon fetch
+/// (DECISIONS 2026-08-09): one request, on click, never in the background.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum WidgetSource {
+    File { name: String, content: String },
+    Url { url: String },
+}
+
+/// 1 MiB is plenty for a script; anything bigger isn't a widget.
+const INSTALL_LIMIT: u64 = 1024 * 1024;
+
+/// A file name for the widgets dir: the basename only, no separators or
+/// hidden files, so a URL or picked file can't write outside the dir.
+fn safe_file_name(name: &str) -> Result<String, String> {
+    let name = name
+        .trim()
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("")
+        .to_string();
+    if name.is_empty() || name.starts_with('.') || name.contains("..") {
+        return Err(format!("bad widget file name {name:?}"));
+    }
+    Ok(name)
+}
+
+/// Fetch a widget's source over HTTPS. Only http(s) URLs; size-capped.
+fn download(url: &str) -> Result<(String, Vec<u8>), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("only http(s) URLs".into());
+    }
+    let name = safe_file_name(url.split(['?', '#']).next().unwrap_or(url))?;
+    let agent = ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(5))
+        .timeout(Duration::from_secs(15))
+        .user_agent("launcharr-widgets/0.1")
+        .build();
+    let response = agent
+        .get(url)
+        .call()
+        .map_err(|e| format!("download failed: {e}"))?;
+    let mut buf = Vec::new();
+    response
+        .into_reader()
+        .take(INSTALL_LIMIT)
+        .read_to_end(&mut buf)
+        .map_err(|e| format!("download failed: {e}"))?;
+    if buf.is_empty() {
+        return Err("download was empty".into());
+    }
+    Ok((name, buf))
+}
+
+/// Write a candidate into the widgets dir, make it executable, and prove it
+/// answers `manifest` before keeping it — a file that isn't a widget is
+/// removed again with the reason. Returns the widget id. The dir watcher
+/// picks the new file up and ticks it; nothing else to do.
+pub fn install(source: WidgetSource) -> Result<String, String> {
+    let (name, bytes) = match source {
+        WidgetSource::File { name, content } => (safe_file_name(&name)?, content.into_bytes()),
+        WidgetSource::Url { url } => download(&url)?,
+    };
+    let dir = widgets_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dest = dir.join(&name);
+    if dest.exists() {
+        return Err(format!("{name} already exists — remove it first"));
+    }
+    fs::write(&dest, bytes).map_err(|e| e.to_string())?;
+    let _ = fs::set_permissions(&dest, fs::Permissions::from_mode(0o755));
+    match run(Command::new(&dest).arg("manifest"), MANIFEST_TIMEOUT)
+        .and_then(|o| parse_manifest(&o))
+    {
+        Ok(m) => Ok(m.id),
+        Err(e) => {
+            let _ = fs::remove_file(&dest);
+            Err(format!("not a widget ({e})"))
+        }
+    }
+}
+
+/// Delete a widget's file by id. Only files inside the widgets dir that the
+/// registry knows about — never an arbitrary path. The watcher drops the cell.
+pub fn remove(id: &str) -> Result<(), String> {
+    let path = WIDGETS
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|e| e.state.id == id)
+        .map(|e| e.path.clone())
+        .ok_or_else(|| format!("no widget {id}"))?;
+    if path.parent() != Some(widgets_dir().as_path()) {
+        return Err(format!("{} is outside the widgets dir", path.display()));
+    }
+    fs::remove_file(&path).map_err(|e| e.to_string())
+}
+
 /// Discovery, the dir watcher, and the scheduler. Idempotent per process.
 pub fn start(app: AppHandle) {
     static STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -510,6 +612,21 @@ mod tests {
         )
         .unwrap();
         assert_eq!(ok.trim(), "hi");
+    }
+
+    #[test]
+    fn install_names_are_basenames_only() {
+        assert_eq!(
+            safe_file_name("https://x.dev/w/uptime.py").unwrap(),
+            "uptime.py"
+        );
+        assert_eq!(safe_file_name("  vercel.py ").unwrap(), "vercel.py");
+        // Any path collapses to its basename — nothing escapes the dir.
+        assert_eq!(safe_file_name("../evil").unwrap(), "evil");
+        assert!(safe_file_name("..").is_err());
+        assert!(safe_file_name(".hidden").is_err());
+        assert!(safe_file_name("dir/").is_err());
+        assert!(download("ftp://x/y").is_err());
     }
 
     #[test]

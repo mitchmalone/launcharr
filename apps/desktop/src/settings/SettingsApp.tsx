@@ -1,4 +1,5 @@
 import type { Link } from '@launcharr/core/types'
+import type { BarSnapshot, BarWidget } from '@launcharr/tui'
 import { GithubIcon, XIcon } from '@launcharr/tui/icons'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
@@ -23,6 +24,7 @@ import {
   type ZoneName,
   normalizeBarZones,
   notchedZones,
+  widgetModuleId,
 } from '../lib/config'
 import { applyTheme, themeNames } from '../lib/themes'
 import DesktopTab from './DesktopTab'
@@ -555,10 +557,14 @@ const MODULE_LABELS: Record<string, string> = {
 }
 
 /** Built-ins by name; a user widget (`widget:<id>`, docs/WIDGETS.md) shows
- * its id with a "widget" tag — Settings doesn't know the live manifest set. */
-const moduleLabel = (id: string) =>
-  MODULE_LABELS[id] ??
-  (id.startsWith('widget:') ? `${id.slice('widget:'.length)} · widget` : id)
+ * its manifest name when the live set knows it, else its id. */
+const moduleLabel = (id: string, widgets: BarWidget[]) => {
+  if (MODULE_LABELS[id]) return MODULE_LABELS[id]
+  if (!id.startsWith('widget:')) return id
+  const wid = id.slice('widget:'.length)
+  const w = widgets.find((w) => w.id === wid)
+  return `${w?.name ?? wid} · widget`
+}
 
 const ZONE_LABELS: Record<ZoneName, string> = {
   left: 'Left',
@@ -576,10 +582,13 @@ const ZONE_LABELS: Record<ZoneName, string> = {
 function ZoneBoard({
   zones,
   zoneNames,
+  widgets,
   onChange,
 }: {
   zones: BarZones
   zoneNames: ZoneName[]
+  /** The live user widgets, for labels. */
+  widgets: BarWidget[]
   onChange: (next: BarZones) => void
 }) {
   const [dragId, setDragId] = useState<string | null>(null)
@@ -634,7 +643,7 @@ function ZoneBoard({
       onDragEnd={() => setDragId(null)}
     >
       <GripVertical size={14} className="grip" aria-hidden />
-      <span className="grow">{moduleLabel(m.id)}</span>
+      <span className="grow">{moduleLabel(m.id, widgets)}</span>
       {inZone && (
         <button
           type="button"
@@ -702,11 +711,189 @@ function ZoneBoard({
   )
 }
 
+/**
+ * The live user widgets (docs/WIDGETS.md), polled from the bar snapshot while
+ * the Menubar tab is open — an in-memory read Rust-side, so 2 s is cheap, and
+ * it lets the board and the widgets list follow adds/removes/ticks live.
+ */
+function useWidgets(): BarWidget[] {
+  const [widgets, setWidgets] = useState<BarWidget[]>([])
+  useEffect(() => {
+    let live = true
+    const pull = () =>
+      invoke<BarSnapshot>('bar_snapshot')
+        .then((s) => live && setWidgets(s.widgets ?? []))
+        .catch(console.error)
+    pull()
+    const t = window.setInterval(pull, 2000)
+    return () => {
+      live = false
+      window.clearInterval(t)
+    }
+  }, [])
+  return widgets
+}
+
+/** "ok · 3m ago" / "error · exit 1 …" / "hidden" / "waiting" for the list. */
+function widgetStatus(w: BarWidget, now: number): string {
+  const ago = (t: number) => {
+    const s = Math.max(0, Math.round(now / 1000 - t))
+    if (s < 60) return `${s}s ago`
+    if (s < 3600) return `${Math.round(s / 60)}m ago`
+    return `${Math.round(s / 3600)}h ago`
+  }
+  if (w.error) {
+    return `error · ${w.error}${w.lastOk ? ` · last ok ${ago(w.lastOk)}` : ''}`
+  }
+  if (!w.view) return 'waiting for the first tick'
+  const at = w.updatedAt ? ` · ${ago(w.updatedAt)}` : ''
+  return w.view.hidden ? `hidden${at}` : `ok${at}`
+}
+
+type WidgetSource =
+  { kind: 'url'; url: string } | { kind: 'file'; name: string; content: string }
+
+/**
+ * Custom widgets: what's installed and how it's doing, plus add (a picked file
+ * — read in the webview, no dialog plugin — or a URL, one user-initiated
+ * fetch) and remove. Layout lives on the board above; this is the inventory.
+ */
+function WidgetsSection({ widgets }: { widgets: BarWidget[] }) {
+  const [url, setUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const now = Date.now()
+
+  const install = (source: WidgetSource) => {
+    setBusy(true)
+    setNote(null)
+    invoke<string>('widget_install', { source })
+      .then((id) => {
+        setNote(`installed ${id}`)
+        setUrl('')
+      })
+      .catch((e) => setNote(String(e)))
+      .finally(() => setBusy(false))
+  }
+  const pickFile = (file: File | undefined) => {
+    if (!file) return
+    file
+      .text()
+      .then((content) => install({ kind: 'file', name: file.name, content }))
+      .catch((e) => setNote(String(e)))
+  }
+  const remove = (w: BarWidget) => {
+    setNote(null)
+    invoke('widget_remove', { id: w.id })
+      .then(() => setNote(`removed ${w.id}`))
+      .catch((e) => setNote(String(e)))
+  }
+  const tick = (w: BarWidget) =>
+    invoke('widget_tick', { id: w.id }).catch(console.error)
+
+  return (
+    <section className="row-full">
+      <div className="zonehead">Custom widgets</div>
+      <p className="hint">
+        Executables in <code>~/.config/launcharr/widgets/</code> that answer{' '}
+        <code>manifest</code> and <code>tick</code> — any language, live, no
+        restart. Contract and reference widgets: docs/WIDGETS.md.
+      </p>
+      {widgets.length === 0 && (
+        <p className="hint">No custom widgets installed.</p>
+      )}
+      {widgets.map((w) => (
+        <div className="linkrow" key={w.id}>
+          <div className="grow widgetmeta">
+            <span className="widgetname">{w.name}</span>
+            <span className="widgetid">{widgetModuleId(w.id)}</span>
+            <span
+              className={`widgetstatus ${w.error ? 'widgetstatus-error' : ''}`}
+              title={w.error ?? undefined}
+            >
+              {widgetStatus(w, now)}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="ghost"
+            title="run the widget now"
+            onClick={() => tick(w)}
+          >
+            tick
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            title="delete the widget file"
+            onClick={() => remove(w)}
+          >
+            remove
+          </button>
+        </div>
+      ))}
+      <div className="linkrow widgetadd">
+        <input
+          type="text"
+          className="grow"
+          placeholder="https://…/widget.py — install from URL"
+          value={url}
+          disabled={busy}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && url.trim()) {
+              install({ kind: 'url', url: url.trim() })
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="ghost"
+          disabled={busy || !url.trim()}
+          onClick={() => install({ kind: 'url', url: url.trim() })}
+        >
+          install
+        </button>
+        <button
+          type="button"
+          className="ghost"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
+          add file…
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          hidden
+          onChange={(e) => {
+            pickFile(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => invoke('open_path', { target: 'widgets' })}
+        >
+          open folder
+        </button>
+      </div>
+      {note && <p className="hint">{note}</p>}
+    </section>
+  )
+}
+
 function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
-  const layout = normalizeBarZones(config.bar.layout)
+  const widgets = useWidgets()
+  const homes = widgets.map((w) => ({ id: w.id, zone: w.zone }))
+  const layout = normalizeBarZones(config.bar.layout, homes)
   // Normalized + center-folded, so every module stays reachable on a board
   // that has no center column.
-  const notched = config.bar.notchedLayout ? notchedZones(config.bar) : null
+  const notched = config.bar.notchedLayout
+    ? notchedZones(config.bar, homes)
+    : null
   return (
     <>
       <Row label="Menubar">
@@ -732,14 +919,18 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
         <div className="zonehead">Widgets</div>
         <p className="hint">
           Drag widgets between the zones; ✕ retires one to the tray below,
-          dragging it back restores it.
+          dragging it back restores it. Custom widgets join here as soon as
+          they're installed.
         </p>
         <ZoneBoard
           zones={layout}
           zoneNames={['left', 'center', 'right']}
+          widgets={widgets}
           onChange={(next) => set('bar', { ...config.bar, layout: next })}
         />
       </section>
+      <hr />
+      <WidgetsSection widgets={widgets} />
       <hr />
       <section className="row-full">
         <div className="zonehead">Notched displays</div>
@@ -753,7 +944,7 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
                 // Seeded from what a notched display shows today (center
                 // folded into right); unchecking falls back to that derivation.
                 notchedLayout: e.target.checked
-                  ? notchedZones(config.bar)
+                  ? notchedZones(config.bar, homes)
                   : null,
               })
             }
@@ -767,6 +958,7 @@ function MenubarTab({ config, set }: { config: Config; set: SetFn }) {
           <ZoneBoard
             zones={notched}
             zoneNames={['left', 'right']}
+            widgets={widgets}
             onChange={(next) =>
               set('bar', { ...config.bar, notchedLayout: next })
             }

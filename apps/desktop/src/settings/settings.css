@@ -522,3 +522,33 @@ button {
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* --- Custom widgets inventory (Settings → Menubar). --- */
+
+.widgetmeta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.widgetname {
+  color: var(--fg);
+}
+
+.widgetid,
+.widgetstatus {
+  color: var(--dim);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widgetstatus-error {
+  color: var(--danger, #f85149);
+}
+
+.widgetadd {
+  margin-top: 10px;
+}
