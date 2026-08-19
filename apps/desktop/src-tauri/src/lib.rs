@@ -33,6 +33,7 @@ mod frecency;
 mod herdr;
 mod icons;
 mod indexer;
+mod logbook;
 mod loupe;
 mod panel;
 mod power;

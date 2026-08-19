@@ -144,22 +144,10 @@ fn log_protected_windows() {
     }
 }
 
-/// stderr goes nowhere for a Finder/login launch; `~/Library/Logs/launcharr.log` keeps
-/// a one-line breadcrumb per picker event so "which picker did I get and why" is
+/// Picker breadcrumbs (logbook.rs): "which picker did I get and why" stays
 /// answerable after the fact.
 pub fn breadcrumb(line: &str) {
-    eprintln!("[launcharr loupe] {line}");
-    if let Some(home) = dirs::home_dir() {
-        let path = home.join("Library/Logs/launcharr.log");
-        if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-        {
-            use std::io::Write;
-            let _ = writeln!(f, "{} loupe: {line}", crate::frecency::now_secs());
-        }
-    }
+    crate::logbook::breadcrumb("loupe", line);
 }
 
 /// Screen Recording granted to launcharr?

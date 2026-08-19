@@ -225,6 +225,7 @@ fn release_because(reason: &'static str) {
     if session.is_some() {
         *session = None;
         *RELEASED.lock().unwrap() = Some(reason);
+        crate::logbook::breadcrumb("awake", &format!("released by rail: {reason}"));
         forget_persisted();
     }
 }
@@ -265,7 +266,16 @@ struct Persisted {
     boot_epoch_secs: Option<i64>,
 }
 
+/// Tests point persistence at a scratch dir so `cargo test` never plants a
+/// hold in the developer's real state dir.
+#[cfg(test)]
+static PERSIST_DIR: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
+
 fn persisted_path() -> std::path::PathBuf {
+    #[cfg(test)]
+    if let Some(dir) = PERSIST_DIR.lock().unwrap().clone() {
+        return dir.join("awake.json");
+    }
     std::env::var_os("XDG_STATE_HOME")
         .map(std::path::PathBuf::from)
         .filter(|p| p.is_absolute())
@@ -281,14 +291,25 @@ fn persist(p: &Persisted) {
     };
     let _ = std::fs::create_dir_all(dir);
     if let Ok(json) = serde_json::to_vec(p) {
-        if let Err(e) = std::fs::write(&path, json) {
-            eprintln!("[launcharr awake] persist failed: {e}");
+        match std::fs::write(&path, json) {
+            Ok(()) => crate::logbook::breadcrumb(
+                "awake",
+                &format!(
+                    "armed → persisted (until {:?}, floor {:?})",
+                    p.until_epoch_ms, p.battery_floor
+                ),
+            ),
+            Err(e) => crate::logbook::breadcrumb("awake", &format!("persist failed: {e}")),
         }
     }
 }
 
 fn forget_persisted() {
-    let _ = std::fs::remove_file(persisted_path());
+    let path = persisted_path();
+    if path.exists() {
+        let _ = std::fs::remove_file(&path);
+        crate::logbook::breadcrumb("awake", "released → awake.json removed");
+    }
 }
 
 /// Seconds since the epoch at which this kernel booted (`kern.boottime`).
@@ -354,13 +375,20 @@ pub fn resume() -> Option<AwakeState> {
     let p: Persisted = match serde_json::from_str(&json) {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("[launcharr awake] awake.json unreadable ({e}); dropped");
+            crate::logbook::breadcrumb("awake", &format!("awake.json unreadable ({e}); dropped"));
             forget_persisted();
             return None;
         }
     };
-    if !should_resume(&p, now_epoch_ms(), boot_epoch_secs()) {
-        eprintln!("[launcharr awake] not resuming a stale hold");
+    let (now, boot) = (now_epoch_ms(), boot_epoch_secs());
+    if !should_resume(&p, now, boot) {
+        crate::logbook::breadcrumb(
+            "awake",
+            &format!(
+                "not resuming: until {:?} now {now} armed {} boot {:?}/{:?}",
+                p.until_epoch_ms, p.armed_epoch_ms, p.boot_epoch_secs, boot
+            ),
+        );
         forget_persisted();
         return None;
     }
@@ -372,9 +400,12 @@ pub fn resume() -> Option<AwakeState> {
         p.spec,
         true,
     ) {
-        Ok(()) => Some(state()),
+        Ok(()) => {
+            crate::logbook::breadcrumb("awake", "resumed the previous run's hold");
+            Some(state())
+        }
         Err(e) => {
-            eprintln!("[launcharr awake] resume failed: {e:?}");
+            crate::logbook::breadcrumb("awake", &format!("resume failed: {e:?}"));
             forget_persisted();
             None
         }
@@ -707,12 +738,21 @@ Kernel Assertions: 0x100=MAGICWAKE
         assert_eq!(parse_hms("a:b:c"), None);
     }
 
-    /// Tests below share the global SESSION — serialize them.
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
+    /// Tests below share the global SESSION — serialize them, and point
+    /// persistence at a scratch dir so no test ever plants a real hold.
+    pub(super) static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    pub(super) fn serial() -> std::sync::MutexGuard<'static, ()> {
+        let guard = TEST_LOCK.lock().unwrap();
+        let dir = std::env::temp_dir().join(format!("launcharr-awake-test-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        *PERSIST_DIR.lock().unwrap() = Some(dir);
+        guard
+    }
 
     #[test]
     fn arm_and_release_round_trip() {
-        let _guard = TEST_LOCK.lock().unwrap();
+        let _guard = serial();
         // Real assertions against this Mac — create, observe, release. Cheap
         // and side-effect-free beyond the seconds the test holds them.
         arm(
@@ -734,7 +774,7 @@ Kernel Assertions: 0x100=MAGICWAKE
 
     #[test]
     fn passed_deadline_releases_and_records_why() {
-        let _guard = TEST_LOCK.lock().unwrap();
+        let _guard = serial();
         arm(false, false, Some(now_epoch_ms() - 1), None, None).expect("arm");
         // state() re-checks rails inline — no watchdog tick needed.
         let s = state();
@@ -750,5 +790,32 @@ Kernel Assertions: 0x100=MAGICWAKE
     #[ignore = "spawns pmset against this Mac; run by hand to eyeball the others list"]
     fn live_others() {
         println!("{:#?}", status().others);
+    }
+}
+
+#[cfg(test)]
+mod persist_tests {
+    use super::*;
+
+    /// End to end against real IOKit + the scratch state dir: arm writes the
+    /// file, release removes it. Serialised behind the process-wide SESSION.
+    #[test]
+    fn arm_persists_and_release_forgets() {
+        let _guard = super::tests::serial();
+        arm(
+            false,
+            false,
+            Some(now_epoch_ms() + 60_000),
+            None,
+            Some("{\"until\":{\"kind\":\"timer\",\"minutes\":1}}".into()),
+        )
+        .expect("arm");
+        let path = persisted_path();
+        let json = std::fs::read_to_string(&path).expect("awake.json written at arm");
+        let p: Persisted = serde_json::from_str(&json).unwrap();
+        assert!(p.until_epoch_ms.is_some());
+        assert!(p.boot_epoch_secs.is_some(), "boot time stamped");
+        release();
+        assert!(!path.exists(), "awake.json removed on release");
     }
 }
