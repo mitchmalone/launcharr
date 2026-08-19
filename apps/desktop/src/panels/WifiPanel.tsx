@@ -9,9 +9,11 @@ import {
   Panel,
   SectionHeader,
   TextPrompt,
+  WifiStrengthIcon,
   useListNav,
+  wifiBars,
 } from '@launcharr/tui'
-import { Lock, Search, Wifi, WifiHigh, WifiLow, WifiZero } from 'lucide-react'
+import { Lock, Search, Wifi } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 
@@ -19,13 +21,16 @@ import { useState } from 'react'
 const ROW_ICON = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const
 const HEAD_ICON = { size: 17, strokeWidth: 2, 'aria-hidden': true } as const
 
-/** dBm → bars. Known networks report no signal; they get the full glyph. */
+/** dBm → bars via the bar's own glyph (all arcs drawn, lost ones ghosted, so
+ * every row's icon has the same footprint). Unknown signal reads as full. */
 function strengthIcon(signal: number | null): ReactNode {
-  if (signal == null) return <Wifi {...ROW_ICON} />
-  if (signal >= -55) return <Wifi {...ROW_ICON} />
-  if (signal >= -70) return <WifiHigh {...ROW_ICON} />
-  if (signal >= -85) return <WifiLow {...ROW_ICON} />
-  return <WifiZero {...ROW_ICON} />
+  return (
+    <WifiStrengthIcon
+      bars={wifiBars(signal)}
+      size={ROW_ICON.size}
+      strokeWidth={ROW_ICON.strokeWidth}
+    />
+  )
 }
 
 export interface WifiStatus {

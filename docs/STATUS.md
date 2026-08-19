@@ -26,13 +26,14 @@ tick, remove). Reference set uptime / github-actions / vercel (real API) / trmnl
 sight). Widget `ok` wears the agent blue; battery on AC at its limit reads as plugged in.
 Docs: `docs/WIDGETS.md`, DECISIONS 2026-08-19 ×2, plans/done/widgets.md. **Seen live by
 Mitch** (colour feedback applied); still to eyeball: the Custom widgets sub-tab, install
-from URL. trmnl is hidden until its key resolves (JOURNAL 2026-08-19). Parked one-liner:
-the wifi glyph shrinks below full strength (ghost the outer arcs).
+from URL. trmnl is hidden until its key resolves (JOURNAL 2026-08-19).
 
 **Bar colours → theme tokens, 2026-08-19 (on main, running):** one rule — a fine cell is
 `fg`; accent = busy, warn/danger = needs you. New `warn` theme token; `--warn`/`--danger`
 now in the panel var set. Agents done/idle/unknown fg, working accent, attention danger;
 widget `ok` fg; battery charging/good fg; awake armed fg; wifi poor link warn (`wifiTone`).
+Wifi glyph no longer shrinks with strength: `WifiStrengthIcon` draws all four arcs and ghosts
+the lost ones (lucide's tiers drop arcs); the wifi panel rows use it too.
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 

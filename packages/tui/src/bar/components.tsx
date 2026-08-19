@@ -5,11 +5,7 @@ import {
   BatteryMedium,
   BatteryWarning,
   Coffee,
-  Wifi,
-  WifiHigh,
-  WifiLow,
   WifiOff,
-  WifiZero,
 } from 'lucide-react'
 import { DynamicIcon, type IconName } from 'lucide-react/dynamic'
 import type { ReactNode } from 'react'
@@ -663,7 +659,54 @@ export function BarWifiCard({
   )
 }
 
-/** The Wi-Fi glyph as a strength indicator: four lucide arcs by RSSI band. */
+/* Lucide's `wifi` paths, dot first then arcs inner → outer. Lucide's own
+ * tiers (WifiHigh/Low/Zero) *drop* the outer arcs, so a weaker link drew a
+ * smaller glyph inside the same box — it read as a shrunk icon, not a
+ * weaker one (Mitch, 2026-08-19). We draw all four every time and ghost the
+ * lost arcs instead, so the footprint matches the other cells. */
+const WIFI_ARCS = [
+  'M8.5 16.429a5 5 0 0 1 7 0',
+  'M5 12.859a10 10 0 0 1 14 0',
+  'M2 8.82a15 15 0 0 1 20 0',
+] as const
+
+/**
+ * The Wi-Fi strength glyph: lucide's four-arc wifi with the arcs above the
+ * RSSI band ghosted. Same size/stroke props as every other cell icon.
+ */
+export function WifiStrengthIcon({
+  bars,
+  size = ICON_PROPS.size,
+  strokeWidth = ICON_PROPS.strokeWidth,
+  className,
+}: {
+  bars: 1 | 2 | 3 | 4
+  size?: number
+  strokeWidth?: number
+  className?: string
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M12 20h.01" />
+      {WIFI_ARCS.map((d, i) => (
+        <path key={d} d={d} opacity={i + 2 <= bars ? 1 : 0.25} />
+      ))}
+    </svg>
+  )
+}
+
+/** The Wi-Fi glyph as a strength indicator; offline is lucide's WifiOff. */
 function WifiGlyph({
   online,
   rssi,
@@ -673,18 +716,8 @@ function WifiGlyph({
   rssi: number | null
   size?: number
 }) {
-  const props = { ...ICON_PROPS, size }
-  if (!online) return <WifiOff {...props} />
-  switch (wifiBars(rssi)) {
-    case 4:
-      return <Wifi {...props} />
-    case 3:
-      return <WifiHigh {...props} />
-    case 2:
-      return <WifiLow {...props} />
-    default:
-      return <WifiZero {...props} />
-  }
+  if (!online) return <WifiOff {...ICON_PROPS} size={size} />
+  return <WifiStrengthIcon bars={wifiBars(rssi)} size={size} />
 }
 
 /**

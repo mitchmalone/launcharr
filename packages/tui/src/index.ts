@@ -72,6 +72,7 @@ export {
   BarWifiCell,
   BarWorkspaces,
   WidgetGlyph,
+  WifiStrengthIcon,
   ICON_PROPS,
   BATTERY_ICONS,
   formatHold,
