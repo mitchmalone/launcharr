@@ -166,7 +166,12 @@ pub fn snapshot() -> Vec<WidgetState> {
 
 /// Ask for a tick now (trigger file, dir change). Unknown ids are ignored.
 pub fn poke(id: &str) {
-    if let Some(e) = WIDGETS.lock().unwrap().iter_mut().find(|e| e.state.id == id) {
+    if let Some(e) = WIDGETS
+        .lock()
+        .unwrap()
+        .iter_mut()
+        .find(|e| e.state.id == id)
+    {
         e.next_due = Instant::now();
     }
 }
@@ -303,7 +308,7 @@ fn discover(dir: &Path) -> Vec<(WidgetManifest, PathBuf)> {
 }
 
 /// Rebuild the registry from disk. Widgets whose id and path survive keep
-/// their view (no blank flash on a re-scan); new or moved ones tick at once.
+/// their view (no blank flash on a re-scan); everything ticks again at once.
 fn refresh() {
     let found = discover(&widgets_dir());
     let mut reg = WIDGETS.lock().unwrap();
@@ -328,11 +333,15 @@ fn refresh() {
                 running: false,
             },
         };
-        // Manifest fields may have been edited in place.
+        // Manifest fields may have been edited in place — and an edited widget
+        // should show its new output now, not at the end of its interval.
         entry.state.name = manifest.name.clone();
         entry.state.zone = manifest.zone.clone();
         entry.state.icon = manifest.icon.clone();
         entry.manifest = manifest;
+        if !entry.running {
+            entry.next_due = Instant::now();
+        }
         reg.push(entry);
     }
     eprintln!(
@@ -495,7 +504,11 @@ mod tests {
         let err = run(Command::new("sleep").arg("10"), Duration::from_millis(200)).unwrap_err();
         assert!(err.starts_with("timed out"), "{err}");
         assert!(started.elapsed() < Duration::from_secs(2));
-        let ok = run(Command::new("sh").arg("-c").arg("echo hi"), Duration::from_secs(2)).unwrap();
+        let ok = run(
+            Command::new("sh").arg("-c").arg("echo hi"),
+            Duration::from_secs(2),
+        )
+        .unwrap();
         assert_eq!(ok.trim(), "hi");
     }
 
@@ -513,7 +526,11 @@ mod tests {
         fs::set_permissions(&good, fs::Permissions::from_mode(0o755)).unwrap();
         // Same id, later path: first registration wins.
         let dup = dir.join("c-dup");
-        fs::write(&dup, "#!/bin/sh\necho '{\"id\":\"good\",\"interval\":99}'\n").unwrap();
+        fs::write(
+            &dup,
+            "#!/bin/sh\necho '{\"id\":\"good\",\"interval\":99}'\n",
+        )
+        .unwrap();
         fs::set_permissions(&dup, fs::Permissions::from_mode(0o755)).unwrap();
         fs::write(dir.join("a-notes.txt"), "not a widget").unwrap();
         let bad = dir.join("d-bad");
