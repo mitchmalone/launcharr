@@ -44,8 +44,8 @@ pub async fn bar_snapshot() -> crate::bar::BarSnapshot {
 /// Open/close a bar hover dropdown (window resize, main thread). `height` is
 /// the extra logical height the open card needs; the bar clamps it.
 #[tauri::command]
-pub fn bar_set_dropdown(open: bool, height: Option<f64>, app: AppHandle) {
-    crate::bar::set_dropdown(&app, open, height);
+pub fn bar_set_dropdown(open: bool, height: Option<f64>, window: tauri::Window, app: AppHandle) {
+    crate::bar::set_dropdown(&app, window.label(), open, height);
 }
 
 /// The battery hover card's detail (DECISIONS 2026-08-16). async: spawns

@@ -55,10 +55,23 @@ declare global {
     __barPush?: (snap: BarSnapshot) => void
     /** Injected by bar.rs before page scripts: does this display carry a notch? */
     __notched?: boolean
+    /** Rust re-announces the notch when this window is re-framed onto another display. */
+    __barNotched?: (notched: boolean) => void
   }
 }
 
-const NOTCHED = window.__notched === true
+/** Notchedness starts from the injected flag and follows Rust's `sync` when
+ * the window lands on a different display (dock/undock reorders screens). */
+function useNotched(): boolean {
+  const [notched, setNotched] = useState(window.__notched === true)
+  useEffect(() => {
+    window.__barNotched = setNotched
+    return () => {
+      delete window.__barNotched
+    }
+  }, [])
+  return notched
+}
 
 /** The bar wears the panel theme and renders module order/toggles from
  * config, following edits live. */
@@ -80,9 +93,9 @@ function useBarConfig(): Config | null {
 
 /** This display's zones: the notched arrangement (explicit or derived) when
  * this bar sits under a notch, else the main layout — normalized. */
-function displayZones(cfg: Config | null): BarZones {
+function displayZones(cfg: Config | null, notched: boolean): BarZones {
   const bar = cfg?.bar ?? { enabled: false, layout: DEFAULT_BAR_LAYOUT }
-  return NOTCHED ? notchedZones(bar) : normalizeBarZones(bar.layout)
+  return notched ? notchedZones(bar) : normalizeBarZones(bar.layout)
 }
 
 /**
@@ -176,6 +189,7 @@ function useAwakeStatus(open: boolean): AwakeStatus | null {
 function BarWindow() {
   const [snap, now, patch] = useSnapshot()
   const cfg = useBarConfig()
+  const notched = useNotched()
   // One owner of the Rust mouse feed for the whole bar — every hoverable cell
   // shares it (see hover.ts).
   const hover = useBarHover()
@@ -310,13 +324,13 @@ function BarWindow() {
 
   // Zones are explicit (Settings → Menubar board); a notched display renders
   // no center zone — the camera housing owns it.
-  const zones = displayZones(cfg)
+  const zones = displayZones(cfg, notched)
   const render = (list: { id: string; enabled: boolean }[]) =>
     list.filter((m) => m.enabled).map((m) => moduleNode(m.id))
   return (
     <Bar
       left={render(zones.left)}
-      center={NOTCHED ? undefined : render(zones.center).filter(Boolean)}
+      center={notched ? undefined : render(zones.center).filter(Boolean)}
       right={render(zones.right)}
     />
   )

@@ -184,43 +184,17 @@ struct Shown {
 
 static SHOWN: std::sync::Mutex<Option<Shown>> = std::sync::Mutex::new(None);
 
-/// (x, y, width, height) of a screen in CG points, top-left origin.
-type ScreenFrame = (f64, f64, f64, f64);
-
-/// Mouse position + the frame of the screen under it (CG points, top-left origin —
-/// AppKit gives bottom-left; the main screen's height flips it) + its display id.
-fn mouse_screen(mtm: MainThreadMarker) -> Option<((f64, f64), ScreenFrame, u32)> {
-    let mouse = NSEvent::mouseLocation();
-    let screens = objc2_app_kit::NSScreen::screens(mtm);
-    let main_h = screens.iter().next()?.frame().size.height;
-    let screen = screens.iter().find(|s| {
-        let f = s.frame();
-        mouse.x >= f.origin.x
-            && mouse.x < f.origin.x + f.size.width
-            && mouse.y >= f.origin.y
-            && mouse.y < f.origin.y + f.size.height
-    })?;
-    let f = screen.frame();
-    let top = main_h - (f.origin.y + f.size.height);
-    let key = objc2_foundation::NSString::from_str("NSScreenNumber");
-    let number = screen.deviceDescription().objectForKey(&key)?;
-    // SAFETY: NSScreenNumber is documented as an NSNumber; unsignedIntValue is a plain getter.
-    let display: u32 = unsafe { objc2::msg_send![&*number, unsignedIntValue] };
-    Some((
-        (mouse.x, main_h - mouse.y),
-        (f.origin.x, top, f.size.width, f.size.height),
-        display,
-    ))
-}
-
 /// Show the loupe over the mouse's screen. Builds the window on first use, then
 /// hides/reuses (destroying nspanel-converted windows aborts — JOURNAL 2026-08-16).
 /// Main thread only (NSScreen/NSEvent).
 pub fn show(app: &AppHandle, zoom: u32, size: u32) -> CmdResult<()> {
-    let mtm = MainThreadMarker::new()
-        .ok_or_else(|| CmdError::Internal("loupe::show off the main thread".into()))?;
-    let ((mx, my), (sx, sy, sw, sh), display) =
-        mouse_screen(mtm).ok_or_else(|| CmdError::Internal("no screen under the mouse".into()))?;
+    if MainThreadMarker::new().is_none() {
+        return Err(CmdError::Internal("loupe::show off the main thread".into()));
+    }
+    // Geometry in CG points, top-left origin (screens.rs) — Tauri's logical
+    // positions on macOS use the same space.
+    let (screen, (mx, my)) = crate::screens::under_mouse();
+    let (sx, sy, sw, sh, display) = (screen.x, screen.y, screen.width, screen.height, screen.id);
 
     if app.get_webview_window(LABEL).is_none() {
         let window = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("loupe.html".into()))

@@ -3,7 +3,7 @@
 > The cursor: where we are right now. Keep this **terse** — a snapshot, not a history.
 > History lives in git, `plans/done/`, and `JOURNAL.md`.
 >
-> Last updated: 2026-08-18
+> Last updated: 2026-08-19
 
 ## Where we are
 
@@ -18,6 +18,14 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
 
 ## Shipped and live (v0.5 era — details in plans/done/ + JOURNAL)
 
+- **Multi-display, 2026-08-19** (plans/done/multi-display.md, JOURNAL 2026-08-19): a bar
+  on every screen and the launcher on the screen under the mouse. New `screens.rs`
+  (CoreGraphics reads, CG points; `notch.rs` folded in, keyed by display id) replaces
+  Tauri's monitor API, which was silently collapsing both to the primary. Bar windows
+  reconcile to screens on a 5 s heartbeat (build / re-frame / hide surplus, live notch
+  flag); hover and the dropdown are per-bar. Verified: two bars framed right on Studio
+  Display + built-in. **Hands-check:** ⌥Space with the mouse on the built-in, hover
+  cards on the second bar, unplug/replug.
 - **Ready-column round, 2026-08-17** (plans/done/ready-column-2026-08-17.md, DECISIONS
   2026-08-17 ×4): **`colorpicker`** (the launcharr **loupe** at 2× — own transparent panel +
   `CGWindowListCreateImage` below it, **opt-in via Settings → General → "Use the

@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
+use tauri::{AppHandle, Emitter, LogicalPosition, Manager};
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelLevel, StyleMask, WebviewWindowExt,
 };
@@ -118,26 +118,16 @@ pub fn hide(app: &AppHandle) {
 }
 
 /// Horizontally centered, ~30% down, on the screen containing the mouse pointer (PRD §4.1).
+/// Geometry comes from screens.rs in CG points — Tauri's own `monitor_from_point` never
+/// matches on Retina (JOURNAL 2026-08-19), which is why this used to land on the primary.
 fn position_on_mouse_screen(app: &AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
-    let monitor = app
-        .cursor_position()
-        .ok()
-        .and_then(|cursor| app.monitor_from_point(cursor.x, cursor.y).ok().flatten())
-        .or_else(|| app.primary_monitor().ok().flatten());
-    let Some(monitor) = monitor else {
-        return;
-    };
-
-    let scale = monitor.scale_factor();
-    let size = monitor.size();
-    let pos = monitor.position();
-    let panel_width_phys = (PANEL_WIDTH * scale) as i32;
-    let x = pos.x + (size.width as i32 - panel_width_phys) / 2;
-    let y = pos.y + (size.height as f64 * 0.30) as i32;
-    let _ = window.set_position(PhysicalPosition::new(x, y));
+    let (screen, _) = crate::screens::under_mouse();
+    let x = screen.x + (screen.width - PANEL_WIDTH) / 2.0;
+    let y = screen.y + screen.height * 0.30;
+    let _ = window.set_position(LogicalPosition::new(x, y));
 }
 
 /// Resize keeping the top edge anchored (the panel grows downward as results appear).

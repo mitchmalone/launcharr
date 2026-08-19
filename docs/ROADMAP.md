@@ -48,8 +48,9 @@ toggleable. Not a distro — bar + launcher + config only. Record: docs/releases
 - **B1 — Bar spike (gate).** ✅ (2026-08-15) _Exit met: ~19 MB marginal (shared WebKit
   pool) — gate PASSED; numbers in plans/done/v0.5-tui-kit-and-bar-spike.md._
 - **B2 — Bar core.** ✅ Mitch's daily menubar (Sketchybar retired 2026-08-16); zones +
-  drag arranger, notch profiles, battery hover card, wifi SSID, awake cell. Left for
-  v0.5: multi-display, app hints, event-driven front-app, bluetooth glyph.
+  drag arranger, notch profiles, battery hover card, wifi SSID, awake cell; a bar per
+  display + launcher on the mouse's screen (2026-08-19). Left for v0.5: per-monitor
+  workspaces, app hints, event-driven front-app, bluetooth glyph.
 - **B3 — Desktop layer.** ✅ (2026-08-17, was "Aerospace wrap") AeroSpace as a cask
   dependency (never vendored), generated opinionated config with adopt-or-leave and a
   managed/unmanaged switch (edit / use my own / save a copy), opt-in JankyBorders,
@@ -69,8 +70,9 @@ Candidates carried over from v0.4, to be cut down in the 0.5 scope session:
 
 - **Module API** — data-driven, any-language bar emitters ("same contract philosophy as
   scripts"); TRMNL returns through it. Rich TUI panels on bar items.
-- **Multi-display** — per-monitor bar; notch detection assumes NSScreen order matches
-  monitors (JOURNAL 2026-08-15).
+- **Multi-display** — ✅ bar per display, launcher on the mouse's screen (2026-08-19,
+  plans/done/multi-display.md). Left: per-monitor workspace lists (aerospace
+  `--monitor`), a screen-parameters observer instead of the 5 s heartbeat.
 - **Bar polish** — per-workspace app hints, NSWorkspace-observer front-app, bluetooth
   glyph. Saved for last by request: Vercel / GitHub Actions / uptime modules.
 - **Settings into panels** — the native window retires (re-decide: 0.4 invested in it).

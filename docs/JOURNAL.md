@@ -6,6 +6,23 @@
 
 ---
 
+### 2026-08-19 · Tauri's monitor API is why nothing was multi-display — ask CoreGraphics
+
+Two screens, one bar, launcher always on the primary — and both paths were _written_ for
+multi-display. `available_monitors()` returns an empty list for this accessory app
+(known since 2026-08-15; bar.rs fell back to primary and stayed there). The launcher's
+`monitor_from_point(cursor)` never matched either, for a different reason: tao's
+`cursor_position()` computes `CGDisplay::main().pixels_high() - mouseLocation.y` — pixels
+minus points — then scales the result, and `monitor_from_point` compares that physical
+point against `CGDisplayBounds` (points). On any Retina display the cursor is "between
+screens" and the code fell back to primary, invisibly. `screens.rs` now reads
+`CGGetActiveDisplayList` / `CGDisplayBounds` directly (thread-safe, points, top-left
+origin — the same space `LogicalPosition` uses, so no scale ever enters the frame math)
+and frames windows with logical sizes; the bar reconciles windows to screens on a 5 s
+heartbeat (`sync`: build missing, re-frame drifted, hide surplus, re-announce the notch
+profile if a window changed display) since windows can't be destroyed (2026-08-16). Notch
+detection is keyed by `NSScreenNumber` now, not by NSScreen index.
+
 ### 2026-08-18 · herdr's `agent.*` methods take `target`; `pane.*` take `pane_id`
 
 The herdr jump did nothing while every other cell worked. `agent.focus` with
