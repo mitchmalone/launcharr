@@ -68,15 +68,19 @@ toggleable. Not a distro — bar + launcher + config only. Record: docs/releases
 
 Candidates carried over from v0.4, to be cut down in the 0.5 scope session:
 
-- **Module API** — data-driven, any-language bar emitters ("same contract philosophy as
-  scripts"); TRMNL returns through it. Rich TUI panels on bar items.
+- **Module API** — ✅ **widgets** (2026-08-19, plans/active/widgets.md → done on
+  hands-check; DECISIONS 2026-08-19): executables in `~/.config/launcharr/widgets/`,
+  `manifest`/`tick` JSON, generic cell + card, live dir watch, `triggers/widget.<id>`.
+  Reference widgets uptime / github-actions / vercel / trmnl in `apps/desktop/widgets/`.
+  Left: `widgets ⏎` panel (health, toggle, install-from-URL against a curated index),
+  custom SVG icons, event-driven (`watch`) widgets, a left-zone card anchor.
 - **Multi-display** — ✅ bar per display, launcher on the mouse's screen (2026-08-19,
   plans/done/multi-display.md). Left: per-monitor workspace lists (aerospace
   `--monitor`), a screen-parameters observer instead of the 5 s heartbeat.
 - **Bar polish** — glyph-only strip landed 2026-08-19 (DECISIONS: wifi arcs, battery
   tiers by adjusted charge, awake timer card-side). Left: NSWorkspace-observer front-app,
-  bluetooth glyph; per-workspace app hints only as hover. Saved for last by request:
-  Vercel / GitHub Actions / uptime modules.
+  bluetooth glyph; per-workspace app hints only as hover. (Vercel / GitHub Actions /
+  uptime landed as widgets, 2026-08-19.)
 - **Settings into panels** — the native window retires (re-decide: 0.4 invested in it).
   Drill-down panel menu.
 - **awake loose ends** — timed agents-idle release observed end-to-end, lid-closed-on-AC,

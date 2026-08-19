@@ -15,9 +15,11 @@ import {
   BarClock,
   BarFrontApp,
   type BarSnapshot,
+  BarWidgetCell,
   BarWifiCell,
   BarWorkspaces,
   type BatteryDetail,
+  type WidgetAction,
   type WifiDetail,
   formatBarClock,
 } from '@launcharr/tui'
@@ -32,6 +34,8 @@ import {
   type BarZones,
   type Config,
   DEFAULT_BAR_LAYOUT,
+  type WidgetHome,
+  isWidgetModuleId,
   normalizeBarZones,
   notchedZones,
 } from '../lib/config'
@@ -92,10 +96,17 @@ function useBarConfig(): Config | null {
 }
 
 /** This display's zones: the notched arrangement (explicit or derived) when
- * this bar sits under a notch, else the main layout — normalized. */
-function displayZones(cfg: Config | null, notched: boolean): BarZones {
+ * this bar sits under a notch, else the main layout — normalized, with the
+ * live widget set (docs/WIDGETS.md) joining in their manifest zones. */
+function displayZones(
+  cfg: Config | null,
+  notched: boolean,
+  widgets: WidgetHome[],
+): BarZones {
   const bar = cfg?.bar ?? { enabled: false, layout: DEFAULT_BAR_LAYOUT }
-  return notched ? notchedZones(bar) : normalizeBarZones(bar.layout)
+  return notched
+    ? notchedZones(bar, widgets)
+    : normalizeBarZones(bar.layout, widgets)
 }
 
 /**
@@ -212,6 +223,10 @@ function BarWindow() {
     awakeWatchTick(awakeMem.current).catch(console.error)
   }, [snap])
 
+  // Widget clicks reuse the scripts action runner: open/copy/none.
+  const runWidgetAction = (action: WidgetAction) =>
+    invoke('script_action', { action }).catch(console.error)
+
   const switchWorkspace = (ws: string) => {
     // Optimistic: highlight now, aerospace catches up off the main thread.
     patch((prev) => ({ ...prev, focused: ws }))
@@ -318,14 +333,25 @@ function BarWindow() {
         )
       case 'clock':
         return <BarClock key={id}>{formatBarClock(now)}</BarClock>
-      default:
-        return null
+      default: {
+        if (!isWidgetModuleId(id)) return null
+        const w = snap!.widgets?.find((w) => `widget:${w.id}` === id)
+        return w ? (
+          <BarWidgetCell
+            key={id}
+            widget={w}
+            now={now}
+            hover={hover}
+            onAction={runWidgetAction}
+          />
+        ) : null
+      }
     }
   }
 
   // Zones are explicit (Settings → Menubar board); a notched display renders
   // no center zone — the camera housing owns it.
-  const zones = displayZones(cfg, notched)
+  const zones = displayZones(cfg, notched, snap?.widgets ?? [])
   const render = (list: { id: string; enabled: boolean }[]) =>
     list.filter((m) => m.enabled).map((m) => moduleNode(m.id))
   return (

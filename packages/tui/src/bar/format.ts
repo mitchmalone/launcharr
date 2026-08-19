@@ -185,3 +185,30 @@ export function wifiSignalLabel(rssi: number | null): string {
   const word = ['', 'poor', 'fair', 'good', 'excellent'][wifiBars(rssi)]
   return `${rssi} dBm · ${word}`
 }
+
+/* ---- widgets ---------------------------------------------------------- */
+
+/** The tones a widget may name (docs/WIDGETS.md); anything else is plain. */
+export const WIDGET_TONES = ['ok', 'warn', 'error', 'muted', 'accent'] as const
+
+/** `bar-tone-<tone>` for a known tone, '' for none/unknown — cells and dots. */
+export function widgetToneClass(tone: string | null | undefined): string {
+  return tone && (WIDGET_TONES as readonly string[]).includes(tone)
+    ? `bar-tone-${tone}`
+    : ''
+}
+
+/**
+ * The card's health line for a failing widget: what went wrong and when it
+ * last worked. Healthy widgets get null (no line).
+ */
+export function widgetHealth(
+  error: string | null,
+  lastOk: number | null,
+  now: Date,
+): string | null {
+  if (!error) return null
+  return lastOk == null
+    ? error
+    : `${error} · last ok ${agentAge(lastOk, now)} ago`
+}

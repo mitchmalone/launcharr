@@ -554,6 +554,12 @@ const MODULE_LABELS: Record<string, string> = {
   battery: 'Battery',
 }
 
+/** Built-ins by name; a user widget (`widget:<id>`, docs/WIDGETS.md) shows
+ * its id with a "widget" tag — Settings doesn't know the live manifest set. */
+const moduleLabel = (id: string) =>
+  MODULE_LABELS[id] ??
+  (id.startsWith('widget:') ? `${id.slice('widget:'.length)} · widget` : id)
+
 const ZONE_LABELS: Record<ZoneName, string> = {
   left: 'Left',
   center: 'Center',
@@ -628,7 +634,7 @@ function ZoneBoard({
       onDragEnd={() => setDragId(null)}
     >
       <GripVertical size={14} className="grip" aria-hidden />
-      <span className="grow">{MODULE_LABELS[m.id] ?? m.id}</span>
+      <span className="grow">{moduleLabel(m.id)}</span>
       {inZone && (
         <button
           type="button"

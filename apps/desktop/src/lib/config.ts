@@ -68,16 +68,28 @@ export const DEFAULT_BAR_LAYOUT: BarZones = {
   right: ['wifi', 'awake', 'battery'].map(module),
 }
 
+/** Layout id for a user widget (docs/WIDGETS.md): `widget:<id>`. */
+export const widgetModuleId = (id: string) => `widget:${id}`
+export const isWidgetModuleId = (id: string) => id.startsWith('widget:')
+
+/** What normalization needs to know about a discovered widget. */
+export type WidgetHome = { id: string; zone: string }
+
 /** Same normalization everywhere (bar renderer + settings): drop unknown ids,
  * append known-but-missing ids enabled into their default zone (falling back
- * to right, where new status widgets belong). */
-export function normalizeBarZones(zones: BarZones): BarZones {
+ * to right, where new status widgets belong). Widget ids (`widget:*`) are
+ * kept wherever the layout has them — Settings may not know the live set —
+ * and discovered widgets missing from the layout join their manifest zone. */
+export function normalizeBarZones(
+  zones: BarZones,
+  widgets: WidgetHome[] = [],
+): BarZones {
   const known = new Set<string>(BAR_MODULE_IDS)
   const seen = new Set<string>()
   const out: BarZones = { left: [], center: [], right: [] }
   for (const zone of ZONE_NAMES) {
     for (const m of zones[zone]) {
-      if (known.has(m.id) && !seen.has(m.id)) {
+      if ((known.has(m.id) || isWidgetModuleId(m.id)) && !seen.has(m.id)) {
         seen.add(m.id)
         out[zone].push(m)
       }
@@ -90,14 +102,26 @@ export function normalizeBarZones(zones: BarZones): BarZones {
       'right'
     out[home].push(module(id))
   }
+  for (const w of widgets) {
+    const id = widgetModuleId(w.id)
+    if (seen.has(id)) continue
+    seen.add(id)
+    const home = (ZONE_NAMES as string[]).includes(w.zone)
+      ? (w.zone as ZoneName)
+      : 'right'
+    out[home].push(module(id))
+  }
   return out
 }
 
 /** The arrangement a notched display uses: the explicit one when set, else
  * the main layout — normalized, then center folded into the head of the right
  * zone (a notched bar has no center; the camera housing owns it). */
-export function notchedZones(bar: BarConfig): BarZones {
-  const base = normalizeBarZones(bar.notchedLayout ?? bar.layout)
+export function notchedZones(
+  bar: BarConfig,
+  widgets: WidgetHome[] = [],
+): BarZones {
+  const base = normalizeBarZones(bar.notchedLayout ?? bar.layout, widgets)
   return {
     left: base.left,
     center: [],

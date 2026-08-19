@@ -48,6 +48,7 @@ mod system_commands;
 mod terminal;
 mod tray;
 mod usage;
+mod widgets;
 mod wifi;
 
 /// `--extract-icons <dir>` child-process entry (see icons.rs for why this exists).

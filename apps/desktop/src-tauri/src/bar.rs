@@ -166,6 +166,7 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     crate::bar_constrain::prevent_app_nap();
     if !THREADS_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
         crate::bar_modules::start();
+        crate::widgets::start(app.clone());
         watch(app.clone());
         watch_triggers(app.clone());
         watch_mouse(app.clone());
@@ -380,15 +381,30 @@ fn watch_triggers(app: AppHandle) {
             eprintln!("[launcharr bar] trigger watch failed: {e}");
             return;
         }
-        while rx.recv().is_ok() {
+        while let Ok(first) = rx.recv() {
+            let mut events = vec![first];
             // Coalesce bursts, then push a fresh snapshot immediately.
-            while rx
-                .recv_timeout(std::time::Duration::from_millis(30))
-                .is_ok()
-            {}
+            while let Ok(ev) = rx.recv_timeout(std::time::Duration::from_millis(30)) {
+                events.push(ev);
+            }
+            // `widget.<id>` files ask that widget to tick now (docs/WIDGETS.md).
+            for id in events
+                .iter()
+                .filter_map(|ev| ev.as_ref().ok())
+                .flat_map(|ev| ev.paths.iter())
+                .filter_map(|p| p.file_name().and_then(|n| n.to_str()))
+                .filter_map(widget_trigger_id)
+            {
+                crate::widgets::poke(id);
+            }
             push(&app);
         }
     });
+}
+
+/// `widget.<id>` → `<id>`; anything else is a plain bar poke.
+fn widget_trigger_id(name: &str) -> Option<&str> {
+    name.strip_prefix("widget.").filter(|id| !id.is_empty())
 }
 
 /// Displays come and go (dock/undock) and mode changes strand the bar at stale
@@ -420,6 +436,8 @@ pub struct BarSnapshot {
     pub agents: Vec<crate::agents::AgentSession>,
     /// Keep-awake session state (power.rs) — cheap in-memory read.
     pub awake: crate::power::AwakeState,
+    /// User widgets (widgets.rs) — last view per widget, in-memory read.
+    pub widgets: Vec<crate::widgets::WidgetState>,
 }
 
 pub fn snapshot() -> BarSnapshot {
@@ -453,6 +471,7 @@ pub fn snapshot() -> BarSnapshot {
         wifi: crate::bar_modules::wifi(),
         agents: crate::agents::list(),
         awake: crate::power::state(),
+        widgets: crate::widgets::snapshot(),
     }
 }
 

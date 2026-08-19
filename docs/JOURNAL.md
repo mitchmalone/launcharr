@@ -6,6 +6,22 @@
 
 ---
 
+### 2026-08-19 · Widgets: `secret shared/trmnl/api_key` no longer resolves; `zsh -ic` needed for `secret`
+
+The old Sketchybar TRMNL plugin read its token through the age `decrypt.sh` helper with id
+`shared/trmnl/api_key`; that helper now returns `{}` and the current `secret` (an
+Infisical-backed zsh function) has no `shared` project — so the ported `trmnl.py` widget
+ticks `{"hidden": true}` until the key gets a home (set `TRMNL_API_SECRET_ID` or
+`TRMNL_API_KEY`). `secret` is a function in `.zshrc`, so widgets call it as
+`zsh -ic 'secret <id>'` (~1 s, fine at 5 min); an "unknown project" line on stderr is
+easy to mistake for a value when piping `2>&1`. Also: `secret` failing prints to stderr and
+exits 1 — the widget treats empty stdout as "no key", never as an error cell.
+
+Serde will happily deserialize a struct from `[]` (empty sequence) — `parse_view("[]")`
+succeeded; don't write a test that expects it to fail. And `screencapture` from an agent
+shell is TCC-blocked ("could not create image from display"), so bar rendering was proven
+with `renderToStaticMarkup` tests in the kit rather than a screenshot.
+
 ### 2026-08-19 · The 80 % charge limit lives in `/Library/Preferences/com.apple.powerd.charging.plist`
 
 Nothing user-facing reports it — `pmset -g batt` just says "AC attached; not charging" at

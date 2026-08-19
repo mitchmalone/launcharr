@@ -66,9 +66,12 @@ export {
   BarClock,
   BarFrontApp,
   BarHoverCell,
+  BarWidgetCard,
+  BarWidgetCell,
   BarWifiCard,
   BarWifiCell,
   BarWorkspaces,
+  WidgetGlyph,
   ICON_PROPS,
   BATTERY_ICONS,
   formatHold,
@@ -90,6 +93,9 @@ export {
   groupAgents,
   timeLeft,
   toneClass,
+  WIDGET_TONES,
+  widgetHealth,
+  widgetToneClass,
 } from './bar/format'
 export type { CellTone } from './bar/format'
 export type {
@@ -99,7 +105,13 @@ export type {
   BarHoverApi,
   BarModule,
   BarSnapshot,
+  BarWidget,
   BarZones,
   BatteryDetail,
+  WidgetAction,
+  WidgetCard,
+  WidgetRow,
+  WidgetTone,
+  WidgetView,
   WifiDetail,
 } from './bar/types'

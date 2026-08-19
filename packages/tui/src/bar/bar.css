@@ -452,3 +452,128 @@
   color: var(--dim, #8b90a5);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- widgets (docs/WIDGETS.md) --------------------------------------- */
+
+/* Tones a widget may name for its cell and its card dots. Scoped like the
+ * other module states so they outrank .bar-cell (JOURNAL 2026-08-16); the
+ * card rules below re-declare them for dots, which sit outside a zone. */
+.bar-right .bar-tone-ok,
+.bar-left .bar-tone-ok,
+.bar-center .bar-tone-ok {
+  color: #00c853;
+}
+.bar-right .bar-tone-warn,
+.bar-left .bar-tone-warn,
+.bar-center .bar-tone-warn {
+  color: var(--bang, #d29922);
+}
+.bar-right .bar-tone-error,
+.bar-left .bar-tone-error,
+.bar-center .bar-tone-error {
+  color: var(--danger, #f85149);
+}
+.bar-right .bar-tone-muted,
+.bar-left .bar-tone-muted,
+.bar-center .bar-tone-muted {
+  color: var(--dim, #8b90a5);
+}
+.bar-right .bar-tone-accent,
+.bar-left .bar-tone-accent,
+.bar-center .bar-tone-accent {
+  color: var(--accent, #9db2ff);
+}
+
+.bar-widget {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Right-anchored like battery/wifi: widgets default to the right zone. A
+ * left-zone widget's card would want `left: 0` — revisit when one exists. */
+.bar-widget-card {
+  right: 0;
+  min-width: 260px;
+  max-width: 60ch;
+}
+
+.bar-widget-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.bar-widget-head > div:first-of-type {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.bar-widget-sub {
+  margin-top: 1px;
+}
+
+.bar-widget-health {
+  white-space: normal;
+  word-break: break-word;
+  margin: 2px 0 4px;
+}
+
+.bar-widget-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.bar-widget-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  width: 100%;
+  color: var(--fg, #dde1f0);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bar-widget-row-action {
+  cursor: pointer;
+}
+
+.bar-widget-row-action:hover .bar-widget-text {
+  text-decoration: underline;
+}
+
+.bar-widget-dot {
+  flex-shrink: 0;
+  color: var(--dim, #8b90a5);
+}
+
+.bar-widget-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-widget-hint {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--dim, #8b90a5);
+}
+
+/* Dots and the health line live in a card, outside any zone. */
+.bar-card .bar-tone-ok {
+  color: #00c853;
+}
+.bar-card .bar-tone-warn {
+  color: var(--bang, #d29922);
+}
+.bar-card .bar-tone-error {
+  color: var(--danger, #f85149);
+}
+.bar-card .bar-tone-muted {
+  color: var(--dim, #8b90a5);
+}
+.bar-card .bar-tone-accent {
+  color: var(--accent, #9db2ff);
+}

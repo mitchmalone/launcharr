@@ -90,6 +90,61 @@ export interface AwakeHolder {
   display: boolean
 }
 
+/* ---- widgets (docs/WIDGETS.md) --------------------------------------- */
+
+/** The scripts action vocabulary (mirrors ScriptAction in scripts.rs). */
+export type WidgetAction =
+  | { type: 'open'; value: string }
+  | { type: 'copy'; value: string }
+  | { type: 'none' }
+
+/** Cell and dot tones a widget may ask for; anything else renders plain. */
+export type WidgetTone = 'ok' | 'warn' | 'error' | 'muted' | 'accent'
+
+/** Mirrors WidgetRow in widgets.rs — one line of a widget's card. */
+export interface WidgetRow {
+  dot?: WidgetTone | string | null
+  text: string
+  hint?: string | null
+  action?: WidgetAction | null
+}
+
+/** Mirrors WidgetCard in widgets.rs. */
+export interface WidgetCard {
+  title?: string | null
+  subtitle?: string | null
+  rows?: WidgetRow[]
+  hint?: string | null
+}
+
+/** Mirrors WidgetView in widgets.rs — what one successful tick painted. */
+export interface WidgetView {
+  /** No cell this tick (a credentialed widget without its credential). */
+  hidden?: boolean
+  /** lucide icon name (kebab-case). */
+  icon?: string | null
+  label?: string | null
+  tone?: WidgetTone | string | null
+  click?: WidgetAction | null
+  card?: WidgetCard | null
+}
+
+/** Mirrors WidgetState in widgets.rs — a user widget as the bar sees it. */
+export interface BarWidget {
+  id: string
+  name: string
+  zone: string
+  /** Manifest icon: the glyph before the first tick. */
+  icon: string | null
+  /** Last successful tick; kept through failures. */
+  view: WidgetView | null
+  /** Why the last tick failed; null while healthy. */
+  error: string | null
+  /** Epoch seconds. */
+  lastOk: number | null
+  updatedAt: number | null
+}
+
 /** One 1 Hz push from bar.rs. */
 export interface BarSnapshot {
   workspaces: string[]
@@ -103,6 +158,8 @@ export interface BarSnapshot {
   agents: AgentSession[]
   /** Optional so fixtures without a keep-awake session stay valid. */
   awake?: AwakeBarState | null
+  /** User widgets (widgets.rs); optional so older fixtures stay valid. */
+  widgets?: BarWidget[]
 }
 
 /**

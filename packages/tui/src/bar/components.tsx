@@ -11,6 +11,7 @@ import {
   WifiOff,
   WifiZero,
 } from 'lucide-react'
+import { DynamicIcon, type IconName } from 'lucide-react/dynamic'
 import type { ReactNode } from 'react'
 
 import {
@@ -22,6 +23,8 @@ import {
   batteryState,
   groupAgents,
   timeLeft,
+  widgetHealth,
+  widgetToneClass,
   wifiBars,
   wifiSignalLabel,
 } from './format'
@@ -30,7 +33,9 @@ import type {
   AwakeHolder,
   BarHoverApi,
   BarSnapshot,
+  BarWidget,
   BatteryDetail,
+  WidgetAction,
   WifiDetail,
 } from './types'
 
@@ -742,10 +747,166 @@ export function BarWifiCell({
   )
 }
 
+/* ---- widgets (docs/WIDGETS.md) --------------------------------------- */
+
+/** Glyph for a widget: any lucide icon by kebab-case name, `puzzle` if none. */
+export function WidgetGlyph({
+  name,
+  size = ICON_PROPS.size,
+}: {
+  name: string | null | undefined
+  size?: number
+}) {
+  const props = { ...ICON_PROPS, size }
+  return <DynamicIcon name={(name || 'puzzle') as IconName} {...props} />
+}
+
+/**
+ * A widget's card: the tick's title/subtitle, dot-rows (each optionally a
+ * click), a hint, and — when the last tick failed — the health line. Purely
+ * what the widget said, styled once here.
+ */
+export function BarWidgetCard({
+  widget,
+  now,
+  onAction,
+  cardRef,
+}: {
+  widget: BarWidget
+  now: Date
+  onAction?: (action: WidgetAction) => void
+  cardRef?: (el: HTMLElement | null) => void
+}) {
+  const view = widget.view
+  const card = view?.card
+  const health = widgetHealth(widget.error, widget.lastOk, now)
+  const rows = card?.rows ?? []
+  return (
+    <BarCard variant="widget" cardRef={cardRef}>
+      <div className="bar-widget-head">
+        <WidgetGlyph name={view?.icon ?? widget.icon} size={20} />
+        <div>
+          <BarCardTitle>{card?.title ?? widget.name}</BarCardTitle>
+          {card?.subtitle && (
+            <div className="bar-card-dim bar-widget-sub">{card.subtitle}</div>
+          )}
+        </div>
+      </div>
+      {health && (
+        <div className="bar-widget-health bar-tone-error">{health}</div>
+      )}
+      {rows.length > 0 && (
+        <div className="bar-widget-rows">
+          {rows.map((row, i) => {
+            const body = (
+              <>
+                {row.dot != null && (
+                  <span
+                    className={`bar-widget-dot ${widgetToneClass(row.dot)}`}
+                  >
+                    ●
+                  </span>
+                )}
+                <span className="bar-widget-text">{row.text}</span>
+                {row.hint && (
+                  <span className="bar-widget-hint">{row.hint}</span>
+                )}
+              </>
+            )
+            const action = row.action
+            return action && action.type !== 'none' && onAction ? (
+              <button
+                key={i}
+                type="button"
+                className="bar-widget-row bar-widget-row-action"
+                onClick={() => onAction(action)}
+              >
+                {body}
+              </button>
+            ) : (
+              <div key={i} className="bar-widget-row">
+                {body}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {(card?.hint || (!view && !health)) && (
+        <BarCardHint>{card?.hint ?? 'waiting for the first tick…'}</BarCardHint>
+      )}
+    </BarCard>
+  )
+}
+
+/**
+ * A user widget's cell: glyph (+ optional short label) in the tick's tone; a
+ * failing widget keeps its last view but wears the error tone. With `hover` it
+ * opens the widget card; the site strip and other hover-less consumers get
+ * the plain cell.
+ */
+export function BarWidgetCell({
+  widget,
+  now,
+  hover,
+  cardHeight = 160,
+  onAction,
+}: {
+  widget: BarWidget
+  now: Date
+  hover?: BarHoverApi
+  cardHeight?: number
+  onAction?: (action: WidgetAction) => void
+}) {
+  const view = widget.view
+  if (view?.hidden) return null
+  const tone = widget.error ? 'error' : view?.tone
+  const className = `bar-cell ${widgetToneClass(tone)}`
+  const body = (
+    <>
+      <WidgetGlyph name={view?.icon ?? widget.icon} />
+      {view?.label}
+    </>
+  )
+  if (!hover) {
+    return (
+      <BarCell className={className} title={widget.name}>
+        {body}
+      </BarCell>
+    )
+  }
+  const click = view?.click
+  return (
+    <BarHoverCell
+      id={`widget:${widget.id}`}
+      cardHeight={cardHeight}
+      hover={hover}
+      className={className}
+      wrapperClassName="bar-widget"
+      onClick={
+        click && click.type !== 'none' && onAction
+          ? () => onAction(click)
+          : undefined
+      }
+      card={
+        <BarWidgetCard
+          widget={widget}
+          now={now}
+          onAction={onAction}
+          cardRef={hover.cardRef}
+        />
+      }
+    >
+      {body}
+    </BarHoverCell>
+  )
+}
+
 export type {
   AgentSession,
   BarHoverApi,
   BarSnapshot,
+  BarWidget,
   BatteryDetail,
+  WidgetAction,
   WifiDetail,
 }

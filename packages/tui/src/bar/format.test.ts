@@ -12,6 +12,8 @@ import {
   groupAgents,
   timeLeft,
   toneClass,
+  widgetHealth,
+  widgetToneClass,
   wifiBars,
   wifiSignalLabel,
 } from './format'
@@ -260,5 +262,25 @@ describe('wifi strength', () => {
     expect(wifiSignalLabel(null)).toBe('')
     expect(wifiSignalLabel(-66)).toBe('-66 dBm · good')
     expect(wifiSignalLabel(-85)).toBe('-85 dBm · poor')
+  })
+})
+
+describe('widgets', () => {
+  it('maps known tones to classes and ignores the rest', () => {
+    expect(widgetToneClass('ok')).toBe('bar-tone-ok')
+    expect(widgetToneClass('error')).toBe('bar-tone-error')
+    expect(widgetToneClass('purple')).toBe('')
+    expect(widgetToneClass(null)).toBe('')
+  })
+
+  it('describes health only when failing', () => {
+    const now = new Date(1_000_000 * 1000)
+    expect(widgetHealth(null, 999_000, now)).toBeNull()
+    expect(widgetHealth('timed out after 10s', null, now)).toBe(
+      'timed out after 10s',
+    )
+    expect(widgetHealth('exit 1: boom', 1_000_000 - 180, now)).toBe(
+      'exit 1: boom · last ok 3m ago',
+    )
   })
 })

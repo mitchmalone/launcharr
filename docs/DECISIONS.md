@@ -5,6 +5,32 @@
 
 ---
 
+### 2026-08-19 · Bar widgets are the scripts protocol pointed at the bar — data-driven, never code
+
+- **Decision.** User-built bar cells ("widgets", the ROADMAP's Module API) are executables
+  in `~/.config/launcharr/widgets/` answering `manifest` / `tick` with JSON — the same
+  contract philosophy as `docs/SCRIPTS.md`, full text in `docs/WIDGETS.md`. A tick emits
+  **data only** (lucide icon name, short label, a tone from a fixed set, a click action,
+  a card of dot-rows); one generic `BarWidgetCell`/`BarWidgetCard` in `@launcharr/tui`
+  renders every widget. No widget-supplied HTML/JS/React, ever. Rust (`widgets.rs`) runs
+  ticks on their own threads with a hard timeout, keeps the last view per widget, and
+  ships them in `BarSnapshot.widgets`; failures keep the last view and paint the cell
+  `error` with the reason (fail-visible). Refresh: interval, `triggers/widget.<id>`,
+  or any change to the dir (live add/edit/remove). Widgets join `bar.layout` as
+  `widget:<id>`. Network + secrets are the widget's own business (2026-08-15 stands);
+  a credentialed widget without its credential answers `{"hidden": true}` — no cell, no
+  request (2026-08-16 stands, generalised). No new Tauri command: cell/row clicks reuse
+  `script_action`.
+- **Why.** Data-driven keeps invariant 10 free (the site renders the same widget from a
+  fixture), keeps third-party code out of the webview, and keeps every widget wearing
+  the theme; the four retired Sketchybar modules (uptime, GitHub Actions, Vercel, TRMNL)
+  all fit the shape exactly, so it was proven by porting them (`apps/desktop/widgets/`).
+  Rejected: widget-owned rendering (a second UI copy per widget, invariant 10's exact
+  failure mode) and a static manifest file (an executable that prints one is strictly
+  more hackable and matches scripts). Icons come from lucide by name via
+  `lucide-react/dynamic` — ~1,700 tiny chunks in the bundle, only the used ones load;
+  custom SVG icons wait for a real need.
+
 ### 2026-08-19 · The strip is glyph-only: information lives in the hover, not the bar
 
 - **Decision.** Bar cells carry a glyph and a colour, nothing else, unless a value is an

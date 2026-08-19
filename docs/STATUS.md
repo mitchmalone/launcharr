@@ -16,7 +16,15 @@ strength arcs, no SSID, no awake timer, battery by lucide tier + colour from the
 charge (see the first three bullets below). launcharr is a keyboard control surface:
 launcher + bar + panels + agents + desktop layer, all in Mitch's daily use.
 
-**Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": module API, settings-in-panels,
+**Widgets landed 2026-08-19 (branch `worktree-widgets`, unreleased, running):** the
+Module API is real — `~/.config/launcharr/widgets/` executables answer `manifest`/`tick`
+JSON, one generic cell + card renders them, live dir watch, `triggers/widget.<id>`;
+uptime / github-actions / vercel (real API) / trmnl ported from Sketchybar as the
+reference set (`apps/desktop/widgets/`, `docs/WIDGETS.md`, DECISIONS 2026-08-19).
+**Hands-check pending:** the four cells + cards on the live bar; trmnl is hidden until
+its key resolves (JOURNAL 2026-08-19).
+
+**Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widgets ⏎ panel, settings-in-panels,
 per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD
 revision). Open hands-checks: hover a cell while a session has an Agent running (subagent
 lines), the awake "resumed" toast, wifi arcs at 14 px against the theme, unplug/replug a

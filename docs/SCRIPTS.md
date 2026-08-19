@@ -58,6 +58,11 @@ Called on every keystroke (debounced ~120ms). Print results to stdout and exit 0
   script named `json.py`/`string.py` shadows the stdlib for its neighbours. Bundled scripts
   `del sys.path[0]` first; do the same (and don't name scripts after stdlib modules).
 
+## Widgets
+
+The bar has the same idea for cells: `docs/WIDGETS.md` — executables in
+`~/.config/launcharr/widgets/` answering `manifest` / `tick`.
+
 ## Built-in triggers
 
 `clip` (clipboard history) is a built-in, not a script — its trigger participates in the
