@@ -5,6 +5,11 @@
 
 pub fn breadcrumb(tag: &str, line: &str) {
     eprintln!("[launcharr {tag}] {line}");
+    // Tests exercise the real code paths (power.rs arms real assertions);
+    // their breadcrumbs must not land in the developer's log.
+    if cfg!(test) {
+        return;
+    }
     if let Some(home) = dirs::home_dir() {
         let path = home.join("Library/Logs/launcharr.log");
         if let Ok(mut f) = std::fs::OpenOptions::new()

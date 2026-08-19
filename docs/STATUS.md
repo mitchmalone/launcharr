@@ -24,7 +24,10 @@ below and plans/done/ready-column-2026-08-17.md; native bits await a hands-check
   launch (deadline ahead / condition / manual ≤ 12 h / same boot), toast + "since
   relaunch" in the panel. Bar wifi cell is glyph-only, four lucide arcs by RSSI
   (`corewlan.rs`, no permission); SSID + "−66 dBm · good" moved into the hover card. Awake
-  cell is glyph-only too — elapsed/remaining live in its card.
+  cell is glyph-only too — elapsed/remaining live in its card. **Battery cell** is
+  glyph-only as well: lucide tier + colour from the _adjusted charge_ (the macOS charge
+  limit read from `com.apple.powerd.charging.plist` counts as full), blue while charging,
+  red tier alone prints the number; card shows the true % and "limit 80%".
 - **Daemon filter + subagents, 2026-08-19** (plans/done/agent-daemon-and-subagents.md,
   JOURNAL 2026-08-19): Claude's background daemon (`bg-spare`, pty sessions) no longer
   gets cells — the hook flags `background`, `apply` won't create from it without a prompt.

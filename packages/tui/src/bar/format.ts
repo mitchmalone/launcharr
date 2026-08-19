@@ -110,15 +110,62 @@ export type CellTone = 'normal' | 'warn' | 'danger'
 export const toneClass = (tone: CellTone) =>
   tone === 'normal' ? 'bar-cell' : `bar-cell bar-${tone}`
 
-export function batteryTone(
-  pct: number | null,
-  onAc: boolean,
+/**
+ * "Adjusted charge": with a charge limit set (Battery → "Limit to 80 %"), the
+ * limit is what full means — 80 % on a limited pack reads as 100 %. The card
+ * keeps the true percentage; only the strip's glyph is judged against it.
+ */
+export function adjustedPct(pct: number, chargeLimit: number | null): number {
+  if (chargeLimit == null || chargeLimit <= 0 || chargeLimit >= 100) return pct
+  return Math.min(100, Math.round((pct / chargeLimit) * 100))
+}
+
+export type BatteryGlyph = 'charging' | 'full' | 'medium' | 'low' | 'warning'
+/** Cell colour: charging is blue, healthy green, running down amber, empty red. */
+export type BatteryTone = 'charging' | 'good' | 'warn' | 'danger'
+
+export interface BatteryLook {
+  glyph: BatteryGlyph
+  tone: BatteryTone
+  /** Judged against the charge limit — what the strip is drawn from. */
+  adjusted: number
+  /** Only the red tier prints its number next to the glyph. */
+  showPct: boolean
+}
+
+/**
+ * What the strip draws for a battery, from the adjusted charge (2026-08-19):
+ * charging → blue (the charging glyph from 90 %, else the level glyph);
+ * otherwise full ≥ 50 % green, medium < 50 % and low < 25 % amber,
+ * warning < 10 % red with the percentage. On AC at the limit and not
+ * charging is simply "full" — a limited pack that has reached its limit
+ * is as full as it gets.
+ */
+export function batteryLook(
+  pct: number,
   charging: boolean,
-): CellTone {
-  if (charging || pct == null || onAc) return 'normal'
-  if (pct < 20) return 'danger'
-  if (pct < 50) return 'warn'
-  return 'normal'
+  chargeLimit: number | null,
+): BatteryLook {
+  const adjusted = adjustedPct(pct, chargeLimit)
+  const level: BatteryGlyph =
+    adjusted >= 50
+      ? 'full'
+      : adjusted >= 25
+        ? 'medium'
+        : adjusted >= 10
+          ? 'low'
+          : 'warning'
+  if (charging) {
+    return {
+      glyph: adjusted >= 90 ? 'charging' : level,
+      tone: 'charging',
+      adjusted,
+      showPct: false,
+    }
+  }
+  const tone: BatteryTone =
+    level === 'full' ? 'good' : level === 'warning' ? 'danger' : 'warn'
+  return { glyph: level, tone, adjusted, showPct: level === 'warning' }
 }
 
 /** Wi-Fi bars from RSSI (dBm): 4 = full, 1 = poor; unknown reads as full so a

@@ -3,6 +3,7 @@ import {
   BatteryFull,
   BatteryLow,
   BatteryMedium,
+  BatteryWarning,
   Coffee,
   Wifi,
   WifiHigh,
@@ -17,11 +18,10 @@ import {
   agentGlyph,
   agentLocation,
   agentStateLabel,
+  batteryLook,
   batteryState,
-  batteryTone,
   groupAgents,
   timeLeft,
-  toneClass,
   wifiBars,
   wifiSignalLabel,
 } from './format'
@@ -136,16 +136,14 @@ export const ICON_PROPS = {
 } as const
 
 /** Which battery glyph a reading gets. Lives here so no consumer re-derives it. */
-export function batteryIcon(
-  pct: number | null,
-  onAc: boolean,
-  charging: boolean,
-) {
-  if (charging || onAc) return BatteryCharging
-  if (pct != null && pct >= 75) return BatteryFull
-  if (pct != null && pct >= 35) return BatteryMedium
-  return BatteryLow
-}
+/** The lucide icon for a battery glyph tier (format.ts `batteryLook`). */
+export const BATTERY_ICONS = {
+  charging: BatteryCharging,
+  full: BatteryFull,
+  medium: BatteryMedium,
+  low: BatteryLow,
+  warning: BatteryWarning,
+} as const
 
 /** A plain right-zone cell: icon + label, tone class chosen by the caller. */
 export function BarCell({
@@ -373,6 +371,9 @@ export function BarBatteryCard({
           <BarCardTitle>Battery</BarCardTitle>
           <div className="bar-card-dim bar-battery-state">
             {batteryState(d)}
+            {d.chargeLimit != null &&
+              d.chargeLimit < 100 &&
+              ` · limit ${d.chargeLimit}%`}
           </div>
         </div>
         <div className="bar-battery-pct">{d.pct}%</div>
@@ -442,6 +443,7 @@ export function BarBatteryCell({
   pct,
   onAc,
   charging,
+  chargeLimit = null,
   detail,
   hover,
   cardHeight = 250,
@@ -450,32 +452,35 @@ export function BarBatteryCell({
   pct: number | null
   onAc: boolean
   charging: boolean
+  /** The user's charge limit (e.g. 80) — the strip judges fullness against it. */
+  chargeLimit?: number | null
   detail: BatteryDetail | null
   hover: BarHoverApi
   cardHeight?: number
   onClick?: () => void
 }) {
-  const Icon = batteryIcon(pct, onAc, charging)
-
   if (pct == null) {
     // Desktop Mac: no pack to report on, so no card either.
     return onAc ? (
       <BarCell>
-        <Icon {...ICON_PROPS} />
+        <BatteryCharging {...ICON_PROPS} />
         AC
       </BarCell>
     ) : null
   }
 
-  const tone = batteryTone(pct, onAc, charging)
-  const live = detail && { ...detail, pct, onAc, charging }
+  // Glyph only — colour and lucide tier carry the level; the number shows
+  // only in the red tier (minimal is the theme, 2026-08-19).
+  const look = batteryLook(pct, charging, chargeLimit)
+  const Icon = BATTERY_ICONS[look.glyph]
+  const live = detail && { ...detail, pct, onAc, charging, chargeLimit }
 
   return (
     <BarHoverCell
       id="battery"
       cardHeight={cardHeight}
       hover={hover}
-      className={toneClass(tone)}
+      className={`bar-cell bar-battery-${look.tone}`}
       wrapperClassName="bar-battery"
       onClick={onClick}
       card={
@@ -483,14 +488,14 @@ export function BarBatteryCell({
           <BarBatteryCard
             detail={live}
             icon={<Icon size={20} strokeWidth={2.2} aria-hidden />}
-            low={tone === 'danger'}
+            low={look.tone === 'danger'}
             cardRef={hover.cardRef}
           />
         )
       }
     >
       <Icon {...ICON_PROPS} />
-      {pct}%
+      {look.showPct && `${pct}%`}
     </BarHoverCell>
   )
 }

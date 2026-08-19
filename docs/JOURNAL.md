@@ -6,6 +6,17 @@
 
 ---
 
+### 2026-08-19 · The 80 % charge limit lives in `/Library/Preferences/com.apple.powerd.charging.plist`
+
+Nothing user-facing reports it — `pmset -g batt` just says "AC attached; not charging" at
+80 %, `ioreg` has no limit key. The setting is a world-readable plist whose `policies`
+value is itself an NSKeyedArchiver plist; the `ChargeCtrlPolicy` object carries
+`soclimit` (80), `reason` (`manualChargeLimit`) and `terminated`. Two-layer parse with the
+`plist` crate already in the tree, cached a minute. This is the bar's "adjusted charge":
+the strip judges fullness against the limit, the card keeps the true number. Also today:
+persistence proved itself in the field — an "until agents idle" hold armed at 13:06
+resumed at 13:11 across a rebuild/relaunch (breadcrumbs in `~/Library/Logs/launcharr.log`).
+
 ### 2026-08-19 · A keep-awake hold now survives quit/reinstall — persist intent at arm, not at quit
 
 Every rebuild-and-`ditto` cycle lost the running `awake` timer: IOKit assertions are

@@ -306,6 +306,7 @@ function BarWindow() {
             pct={snap!.batteryPct}
             onAc={snap!.onAc}
             charging={snap!.charging}
+            chargeLimit={snap!.chargeLimit}
             detail={batteryDetail}
             hover={hover}
             onClick={() =>

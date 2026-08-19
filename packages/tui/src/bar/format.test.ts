@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  adjustedPct,
   agentAge,
   agentGlyph,
   agentLocation,
   agentStateLabel,
+  batteryLook,
   batteryState,
-  batteryTone,
   formatBarClock,
   groupAgents,
   timeLeft,
@@ -39,6 +40,7 @@ const battery = (over: Partial<BatteryDetail> = {}): BatteryDetail => ({
   onAc: false,
   charging: false,
   fullyCharged: false,
+  chargeLimit: null,
   cycleCount: null,
   capacityWh: null,
   designWh: null,
@@ -183,18 +185,60 @@ describe('batteryState', () => {
   })
 })
 
+describe('adjusted charge', () => {
+  it('treats the charge limit as full, and no limit as identity', () => {
+    expect(adjustedPct(80, 80)).toBe(100)
+    expect(adjustedPct(40, 80)).toBe(50)
+    expect(adjustedPct(64, null)).toBe(64)
+    expect(adjustedPct(64, 100)).toBe(64)
+    expect(adjustedPct(85, 80)).toBe(100)
+  })
+})
+
+describe('battery look', () => {
+  it('draws the level tiers from the adjusted charge', () => {
+    expect(batteryLook(80, false, 80)).toMatchObject({
+      glyph: 'full',
+      tone: 'good',
+      showPct: false,
+    })
+    expect(batteryLook(64, false, null)).toMatchObject({
+      glyph: 'full',
+      tone: 'good',
+    })
+    expect(batteryLook(45, false, null)).toMatchObject({
+      glyph: 'medium',
+      tone: 'warn',
+    })
+    expect(batteryLook(20, false, null)).toMatchObject({
+      glyph: 'low',
+      tone: 'warn',
+    })
+    expect(batteryLook(9, false, null)).toMatchObject({
+      glyph: 'warning',
+      tone: 'danger',
+      showPct: true,
+    })
+  })
+
+  it('goes blue while charging: level glyph below 90 %, charging glyph from 90 %', () => {
+    expect(batteryLook(30, true, null)).toMatchObject({
+      glyph: 'medium',
+      tone: 'charging',
+    })
+    expect(batteryLook(95, true, null)).toMatchObject({
+      glyph: 'charging',
+      tone: 'charging',
+    })
+    // 75 % on an 80 % limit is 94 % adjusted.
+    expect(batteryLook(75, true, 80)).toMatchObject({
+      glyph: 'charging',
+      adjusted: 94,
+    })
+  })
+})
+
 describe('cell tones', () => {
-  it('warns under 50% and alarms under 20%, on battery only', () => {
-    expect(batteryTone(64, false, false)).toBe('normal')
-    expect(batteryTone(45, false, false)).toBe('warn')
-    expect(batteryTone(12, false, false)).toBe('danger')
-  })
-
-  it('stays calm while charging or on AC, however low', () => {
-    expect(batteryTone(5, false, true)).toBe('normal')
-    expect(batteryTone(5, true, false)).toBe('normal')
-  })
-
   it('emits classes the CSS actually scopes under .bar-right', () => {
     expect(toneClass('normal')).toBe('bar-cell')
     expect(toneClass('warn')).toBe('bar-cell bar-warn')

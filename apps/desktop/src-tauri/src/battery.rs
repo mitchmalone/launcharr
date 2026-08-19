@@ -35,6 +35,44 @@ pub fn cached() -> Reading {
     value
 }
 
+/// The active charge limit, if the user set one. macOS keeps it in
+/// `/Library/Preferences/com.apple.powerd.charging.plist` (world-readable): a
+/// `policies` blob that is itself an NSKeyedArchiver plist of ChargeCtrlPolicy
+/// objects — the one with `soclimit` (and not `terminated`) is the limit.
+/// Cached a minute; the file only changes when the setting does.
+pub fn charge_limit() -> Option<u8> {
+    static CACHE: Mutex<Option<(Instant, Option<u8>)>> = Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    if let Some((at, value)) = *cache {
+        if at.elapsed() < Duration::from_secs(60) {
+            return value;
+        }
+    }
+    let value = std::fs::read("/Library/Preferences/com.apple.powerd.charging.plist")
+        .ok()
+        .and_then(|bytes| plist::Value::from_reader(std::io::Cursor::new(bytes)).ok())
+        .and_then(|v| parse_charge_limit(&v));
+    *cache = Some((Instant::now(), value));
+    value
+}
+
+/// Walk the outer plist → `policies` data → archived `$objects` for a live
+/// `soclimit`. Plain function over the parsed value so it's testable.
+pub fn parse_charge_limit(outer: &plist::Value) -> Option<u8> {
+    let blob = outer.as_dictionary()?.get("policies")?.as_data()?;
+    let archive = plist::Value::from_reader(std::io::Cursor::new(blob)).ok()?;
+    let objects = archive.as_dictionary()?.get("$objects")?.as_array()?;
+    objects.iter().find_map(|o| {
+        let d = o.as_dictionary()?;
+        let limit = d.get("soclimit")?.as_signed_integer()?;
+        let terminated = d
+            .get("terminated")
+            .and_then(plist::Value::as_boolean)
+            .unwrap_or(false);
+        (!terminated && (1..=100).contains(&limit)).then_some(limit as u8)
+    })
+}
+
 /// Parse `pmset -g batt`: percentage from the first `NN%` token, AC from the
 /// "Now drawing from 'AC Power'" header, charging from the state field
 /// ("discharging" must not count).
@@ -64,6 +102,10 @@ pub struct BatteryDetail {
     pub on_ac: bool,
     pub charging: bool,
     pub fully_charged: bool,
+    /// The user's charge limit (Battery → "Limit to 80 %"), when one is set —
+    /// the strip treats that as full ("adjusted charge"); the card keeps the
+    /// true percentage. None = no limit / unknown.
+    pub charge_limit: Option<u8>,
     pub cycle_count: Option<u32>,
     /// Full-charge capacity in watt-hours (what this pack holds today).
     pub capacity_wh: Option<f64>,
@@ -104,7 +146,7 @@ pub fn detail() -> BatteryDetail {
         .ok()
         .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
         .unwrap_or_default();
-    let value = build_detail(cached(), &ioreg, &custom);
+    let value = build_detail(cached(), &ioreg, &custom, charge_limit());
     *cache = Some((Instant::now(), value.clone()));
     value
 }
@@ -114,7 +156,12 @@ const TIME_UNKNOWN: i64 = 65535;
 
 /// Assemble the card's view from a strip reading plus raw `ioreg`/`pmset`
 /// output. Pure so the whole shape is testable off captured fixtures.
-fn build_detail(reading: Reading, ioreg: &str, custom: &str) -> BatteryDetail {
+fn build_detail(
+    reading: Reading,
+    ioreg: &str,
+    custom: &str,
+    charge_limit: Option<u8>,
+) -> BatteryDetail {
     let (pct, on_ac, charging) = reading;
     let volts = ioreg_num(ioreg, "Voltage").map(|mv| mv as f64 / 1000.0);
     // mAh × V → Wh. Apple reports capacity in mAh and voltage in mV.
@@ -149,6 +196,7 @@ fn build_detail(reading: Reading, ioreg: &str, custom: &str) -> BatteryDetail {
         on_ac,
         charging,
         fully_charged: ioreg_flag(ioreg, "FullyCharged").unwrap_or(false),
+        charge_limit,
         cycle_count: ioreg_num(ioreg, "CycleCount").and_then(|c| u32::try_from(c).ok()),
         capacity_wh: wh(full),
         design_wh: wh(design),
@@ -219,6 +267,43 @@ fn parse_power_mode(custom: &str, on_ac: bool) -> Option<String> {
 mod tests {
     use super::*;
 
+    /// Build the two-layer plist macOS writes: outer dict → `policies` data →
+    /// archived `$objects` array holding a ChargeCtrlPolicy dict.
+    fn charging_plist(soclimit: i64, terminated: bool) -> plist::Value {
+        let mut policy = plist::Dictionary::new();
+        policy.insert("soclimit".into(), plist::Value::Integer(soclimit.into()));
+        policy.insert("terminated".into(), plist::Value::Boolean(terminated));
+        policy.insert("reason".into(), plist::Value::Integer(3.into()));
+        let mut archive = plist::Dictionary::new();
+        archive.insert(
+            "$objects".into(),
+            plist::Value::Array(vec![
+                plist::Value::String("$null".into()),
+                plist::Value::Dictionary(policy),
+                plist::Value::String("manualChargeLimit".into()),
+            ]),
+        );
+        let mut blob = Vec::new();
+        plist::Value::Dictionary(archive)
+            .to_writer_binary(&mut blob)
+            .unwrap();
+        let mut outer = plist::Dictionary::new();
+        outer.insert("bootSessionUUID".into(), plist::Value::String("x".into()));
+        outer.insert("policies".into(), plist::Value::Data(blob));
+        plist::Value::Dictionary(outer)
+    }
+
+    #[test]
+    fn reads_the_charge_limit_policy() {
+        assert_eq!(parse_charge_limit(&charging_plist(80, false)), Some(80));
+        assert_eq!(parse_charge_limit(&charging_plist(80, true)), None);
+        assert_eq!(parse_charge_limit(&charging_plist(0, false)), None);
+        assert_eq!(
+            parse_charge_limit(&plist::Value::Dictionary(plist::Dictionary::new())),
+            None
+        );
+    }
+
     #[test]
     fn parses_battery_discharging() {
         let out = "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=5308515)\t89%; discharging; 4:32 remaining present: true\n";
@@ -284,7 +369,7 @@ mod tests {
 
     #[test]
     fn builds_detail_while_discharging() {
-        let d = build_detail((Some(80), false, false), IOREG, CUSTOM);
+        let d = build_detail((Some(80), false, false), IOREG, CUSTOM, None);
         assert_eq!(d.cycle_count, Some(13));
         assert_eq!(d.health_pct, Some(97));
         assert_eq!(d.minutes_remaining, Some(298));
@@ -299,7 +384,7 @@ mod tests {
     #[test]
     fn charging_reads_time_to_full_and_ac_power_mode() {
         // AvgTimeToFull is the unknown sentinel here, so no estimate at all.
-        let d = build_detail((Some(80), true, true), IOREG, CUSTOM);
+        let d = build_detail((Some(80), true, true), IOREG, CUSTOM, None);
         assert_eq!(d.minutes_remaining, None);
         assert_eq!(d.power_mode.as_deref(), Some("high"));
     }
@@ -308,7 +393,7 @@ mod tests {
     fn health_never_exceeds_full() {
         // Fresh packs measure above design capacity; Apple caps the number.
         let fresh = IOREG.replace("\"DesignCapacity\"=9000", "\"DesignCapacity\"=8579");
-        let d = build_detail((Some(80), false, false), &fresh, CUSTOM);
+        let d = build_detail((Some(80), false, false), &fresh, CUSTOM, None);
         assert_eq!(d.health_pct, Some(100));
     }
 
@@ -320,7 +405,7 @@ mod tests {
 
     #[test]
     fn survives_a_machine_with_no_battery() {
-        let d = build_detail((None, true, false), "", "");
+        let d = build_detail((None, true, false), "", "", None);
         assert_eq!(
             d,
             BatteryDetail {

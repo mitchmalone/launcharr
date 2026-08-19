@@ -399,6 +399,21 @@
   color: var(--danger, #f85149);
 }
 
+/* Battery tiers (format.ts batteryLook): blue while charging, green healthy,
+ * amber running down, red nearly empty. Same greens/blues as the agent cells. */
+.bar-right .bar-battery-charging {
+  color: #00b0ff;
+}
+.bar-right .bar-battery-good {
+  color: #00c853;
+}
+.bar-right .bar-battery-warn {
+  color: var(--bang, #d29922);
+}
+.bar-right .bar-battery-danger {
+  color: var(--danger, #f85149);
+}
+
 /* ---- awake ------------------------------------------------------------ */
 
 /* Dim while sleeping normally — the one cell whose resting state is

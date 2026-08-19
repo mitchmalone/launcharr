@@ -220,6 +220,7 @@ export function demoSnapshot(nowSeconds: number, focused: string): BarSnapshot {
     batteryPct: 64,
     onAc: false,
     charging: false,
+    chargeLimit: null,
     wifi: { online: true, ssid: 'Blackbeard 5G', rssi: -58 },
     agents: demoAgents(nowSeconds),
   }

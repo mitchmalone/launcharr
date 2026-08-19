@@ -70,7 +70,7 @@ export {
   BarWifiCell,
   BarWorkspaces,
   ICON_PROPS,
-  batteryIcon,
+  BATTERY_ICONS,
   formatHold,
 } from './bar/components'
 export {
@@ -84,7 +84,8 @@ export {
   wifiBars,
   wifiSignalLabel,
   batteryState,
-  batteryTone,
+  batteryLook,
+  adjustedPct,
   formatBarClock,
   groupAgents,
   timeLeft,

@@ -63,6 +63,7 @@ export function BarStrip() {
             pct={snap.batteryPct}
             onAc={snap.onAc}
             charging={snap.charging}
+            chargeLimit={snap.chargeLimit}
             detail={null}
             hover={hover}
           />,

@@ -414,6 +414,8 @@ pub struct BarSnapshot {
     pub battery_pct: Option<u8>,
     pub on_ac: bool,
     pub charging: bool,
+    /// The user's charge limit, when set (battery.rs) — the strip's "adjusted charge".
+    pub charge_limit: Option<u8>,
     pub wifi: crate::bar_modules::WifiState,
     pub agents: Vec<crate::agents::AgentSession>,
     /// Keep-awake session state (power.rs) — cheap in-memory read.
@@ -447,6 +449,7 @@ pub fn snapshot() -> BarSnapshot {
         battery_pct,
         on_ac,
         charging,
+        charge_limit: crate::battery::charge_limit(),
         wifi: crate::bar_modules::wifi(),
         agents: crate::agents::list(),
         awake: crate::power::state(),

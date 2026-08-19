@@ -55,6 +55,8 @@ export interface BatteryDetail {
   onAc: boolean
   charging: boolean
   fullyCharged: boolean
+  /** The user's charge limit (e.g. 80) when one is set. */
+  chargeLimit: number | null
   cycleCount: number | null
   capacityWh: number | null
   designWh: number | null
@@ -96,6 +98,7 @@ export interface BarSnapshot {
   batteryPct: number | null
   onAc: boolean
   charging: boolean
+  chargeLimit: number | null
   wifi: { online: boolean; ssid: string | null; rssi: number | null }
   agents: AgentSession[]
   /** Optional so fixtures without a keep-awake session stay valid. */

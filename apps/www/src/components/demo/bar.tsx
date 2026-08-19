@@ -86,6 +86,7 @@ export function DemoBar({
             pct={snap.batteryPct}
             onAc={snap.onAc}
             charging={snap.charging}
+            chargeLimit={snap.chargeLimit}
             // No CoreAudio/ioreg in a browser: the strip is real, the card
             // needs a machine, so the demo shows the cell without one.
             detail={null}
