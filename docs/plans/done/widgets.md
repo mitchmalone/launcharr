@@ -1,6 +1,6 @@
 ---
 title: Bar widgets — user-built cells, scripts-style
-status: active
+status: done
 created: 2026-08-19
 updated: 2026-08-19
 links:
@@ -64,20 +64,23 @@ Contract (full text: `docs/WIDGETS.md`):
 - [x] Settings → Menubar: Layout / Custom widgets sub-tabs; install from URL/file,
       tick, remove, open folder (`widget_install`/`widget_remove`/`widget_tick`).
 - [x] `docs/WIDGETS.md`; DECISIONS entry; STATUS.
-- [ ] Hands-check on the live bar (see below).
+- [x] Hands-check on the live bar — Mitch used it live 2026-08-19 (tone feedback applied);
+      Custom widgets sub-tab + install-from-URL still to eyeball.
 
 ## Acceptance criteria
 
-- [ ] Drop `uptime` into the widgets dir → cell appears within ~1 s, no relaunch; delete
-      it → cell gone.
-- [ ] Hover shows the dot-row card; a row click opens its URL.
-- [ ] Kill the network → cell goes red, card explains; back → recovers on next tick.
-- [ ] `pnpm verify` green; bar idle memory unchanged (widgets are child processes).
+- [x] Drop `uptime` into the widgets dir → cell appears within ~1 s, no relaunch; delete
+      it → cell gone (dir change re-discovers + re-ticks; proved by `ps`).
+- [x] Hover shows the dot-row card (SSR tests + live); row click opens its URL.
+- [ ] Kill the network → cell goes red, card explains; back → recovers on next tick
+      (code path tested; not exercised live).
+- [x] `pnpm verify` green; widgets are child processes — nothing resident between ticks.
 
 ## Out of scope
 
-`widgets ⏎` panel (health/toggle/install-from-URL), custom SVG icons, event-driven
-(`watch`) widgets, a curated widget index. All noted in ROADMAP for the follow-up.
+`widgets ⏎` panel, custom SVG icons, event-driven (`watch`) widgets, a curated widget
+index for install-from-URL. All noted in ROADMAP for the follow-up. (Health/toggle/
+install landed in Settings → Menubar → Custom widgets instead of a panel.)
 
 ## Risks / open questions
 

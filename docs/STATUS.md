@@ -16,15 +16,20 @@ strength arcs, no SSID, no awake timer, battery by lucide tier + colour from the
 charge (see the first three bullets below). launcharr is a keyboard control surface:
 launcher + bar + panels + agents + desktop layer, all in Mitch's daily use.
 
-**Widgets landed 2026-08-19 (branch `worktree-widgets`, unreleased, running):** the
-Module API is real — `~/.config/launcharr/widgets/` executables answer `manifest`/`tick`
-JSON, one generic cell + card renders them, live dir watch, `triggers/widget.<id>`;
-uptime / github-actions / vercel (real API) / trmnl ported from Sketchybar as the
-reference set (`apps/desktop/widgets/`, `docs/WIDGETS.md`, DECISIONS 2026-08-19).
-**Hands-check pending:** the four cells + cards on the live bar; trmnl is hidden until
-its key resolves (JOURNAL 2026-08-19).
+**Widgets landed 2026-08-19 (on main, unreleased — release held by request; running):**
+the Module API is real. `~/.config/launcharr/widgets/*.ts` (TypeScript, run under Bun via
+`runtime.rs`; any executable also works) answer `manifest`/`tick` JSON; one generic cell +
+card renders them; live dir watch; `triggers/widget.<id>`; Settings → Menubar has
+Layout / **Custom widgets** sub-tabs (board placement, health, install from URL/file,
+tick, remove). Reference set uptime / github-actions / vercel (real API) / trmnl in
+`apps/desktop/widgets/`, bundled scripts now `ip.ts` / `json-format.ts` (`.py` retired on
+sight). Widget `ok` wears the agent blue; battery on AC at its limit reads as plugged in.
+Docs: `docs/WIDGETS.md`, DECISIONS 2026-08-19 ×2, plans/done/widgets.md. **Seen live by
+Mitch** (colour feedback applied); still to eyeball: the Custom widgets sub-tab, install
+from URL. trmnl is hidden until its key resolves (JOURNAL 2026-08-19). Parked one-liner:
+the wifi glyph shrinks below full strength (ghost the outer arcs).
 
-**Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widgets ⏎ panel, settings-in-panels,
+**Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widget follow-ups, settings-in-panels,
 per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD
 revision). Open hands-checks: hover a cell while a session has an Agent running (subagent
 lines), the awake "resumed" toast, wifi arcs at 14 px against the theme, unplug/replug a

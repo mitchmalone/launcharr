@@ -68,12 +68,14 @@ toggleable. Not a distro — bar + launcher + config only. Record: docs/releases
 
 Candidates carried over from v0.4, to be cut down in the 0.5 scope session:
 
-- **Module API** — ✅ **widgets** (2026-08-19, plans/active/widgets.md → done on
-  hands-check; DECISIONS 2026-08-19): executables in `~/.config/launcharr/widgets/`,
-  `manifest`/`tick` JSON, generic cell + card, live dir watch, `triggers/widget.<id>`.
-  Reference widgets uptime / github-actions / vercel / trmnl in `apps/desktop/widgets/`.
-  Left: `widgets ⏎` panel (health, toggle, install-from-URL against a curated index),
-  custom SVG icons, event-driven (`watch`) widgets, a left-zone card anchor.
+- **Module API** — ✅ **widgets** (2026-08-19, plans/done/widgets.md; DECISIONS
+  2026-08-19 ×2): TypeScript files in `~/.config/launcharr/widgets/` run under Bun
+  (`runtime.rs`; any executable works too), `manifest`/`tick` JSON, generic cell + card,
+  live dir watch, `triggers/widget.<id>`, Settings → Menubar → Custom widgets (install
+  from URL/file, tick, remove). Reference widgets uptime / github-actions / vercel /
+  trmnl in `apps/desktop/widgets/`; bundled scripts are TS too. Left: a curated widget
+  index for install-from-URL, `widgets ⏎` panel, custom SVG icons, event-driven
+  (`watch`) widgets, a left-zone card anchor, wifi glyph footprint fix.
 - **Multi-display** — ✅ bar per display, launcher on the mouse's screen (2026-08-19,
   plans/done/multi-display.md). Left: per-monitor workspace lists (aerospace
   `--monitor`), a screen-parameters observer instead of the 5 s heartbeat.
