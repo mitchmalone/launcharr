@@ -6,6 +6,22 @@
 
 ---
 
+### 2026-08-19 · Settings opened from the panel sat behind the front app; `tauri build` flashes Finder
+
+- **Settings behind.** launcharr is Accessory and the panel is non-activating, so when
+  `execute` hides the panel and builds the settings window, launcharr isn't the active app.
+  tao's window build only does `makeKeyAndOrderFront`; its `set_focus` (the one that calls
+  `activateIgnoringOtherApps`) is skipped for a fresh window and bails on `isVisible ==
+false` right after a queued `show()`. Result: ordered front _within launcharr_, behind
+  the previous app. Fix: `activation::bring_to_front` — `NSApp.activateIgnoringOtherApps`
+  on the main thread after ordering front. The non-deprecated `activate()` (14+) is
+  cooperative and refused from a background app, so the deprecated call stays, with a
+  one-line `#[allow]`.
+- **Finder flash on rebuild.** `tauri build` also bundles the DMG, and that step mounts
+  the image and drives Finder via AppleScript to lay out icons — a Finder window pops on
+  whatever workspace is active. Local relaunches use `tauri build --bundles app`; only
+  `release.sh` wants the DMG.
+
 ### 2026-08-19 · Widgets: `secret shared/trmnl/api_key` no longer resolves; `zsh -ic` needed for `secret`
 
 The old Sketchybar TRMNL plugin read its token through the age `decrypt.sh` helper with id

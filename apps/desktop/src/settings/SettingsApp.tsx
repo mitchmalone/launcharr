@@ -174,7 +174,29 @@ function Row({
   )
 }
 
+const GENERAL_SUBTABS = [
+  { id: 'general', label: 'General' },
+  { id: 'colorpicker', label: 'Color picker' },
+  { id: 'config', label: 'Config' },
+] as const
+type GeneralSubTab = (typeof GENERAL_SUBTABS)[number]['id']
+
+/** Settings → General: the basics, then the two rows that had grown into pages. */
 function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
+  const [sub, setSub] = useState<GeneralSubTab>('general')
+  return (
+    <>
+      <SubTabs tabs={GENERAL_SUBTABS} value={sub} onChange={setSub} />
+      {sub === 'general' && <GeneralBasics config={config} set={set} />}
+      {sub === 'colorpicker' && (
+        <ColorPickerSection config={config} set={set} />
+      )}
+      {sub === 'config' && <ConfigSection />}
+    </>
+  )
+}
+
+function GeneralBasics({ config, set }: { config: Config; set: SetFn }) {
   return (
     <>
       <Row label="Summon hotkey">
@@ -245,7 +267,13 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
           New window per command
         </label>
       </Row>
-      <hr />
+    </>
+  )
+}
+
+function ColorPickerSection({ config, set }: { config: Config; set: SetFn }) {
+  return (
+    <>
       <Row label="Color picker">
         <label className="check">
           <input
@@ -289,7 +317,13 @@ function GeneralTab({ config, set }: { config: Config; set: SetFn }) {
           loupe. Flip back any time to compare.
         </p>
       </Row>
-      <hr />
+    </>
+  )
+}
+
+function ConfigSection() {
+  return (
+    <>
       <Row label="Config">
         <div className="buttonrow">
           <button

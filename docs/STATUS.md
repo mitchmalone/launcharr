@@ -36,6 +36,9 @@ Wifi glyph no longer shrinks with strength: `WifiStrengthIcon` draws all four ar
 the lost ones (lucide's tiers drop arcs); the wifi panel rows use it too. Battery + wifi
 are landscape glyphs, so they get `WIDE_ICON_PROPS` (17 px box) to match the cup's visual
 height — optical sizing. **Hands-check:** does 17 sit right, or nudge to 16/18?
+Settings → General now has sub-tabs General / Color picker / Config (Hackables row renamed
+Config). Settings opened from the panel comes to the front (`activation.rs`; JOURNAL
+2026-08-19). Local rebuilds are `tauri build --bundles app` — no DMG, no Finder flash.
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 

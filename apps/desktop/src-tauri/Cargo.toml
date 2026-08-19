@@ -29,6 +29,8 @@ dirs = "6"
 thiserror = "2"
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = [
+  "NSApplication",
+  "NSResponder",
   "NSWorkspace",
   "NSRunningApplication",
   "NSImage",

@@ -18,6 +18,7 @@ pub fn open_tab(app: &AppHandle, tab: Option<&str>) -> CmdResult<()> {
     if let Some(existing) = app.get_webview_window("settings") {
         let _ = existing.show();
         let _ = existing.set_focus();
+        crate::activation::bring_to_front(app);
         if let Some(t) = tab {
             let _ = existing.emit("settings-tab", t);
         }
@@ -39,5 +40,8 @@ pub fn open_tab(app: &AppHandle, tab: Option<&str>) -> CmdResult<()> {
         .disable_drag_drop_handler()
         .build()
         .map_err(|e| CmdError::Internal(format!("settings window: {e}")))?;
+    // Opened from the non-activating panel, launcharr isn't the active app —
+    // without this the new window sits behind whatever was in front.
+    crate::activation::bring_to_front(app);
     Ok(())
 }

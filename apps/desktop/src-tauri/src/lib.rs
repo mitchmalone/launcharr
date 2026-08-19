@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
 
+mod activation;
 mod agents;
 mod ask;
 mod audio;
