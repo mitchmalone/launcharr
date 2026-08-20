@@ -794,6 +794,12 @@ type WidgetSource =
  * — read in the webview, no dialog plugin — or a URL, one user-initiated
  * fetch) and remove. Layout lives on the board above; this is the inventory.
  */
+/** A widget that's running fine needs no fields under it — a healthy row is
+ * just its name and "ok" (Mitch, 2026-08-20: a page of token inputs reads as
+ * "asking for tokens" even when every one is optional). */
+const widgetNeedsAttention = (w: BarWidget) =>
+  Boolean(w.needs?.length || w.view?.setup || w.error)
+
 /** One `widget-auth` event from widgets.rs (`AuthEvent`). */
 type WidgetAuthEvent =
   | { phase: 'code'; id: string; url: string; code: string }
@@ -846,6 +852,7 @@ function WidgetSettings({
     }
   }, [widget.id, widget.auth, refreshPresent])
 
+  const attention = widgetNeedsAttention(widget)
   if (!settings.length) return null
 
   const setPlain = (key: string, value: string) => {
@@ -922,6 +929,10 @@ function WidgetSettings({
 
   const field = (s: WidgetSetting) => {
     const missing = widget.needs?.includes(s.key)
+    const isSet = s.secret ? present.includes(s.key) : Boolean(plain[s.key])
+    // Healthy and nothing stored: no field — the widget found its own way
+    // (the CLI). The row returns the moment the widget needs the user.
+    if (!attention && !isSet && !s.required) return null
     const req = (s.required || missing) && (
       <span className="widgetsetting-req"> · required</span>
     )
@@ -946,7 +957,6 @@ function WidgetSettings({
         </div>
       )
     }
-    const isSet = present.includes(s.key)
     const withAuth = s.key === authKey
     if (isSet) {
       // Set: say so, offer clear — no input until they want to replace it.
@@ -1037,6 +1047,8 @@ function WidgetPrereqs({ widget }: { widget: BarWidget }) {
   const requires = widget.requires ?? []
   const setup = widget.view?.setup
   const [copied, setCopied] = useState<string | null>(null)
+  // A healthy widget explains nothing — prerequisites appear when unmet.
+  if (!widgetNeedsAttention(widget)) return null
   if (!requires.length && !setup) return null
   const copy = (cmd: string) => {
     navigator.clipboard
