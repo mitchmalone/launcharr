@@ -7,6 +7,12 @@
 
 ## Where we are
 
+**v0.6.0 in flight (2026-08-20):** everything below the v0.5.0 line ships — widgets +
+Module API, bar colours as theme tokens (new `warn`), optical icon sizing, wifi arcs
+keep their footprint, General sub-tabs, settings-to-front, widget credentials
+(CLI piggyback, `requires`/`setup`, Keychain overrides; OAuth dormant), Hackables →
+Config. Branch `worktree-widget-settings` merged; plan in `plans/done/widget-settings.md`.
+
 **v0.5.0 released 2026-08-19** (signed + notarized; docs/releases/v0.5.0.md; fan-out
 green: cask 0.5.0, Notion, mitchmalone.com hook). Headline: multi-display, agent
 liveness + herdr, colorpicker loupe, lorem, `?` turns. **Post-release the same day, on
@@ -42,13 +48,20 @@ Config). Settings opened from the panel comes to the front (`activation.rs`; JOU
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 
-**Widget settings + OAuth (try-out, branch `worktree-widget-settings`, 2026-08-19):**
+**Widget credentials (2026-08-20, in v0.6.0):** CLI piggyback first (`gh auth token`,
+Vercel CLI store), fail-visible: manifest `requires` (prereqs + copyable fix) and tick
+`setup` ({message, fix} → dim cell, fix in card + settings row) replace silent `hidden`;
+Settings shows a widget's fields only while it needs attention. All three states proven
+live (gh token → runs; no gh → setup; stale Vercel CLI → setup). DECISIONS 2026-08-20.
+
+**Widget settings + OAuth (2026-08-19, in v0.6.0):**
 manifest `settings[]` → fields in Custom widgets → Keychain (secrets) / `config.widgets`
 (plain) → env on tick; `required` gate ("needs setup"); `auth` protocol (JSON lines,
 `widget-auth` events). `vercel.ts` = stored token; `github-actions.ts` rewritten onto the
 GitHub API with device-flow sign-in (`GITHUB_CLIENT_ID` setting). Both proven by hand
-against the real APIs; UI + sign-in flow **await Mitch's hands-check** before merge.
-DECISIONS 2026-08-19; plan `plans/active/widget-settings.md`.
+against the real APIs and through Mitch's hands-on rounds (2026-08-20). OAuth is dormant
+until a launcharr OAuth App client id is baked into `github-actions.ts`.
+DECISIONS 2026-08-19; plan `plans/done/widget-settings.md`.
 
 **Next: the v0.5 scope talk** (ROADMAP "v0.5 — plugins": widget follow-ups, settings-in-panels,
 per-monitor workspaces, bar polish, awake loose ends, PANEL_INFO single-source, PRD

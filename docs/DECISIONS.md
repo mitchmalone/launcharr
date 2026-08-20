@@ -5,6 +5,28 @@
 
 ---
 
+### 2026-08-20 · Widgets piggyback CLI credentials first, and say so: `requires` + `setup`
+
+- **Decision.** The primary credential story returns to piggybacking the provider CLI's
+  own login (`gh auth token`, the Vercel CLI store) — the CLI keeps it fresh, the user
+  already has it. Two contract additions make it fail-visible instead of silently blank:
+  manifest **`requires`** (`[{label, fix}]` — static prerequisites, fix copyable) and
+  tick **`setup`** (`{message, fix}` — the widget can't run until the user acts: dim
+  cell, message + copyable fix in the hover card and the settings row). `setup` replaces
+  `hidden` for missing/stale credentials; `hidden` stays for "nothing to say". Pasted
+  Keychain tokens remain as the override; in Settings, a widget's fields and prereq lines
+  render **only while it needs attention** (or to manage a stored token) — a healthy row
+  is just its name and "ok". The OAuth `auth` machinery ships dormant: github-actions
+  offers the sign-in button only once a launcharr OAuth App client id is baked in (none
+  is registered yet).
+- **Why.** Mitch's target UX is add → click → approve → data with zero credential
+  fetching; one-click OAuth is blocked on registering an app per provider (a browser
+  step only Mitch can do), and the first cut leaked plumbing — client-id and repo-list
+  fields, "far too much for a user", and permanent token inputs that read as a token
+  form even when optional. CLI piggyback delivers zero-setup for the common case; its
+  failure mode (Vercel CLI 58's short-lived tokens, JOURNAL 2026-08-19) is answered by
+  `setup` — alerted with the fix — instead of 2026-08-16's silent `hidden`.
+
 ### 2026-08-19 · Widget settings: declared in the manifest, kept by launcharr, delivered as env; OAuth is the widget's (try-out)
 
 - **Decision.** A widget manifest may declare `settings: [{key, label, hint?, secret?,

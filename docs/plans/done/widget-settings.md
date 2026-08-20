@@ -1,8 +1,8 @@
 ---
 title: Widget settings — declared in the manifest, collected in Settings, delivered as env (+ OAuth `auth`)
-status: active
+status: done
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-20
 links:
   - docs/WIDGETS.md
   - docs/plans/done/widgets.md
@@ -80,6 +80,16 @@ launcharr stays a store + env injector and never talks to a provider itself.
 
 A curated widget index, shared/cross-widget secrets, launcharr-hosted OAuth, refresh
 tokens (the widget owns re-auth: an expired token → "Sign in again" hint).
+
+## Outcome (2026-08-20)
+
+Shipped in v0.6.0. Final shape after Mitch's hands-on rounds pivoted from the plan's
+settings-first cut: **CLI piggyback primary** (`gh auth token` / Vercel CLI store),
+manifest `requires` + tick `setup` make failures visible with a copyable fix, pasted
+Keychain tokens as the override, Settings fields render only while a widget needs
+attention, and the OAuth machinery is merged but **dormant** — no launcharr OAuth App is
+registered yet; baking a client id into `github-actions.ts` lights the Sign in button.
+DECISIONS 2026-08-19 + 2026-08-20.
 
 ## Risks / open questions
 
