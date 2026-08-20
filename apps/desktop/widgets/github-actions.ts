@@ -1,11 +1,11 @@
 // launcharr widget: latest GitHub Actions run per repo (docs/WIDGETS.md).
 //
-// The reference widget for the **OAuth** half of widget settings: one click
-// on "Sign in with GitHub" runs GitHub's device flow against launcharr's own
-// OAuth App (CLIENT_ID below — public by design, no secret involved) and hands
-// the token back to launcharr, which keeps it in the Keychain and passes it to
-// every tick as GITHUB_TOKEN. Pasting a personal access token into the same
-// row works too; the widget doesn't care how the token got there.
+// Credentials piggyback on the GitHub CLI (`gh auth token` — gh keeps its own
+// token fresh), or a pasted GITHUB_TOKEN setting overrides it. No CLI and no
+// token → the cell goes dim with the fix (`gh auth login`) in the card and in
+// Settings — alerted, never silently blank (Mitch, 2026-08-20). The `auth`
+// device flow is still here but dormant: it lights up only when a CLIENT_ID
+// for a launcharr OAuth App is baked in below.
 //
 // Each tick: the ten repos you pushed to most recently (edit REPOS below to
 // pin a list) and each one's latest workflow run. The cell is a monitor, red
@@ -14,6 +14,15 @@
 //
 // Install: copy into ~/.config/launcharr/widgets/. Runs under Bun.
 import type { WidgetTone, WidgetView } from '@launcharr/tui/bar/types'
+
+/** Thrown when the fix is the user's, not the widget's — becomes `setup`. */
+class SetupNeeded extends Error {
+  fix: string
+  constructor(message: string, fix: string) {
+    super(message)
+    this.fix = fix
+  }
+}
 
 const API = 'https://api.github.com'
 const MAX_ROWS = 10
@@ -64,9 +73,14 @@ export function manifest() {
       {
         key: 'GITHUB_TOKEN',
         label: 'GitHub',
-        hint: 'a personal access token',
+        hint: 'optional — a token to use instead of the GitHub CLI',
         secret: true,
-        required: true,
+      },
+    ],
+    requires: [
+      {
+        label: 'GitHub CLI, signed in (or a pasted token)',
+        fix: 'brew install gh && gh auth login',
       },
     ],
     // No client id baked in (a fork, a dev build) → no sign-in button at all;
@@ -141,8 +155,9 @@ async function gh<T>(path: string, token: string): Promise<T> {
     signal: AbortSignal.timeout(12000),
   })
   if (res.status === 401) {
-    throw new Error(
-      'GitHub rejected the token — sign in again or set a new one',
+    throw new SetupNeeded(
+      'GitHub rejected the credentials — sign in again',
+      'gh auth login',
     )
   }
   if (!res.ok) throw new Error(`github api ${res.status} on ${path}`)
@@ -158,13 +173,36 @@ type WorkflowRun = {
   created_at?: string
 }
 
+/**
+ * The GitHub CLI's token — gh refreshes its own credential store. Launched
+ * from Finder, launcharr's PATH is bare, so the usual homes are probed too.
+ */
+async function ghCliToken(): Promise<string | null> {
+  const candidates = ['gh', '/opt/homebrew/bin/gh', '/usr/local/bin/gh']
+  for (const gh of candidates) {
+    try {
+      const proc = Bun.spawn([gh, 'auth', 'token'], {
+        stdout: 'pipe',
+        stderr: 'ignore',
+      })
+      const out = await new Response(proc.stdout).text()
+      if ((await proc.exited) === 0 && out.trim()) return out.trim()
+    } catch {
+      // not at this path — try the next
+    }
+  }
+  return null
+}
+
 async function tick(): Promise<WidgetView> {
-  const token = process.env.GITHUB_TOKEN
+  const token = process.env.GITHUB_TOKEN ?? (await ghCliToken())
   if (!token) {
-    console.error(
-      'no GITHUB_TOKEN — sign in from Settings → Menubar → Custom widgets',
-    )
-    return { hidden: true }
+    return {
+      setup: {
+        message: 'no GitHub credentials — sign in with the GitHub CLI',
+        fix: 'gh auth login',
+      },
+    }
   }
   let repos = parseRepos(REPOS.join(','))
   if (!repos.length) {
@@ -303,7 +341,13 @@ if (import.meta.main) {
   else if (cmd === 'tick') {
     tick()
       .then((v) => console.log(JSON.stringify(v)))
-      .catch(fail)
+      .catch((e) => {
+        if (e instanceof SetupNeeded) {
+          console.log(
+            JSON.stringify({ setup: { message: e.message, fix: e.fix } }),
+          )
+        } else fail(e)
+      })
   } else if (cmd === 'auth') {
     auth().catch(fail)
   } else {

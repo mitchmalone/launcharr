@@ -62,6 +62,9 @@ Print a JSON manifest to stdout and exit 0:
   first tick. Default `puzzle`.
 - `timeout` — seconds a tick may run before it is killed. Default 10, maximum 60.
 - `settings` — what the widget needs from the user; see **Settings and sign-in** below.
+- `requires` — `[{ "label": "GitHub CLI, signed in", "fix": "brew install gh && gh auth login" }]`:
+  static prerequisites, shown under the widget in Settings with the fix copyable — the
+  expectation is visible before anything fails.
 - `auth` — `{ "label": "Sign in with GitHub" }`: the widget answers `auth` (below).
 
 ### `<widget> tick`
@@ -104,15 +107,23 @@ Every field is optional; `{}` is a valid blank cell.
 - `card` — the hover card: `title`, dim `subtitle`, `rows`, dim `hint` at the bottom.
   Each row: `dot` (a tone, or none for no dot), `text`, dim right-aligned `hint`, and an
   optional `action` that makes the row clickable.
-- `hidden: true` — no cell this tick. For credentialed widgets with no credential: inert,
-  not alarmed (no request, no red cell — DECISIONS 2026-08-16). The widget stays
-  registered and re-ticks on schedule.
+- `setup` — `{ "message": "no GitHub credentials — sign in with the GitHub CLI", "fix": "gh auth login" }`:
+  the widget can't run until the user acts. A **dim** cell (not red — nothing broke), the
+  message in the card and the settings row, the fix as a copyable command in both. Use
+  this for a missing or stale credential — never `hidden`, which hides the problem _and_
+  the fix (Mitch, 2026-08-20).
+- `hidden: true` — no cell this tick, for a widget with genuinely nothing to say. The
+  widget stays registered and re-ticks on schedule.
 
 ## Settings and sign-in
 
-A widget that needs a token or an id declares it; launcharr collects it in **Settings →
-Menubar → Custom widgets** and hands it to every `tick` as an **environment variable**.
-The widget never touches a store (try-out, 2026-08-19; plan `docs/plans/active/widget-settings.md`).
+**Piggyback first:** the best credential is one the user already has — the provider CLI's
+own login (`gh auth token`, the Vercel CLI's store), which the CLI keeps fresh. Declare it
+in `requires`, and when it's missing or stale answer with `setup` (above) so the user is
+told and handed the fix. Declared **settings** are the override for users without the CLI:
+launcharr collects them in **Settings → Menubar → Custom widgets** and hands them to every
+`tick` as **environment variables**. The widget never touches a store (try-out, 2026-08-19/20;
+plan `docs/plans/active/widget-settings.md`).
 
 ```json
 "settings": [
@@ -147,11 +158,10 @@ kills it) and reads **one JSON object per stdout line**:
   be set this way (an auth result is a credential); anything else fails the sign-in.
 
 Exit 0 = signed in (the widget ticks at once); non-zero = the stderr tail is the error.
-`github-actions.ts` is the worked example: GitHub's device flow against launcharr's own
-OAuth App (its client id is a constant in the widget — a client id is public, it only names
-the app being approved). **One row, two ways in:** the sign-in button, or paste a token —
-never both plus plumbing (Mitch, 2026-08-19). The widget can't refresh a token on its own
-yet; when one expires it should fail with a "sign in again" message.
+`github-actions.ts` carries the worked example (GitHub's device flow), **dormant** until a
+launcharr OAuth App client id is baked into the widget — with no client id it offers no
+button, and the CLI piggyback above is the story. A client id is public; it only names the
+app being approved. When a token expires the widget answers `setup`, not `error`.
 
 ## Refresh, failure, and the rules of the road
 
@@ -190,12 +200,12 @@ yet; when one expires it should fail with a "sign in again" message.
 
 ## Reference widgets
 
-| Widget              | Source                          | Cadence | Notes                                                                                                                                              |
-| ------------------- | ------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uptime.ts`         | Upptime `summary.json`          | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                                              |
-| `github-actions.ts` | GitHub API, latest run per repo | 2 min   | **Sign in with GitHub** (device flow) or paste a token; your 10 most recently pushed repos (pin a list in the file); failing count, opens the run. |
-| `vercel.ts`         | Vercel API `/v9/projects`       | 2 min   | `VERCEL_TOKEN` setting (Keychain) or the Vercel CLI's own login; latest production deployment per project; hidden without a token.                 |
-| `trmnl.ts`          | TRMNL `/api/devices`            | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                                                      |
+| Widget              | Source                          | Cadence | Notes                                                                                                                                                                                         |
+| ------------------- | ------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uptime.ts`         | Upptime `summary.json`          | 5 min   | Arrow up/down, down-count label, a row per site (opens it). Set `UPTIME_SUMMARY_URL`.                                                                                                         |
+| `github-actions.ts` | GitHub API, latest run per repo | 2 min   | `gh auth token` (the CLI keeps it fresh) or a pasted token; your 10 most recently pushed repos (pin a list in the file); failing count, opens the run; dim + `gh auth login` when signed out. |
+| `vercel.ts`         | Vercel API `/v9/projects`       | 2 min   | The Vercel CLI's own login or a pasted `VERCEL_TOKEN` (Keychain); latest production deployment per project; dim + the fix when signed out or stale.                                           |
+| `trmnl.ts`          | TRMNL `/api/devices`            | 5 min   | Key via `TRMNL_API_KEY` or `secret shared/trmnl/api_key`; hidden without one.                                                                                                                 |
 
 Install one: `cp apps/desktop/widgets/uptime.ts ~/.config/launcharr/widgets/` (or
 Settings → Menubar → Custom widgets → add file) — then it's yours to edit in place.

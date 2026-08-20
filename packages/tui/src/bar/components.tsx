@@ -821,9 +821,13 @@ export function BarWidgetCard({
   const view = widget.view
   const card = view?.card
   const needs = widget.needs ?? []
+  const setup = view?.setup
   const health = needs.length
     ? `needs setup: ${needs.join(', ')} — Settings → Menubar → Custom widgets`
-    : widgetHealth(widget.error, widget.lastOk, now)
+    : setup
+      ? setup.message
+      : widgetHealth(widget.error, widget.lastOk, now)
+  const quiet = needs.length > 0 || setup != null
   const rows = card?.rows ?? []
   return (
     <BarCard variant="widget" cardRef={cardRef}>
@@ -838,10 +842,25 @@ export function BarWidgetCard({
       </div>
       {health && (
         <div
-          className={`bar-widget-health ${needs.length ? 'bar-tone-muted' : 'bar-tone-error'}`}
+          className={`bar-widget-health ${quiet ? 'bar-tone-muted' : 'bar-tone-error'}`}
         >
           {health}
         </div>
+      )}
+      {setup?.fix && (
+        <button
+          type="button"
+          className="bar-widget-row bar-widget-row-action"
+          onClick={
+            onAction
+              ? () => onAction({ type: 'copy', value: setup.fix! })
+              : undefined
+          }
+        >
+          <span className="bar-widget-dot bar-tone-muted">$</span>
+          <span className="bar-widget-text">{setup.fix}</span>
+          <span className="bar-widget-hint">copy</span>
+        </button>
       )}
       {rows.length > 0 && (
         <div className="bar-widget-rows">
@@ -907,8 +926,9 @@ export function BarWidgetCell({
 }) {
   const view = widget.view
   if (view?.hidden) return null
-  // Needs setup: a quiet cell (manifest glyph, dim) rather than an alarmed one.
-  const needs = (widget.needs?.length ?? 0) > 0
+  // Needs setup (unset required setting, or the widget said `setup`): a quiet
+  // cell — dim manifest glyph — rather than an alarmed one. Nothing broke.
+  const needs = (widget.needs?.length ?? 0) > 0 || view?.setup != null
   const tone = needs ? 'muted' : widget.error ? 'error' : view?.tone
   const className = `bar-cell ${widgetToneClass(tone)}`
   const body = (

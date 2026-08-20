@@ -777,6 +777,7 @@ function widgetStatus(w: BarWidget, now: number): string {
     return `${Math.round(s / 3600)}h ago`
   }
   if (w.needs?.length) return `needs setup · ${w.needs.join(', ')}`
+  if (w.view?.setup) return `setup · ${w.view.setup.message}`
   if (w.error) {
     return `error · ${w.error}${w.lastOk ? ` · last ok ${ago(w.lastOk)}` : ''}`
   }
@@ -1027,6 +1028,55 @@ function WidgetSettings({
   )
 }
 
+/**
+ * Declared prerequisites (manifest `requires`) + the live setup message when
+ * the widget can't run: what it expects, and the copyable command that fixes
+ * it. Rendered under the widget's row like its settings.
+ */
+function WidgetPrereqs({ widget }: { widget: BarWidget }) {
+  const requires = widget.requires ?? []
+  const setup = widget.view?.setup
+  const [copied, setCopied] = useState<string | null>(null)
+  if (!requires.length && !setup) return null
+  const copy = (cmd: string) => {
+    navigator.clipboard
+      .writeText(cmd)
+      .then(() => setCopied(cmd))
+      .catch(console.error)
+  }
+  const fix = (cmd: string | null | undefined) =>
+    cmd && (
+      <button
+        type="button"
+        className="ghost widgetfix"
+        title="copy the command"
+        onClick={() => copy(cmd)}
+      >
+        {copied === cmd ? 'copied' : cmd}
+      </button>
+    )
+  return (
+    <div className="widgetsettings widgetprereqs">
+      {setup && (
+        <div className="linkrow widgetsetting">
+          <span className="widgetsetting-label widgetsetting-req">
+            needs you
+          </span>
+          <span className="widgetprereq-text">{setup.message}</span>
+          {fix(setup.fix)}
+        </div>
+      )}
+      {requires.map((r) => (
+        <div className="linkrow widgetsetting" key={r.label}>
+          <span className="widgetsetting-label">expects</span>
+          <span className="widgetprereq-text">{r.label}</span>
+          {fix(r.fix)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function WidgetsSection({
   widgets,
   config,
@@ -1110,6 +1160,7 @@ function WidgetsSection({
               remove
             </button>
           </div>
+          <WidgetPrereqs widget={w} />
           <WidgetSettings widget={w} config={config} set={set} />
         </div>
       ))}

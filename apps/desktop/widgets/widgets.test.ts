@@ -63,12 +63,16 @@ describe('github-actions', () => {
     },
   ]
 
-  it('declares one required secret — the token — and owns a sign-in', () => {
+  it('declares the optional token override and the gh prerequisite', () => {
     const m = actions.manifest()
     // Sign-in is offered only with a client id baked in (none in test env).
     expect(m.auth).toBeUndefined()
     expect(m.settings.map((s) => s.key)).toEqual(['GITHUB_TOKEN'])
-    expect(m.settings[0]).toMatchObject({ secret: true, required: true })
+    expect(m.settings[0]).toMatchObject({ secret: true })
+    expect('required' in m.settings[0]!).toBe(false)
+    expect(m.requires[0]).toMatchObject({
+      fix: 'brew install gh && gh auth login',
+    })
   })
 
   it('sorts newest first, tones by state, and counts failures', () => {
@@ -120,11 +124,12 @@ describe('github-actions', () => {
 })
 
 describe('vercel', () => {
-  it('declares one secret token, not required (the CLI login is the fallback)', () => {
+  it('declares one optional secret token and the CLI prerequisite', () => {
     const m = vercel.manifest()
     expect(m.settings.map((s) => s.key)).toEqual(['VERCEL_TOKEN'])
     expect(m.settings[0]).toMatchObject({ secret: true })
     expect('required' in m.settings[0]!).toBe(false)
+    expect(m.requires[0]).toMatchObject({ fix: 'vercel login' })
   })
 
   it('picks the newest production deployment per project and links its inspector', () => {

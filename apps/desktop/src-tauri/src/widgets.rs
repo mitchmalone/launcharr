@@ -4,7 +4,7 @@
 //!
 //! - `<widget> manifest` → `{"id", "name", "interval"?, "zone"?, "icon"?, "timeout"?,
 //!   "settings"?, "auth"?}`
-//! - `<widget> tick`     → `{"icon"?, "label"?, "tone"?, "click"?, "card"?}`
+//! - `<widget> tick`     → `{"icon"?, "label"?, "tone"?, "click"?, "card"?, "setup"?}`
 //! - `<widget> auth`     → (opt-in) one JSON object per stdout line: `{"url","code"}`,
 //!   `{"message"}`, `{"settings": {KEY: value}}`; exit 0 = signed in.
 //!
@@ -67,6 +67,20 @@ pub struct WidgetManifest {
     /// Present = the widget answers `auth` (an OAuth/device flow it owns).
     #[serde(default)]
     pub auth: Option<WidgetAuth>,
+    /// Static prerequisites ("GitHub CLI, signed in" / "brew install gh…"),
+    /// shown in Settings so the expectation is visible before anything fails.
+    #[serde(default)]
+    pub requires: Vec<WidgetRequire>,
+}
+
+/// One declared prerequisite — mirrored by `WidgetRequire` in @launcharr/tui.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetRequire {
+    pub label: String,
+    /// The command that puts it right, copyable from the UI.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fix: Option<String>,
 }
 
 /// One declared setting — mirrored by `WidgetSetting` in @launcharr/tui.
@@ -152,8 +166,9 @@ pub struct WidgetCard {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WidgetView {
-    /// True = no cell this tick (e.g. a credentialed widget with no
-    /// credential — inert, not alarmed: DECISIONS 2026-08-16).
+    /// True = no cell this tick (a widget with nothing to say). For a missing
+    /// credential prefer `setup` — hidden is silent, and silence hides the fix
+    /// (Mitch, 2026-08-20).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hidden: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -167,6 +182,20 @@ pub struct WidgetView {
     pub click: Option<ScriptAction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub card: Option<WidgetCard>,
+    /// "I can't run until the user does something": a dim cell, the message and
+    /// its fix in the card and the settings row. Not an error — nothing broke.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<WidgetSetup>,
+}
+
+/// Mirrored by `WidgetSetup` in @launcharr/tui.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetSetup {
+    pub message: String,
+    /// The command that puts it right, copyable from the UI.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fix: Option<String>,
 }
 
 /// A widget as the bar sees it — mirrored by `BarWidget` in @launcharr/tui.
@@ -189,6 +218,8 @@ pub struct WidgetState {
     /// Declared settings (manifest) — what the settings UI renders.
     pub settings: Vec<WidgetSetting>,
     pub auth: Option<WidgetAuth>,
+    /// Declared prerequisites (manifest), for the settings UI.
+    pub requires: Vec<WidgetRequire>,
     /// Required settings currently unset; non-empty = not ticked, "needs setup".
     pub needs: Vec<String>,
 }
@@ -499,6 +530,7 @@ fn refresh() {
                     updated_at: None,
                     settings: manifest.settings.clone(),
                     auth: manifest.auth.clone(),
+                    requires: manifest.requires.clone(),
                     needs: Vec::new(),
                 },
                 manifest: manifest.clone(),
@@ -514,6 +546,7 @@ fn refresh() {
         entry.state.icon = manifest.icon.clone();
         entry.state.settings = manifest.settings.clone();
         entry.state.auth = manifest.auth.clone();
+        entry.state.requires = manifest.requires.clone();
         entry.manifest = manifest;
         if !entry.running {
             entry.next_due = Instant::now();

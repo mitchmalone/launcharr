@@ -9,13 +9,23 @@
 // can't refresh (JOURNAL 2026-08-19), which is why the setting exists. One `GET /v9/projects` per tick: each project's
 // latest production deployment becomes a row; the cell is the Vercel triangle,
 // dashed and red while any deployment has failed, amber while one is building.
-// With no token from anywhere the widget is hidden (no cell, no request).
+// With no token from anywhere — or a stale CLI login — the cell goes dim with
+// the fix in the card and in Settings, never silently blank (Mitch, 2026-08-20).
 //
 // Install: copy into ~/.config/launcharr/widgets/. Runs under Bun.
 import type { WidgetTone, WidgetView } from '@launcharr/tui/bar/types'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+
+/** Thrown when the fix is the user's, not the widget's — becomes `setup`. */
+class SetupNeeded extends Error {
+  fix: string
+  constructor(message: string, fix: string) {
+    super(message)
+    this.fix = fix
+  }
+}
 
 const API = 'https://api.vercel.com'
 const CLI_DIR = join(homedir(), 'Library/Application Support/com.vercel.cli')
@@ -53,8 +63,14 @@ export function manifest() {
       {
         key: 'VERCEL_TOKEN',
         label: 'Vercel',
-        hint: 'a token from vercel.com/account/tokens',
+        hint: 'optional — a token to use instead of the Vercel CLI login',
         secret: true,
+      },
+    ],
+    requires: [
+      {
+        label: 'Vercel CLI, signed in (or a pasted token)',
+        fix: 'vercel login',
       },
     ],
   }
@@ -93,10 +109,11 @@ async function get<T>(
     signal: AbortSignal.timeout(12000),
   })
   if (res.status === 401 || res.status === 403) {
-    throw new Error(
+    throw new SetupNeeded(
       process.env.VERCEL_TOKEN
         ? `Vercel rejected the token (${res.status}) — set a new one in Settings`
-        : `Vercel rejected the CLI login (${res.status}) — it expires; run \`vercel whoami\` or set a token in Settings`,
+        : `the Vercel CLI login went stale (${res.status}) — any CLI run refreshes it`,
+      process.env.VERCEL_TOKEN ? 'vercel login' : 'vercel whoami',
     )
   }
   if (!res.ok) throw new Error(`vercel api ${res.status} on ${path}`)
@@ -178,9 +195,12 @@ export function view(
 async function tick(): Promise<WidgetView> {
   const { token, team } = credentials()
   if (!token) {
-    // No credential → no cell, no request (DECISIONS 2026-08-16).
-    console.error('no Vercel token: run `vercel login` or set VERCEL_TOKEN')
-    return { hidden: true }
+    return {
+      setup: {
+        message: 'no Vercel credentials — sign in with the Vercel CLI',
+        fix: 'vercel login',
+      },
+    }
   }
   const slug = team
     ? (await get<{ slug?: string }>(`/v2/teams/${team}`, token)).slug
@@ -201,6 +221,12 @@ if (import.meta.main) {
     tick()
       .then((v) => console.log(JSON.stringify(v)))
       .catch((e) => {
+        if (e instanceof SetupNeeded) {
+          console.log(
+            JSON.stringify({ setup: { message: e.message, fix: e.fix } }),
+          )
+          return
+        }
         console.error(e instanceof Error ? e.message : String(e))
         process.exit(1)
       })

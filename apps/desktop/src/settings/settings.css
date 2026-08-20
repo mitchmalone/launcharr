@@ -598,6 +598,23 @@ button {
   white-space: nowrap;
 }
 
+.widgetprereqs + .widgetsettings {
+  /* Prereqs and settings read as one indented block under the widget. */
+  border-top: none;
+  margin-top: -6px;
+}
+
+.widgetprereq-text {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.widgetfix {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--fg);
+}
+
 /* A sign-in error: its own wrapped line under the row, aligned with the field. */
 .widgetsetting-note {
   margin: -2px 0 8px 148px;

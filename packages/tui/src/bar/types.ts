@@ -127,6 +127,8 @@ export interface WidgetView {
   tone?: WidgetTone | string | null
   click?: WidgetAction | null
   card?: WidgetCard | null
+  /** Present = a dim cell and this message + fix instead of data. */
+  setup?: WidgetSetup | null
 }
 
 /** Mirrors WidgetSetting in widgets.rs — one setting a manifest declares. */
@@ -146,6 +148,19 @@ export interface WidgetAuth {
   label: string
 }
 
+/** Mirrors WidgetRequire in widgets.rs — one declared prerequisite. */
+export interface WidgetRequire {
+  label: string
+  /** The command that puts it right, copyable. */
+  fix?: string | null
+}
+
+/** Mirrors WidgetSetup in widgets.rs — "can't run until the user acts". */
+export interface WidgetSetup {
+  message: string
+  fix?: string | null
+}
+
 /** Mirrors WidgetState in widgets.rs — a user widget as the bar sees it. */
 export interface BarWidget {
   id: string
@@ -163,6 +178,8 @@ export interface BarWidget {
   /** Declared settings (manifest) and whether the widget owns a sign-in. */
   settings?: WidgetSetting[]
   auth?: WidgetAuth | null
+  /** Declared prerequisites (manifest). */
+  requires?: WidgetRequire[]
   /** Required settings still unset — the widget isn't ticked while non-empty. */
   needs?: string[]
 }
