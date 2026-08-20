@@ -7,11 +7,13 @@
 
 ## Where we are
 
-**v0.6.0 in flight (2026-08-20):** everything below the v0.5.0 line ships — widgets +
-Module API, bar colours as theme tokens (new `warn`), optical icon sizing, wifi arcs
-keep their footprint, General sub-tabs, settings-to-front, widget credentials
-(CLI piggyback, `requires`/`setup`, Keychain overrides; OAuth dormant), Hackables →
-Config. Branch `worktree-widget-settings` merged; plan in `plans/done/widget-settings.md`.
+**v0.6.0 released 2026-08-20** (signed + notarized; docs/releases/v0.6.0.md; fan-out
+green: cask 0.6.0, Notion, mitchmalone.com hook; perf receipts 2.0 ms / 186 ms / 118 MB).
+Headline: widgets + Module API, widget credentials (CLI piggyback, `requires`/`setup`,
+Keychain overrides; OAuth dormant pending a launcharr OAuth App), bar colours as theme
+tokens (new `warn`, fine = fg), optical icon sizing + wifi arc footprint, General
+sub-tabs, settings-to-front, Hackables → Config. Plan: `plans/done/widget-settings.md`.
+Note: idle memory 118 MB of a 120 MB budget — watch it next release.
 
 **v0.5.0 released 2026-08-19** (signed + notarized; docs/releases/v0.5.0.md; fan-out
 green: cask 0.5.0, Notion, mitchmalone.com hook). Headline: multi-display, agent
@@ -48,13 +50,13 @@ Config). Settings opened from the panel comes to the front (`activation.rs`; JOU
 DECISIONS 2026-08-19. **Hands-check:** eyeball the strip in launcharr + a couple of
 themes; is a charging battery < 90 % readable without its blue?
 
-**Widget credentials (2026-08-20, in v0.6.0):** CLI piggyback first (`gh auth token`,
+**Widget credentials (2026-08-20, v0.6.0):** CLI piggyback first (`gh auth token`,
 Vercel CLI store), fail-visible: manifest `requires` (prereqs + copyable fix) and tick
 `setup` ({message, fix} → dim cell, fix in card + settings row) replace silent `hidden`;
 Settings shows a widget's fields only while it needs attention. All three states proven
 live (gh token → runs; no gh → setup; stale Vercel CLI → setup). DECISIONS 2026-08-20.
 
-**Widget settings + OAuth (2026-08-19, in v0.6.0):**
+**Widget settings + OAuth (2026-08-19, v0.6.0):**
 manifest `settings[]` → fields in Custom widgets → Keychain (secrets) / `config.widgets`
 (plain) → env on tick; `required` gate ("needs setup"); `auth` protocol (JSON lines,
 `widget-auth` events). `vercel.ts` = stored token; `github-actions.ts` rewritten onto the
